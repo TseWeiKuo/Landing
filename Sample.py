@@ -119,7 +119,7 @@ Event handler that detects when the position changes
 def onPositionChange(self, positionChange, timeChange, indexTriggered):
     #print("PositionChange: " + str(positionChange))
     #print("TimeChange: " + str(timeChange))
-    cnts=positionChange
+    cnts = positionChange
     GR=50 # gear ratio
     r=13.5001 # radius
     distance=((cnts/360)*(2*r*math.pi))/GR # adjust for the gear ratio
