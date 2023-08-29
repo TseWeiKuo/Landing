@@ -148,7 +148,7 @@ def pid(vcurr,vgoal,timeChange,integral,error,derivative,slope):
     error=vgoal-vcurr
     current_duty_cycle=ch.getTargetVelocity()
     # compute the duty cycle
-    duty_cycle=(((Kp*error) + (Ki*integral)+ (Kd * derivative))/slope)+current_duty_cycle;
+    duty_cycle=(((Kp*error) + (Ki*integral)+ (Kd * derivative))/slope)+current_duty_cycle
     #print("Prior Duty Cycle: ", duty_cycle)
 
     # bound the duty cycle
