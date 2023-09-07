@@ -871,7 +871,7 @@ while exit == True: #True
             cam_imgs=[['Camera1', buffer], ['Camera2', buffer_camera2], ['Camera3', buffer_camera3], ['Camera4', buffer_camera4], ['Camera5', buffer_camera5]]
             def main():
                 with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
-                    results= executor.map(save_video,cam_imgs)
+                    results = executor.map(save_video, cam_imgs)
 
                     for result in results:
                         print(result) # displays when cameras are saved

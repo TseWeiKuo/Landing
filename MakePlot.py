@@ -112,6 +112,7 @@ VelocityTitle = ["Velocity: 0.15", "Velocity: 0.2", "Velocity: 0.25", "Velocity:
 Kp = ["Kp: 0.35", "Kp: 0.4", "Kp: 0.45", "Kp: 0.5"]
 FigName = ["AccuracyData_@Stop1", "AverageErrorBar_@Stop1", "TraceGraph"]
 Target_Voltage = ["Target V: 2", "Target V: 2.5", "Target V: 3", "Target V: 3.5"]
+Max_duty_cycle = ["1", "0.8", "0.6", "0.4", "0.2"]
 
 FigureName = ""
 FileDirectory = ""
@@ -120,12 +121,13 @@ ImmediateStopDirectory = r"C:\Users\agrawal-admin\Desktop\Agrawal_Lab\Immediatel
 OneSecDelayVDirectory = r"C:\Users\agrawal-admin\Desktop\Agrawal_Lab\OneSecDelayV.txt"
 OneSecDelayVTraceDirectory = r"C:\Users\agrawal-admin\Desktop\Agrawal_Lab\OneSecDelayVTrace.txt"
 VoltageTraceDirectory = r"C:\Users\agrawal-admin\Desktop\Agrawal_Lab\VoltageTrace.txt"
-
+DutyCycleTraceDirectory = r"C:\Users\agrawal-admin\Desktop\Agrawal_Lab\Duty cycle trace.txt"
 
 Immediate_data_map = ExtractData(ImmediateStopDirectory)
 OneSDelay_data_map = ExtractData(OneSecDelayVDirectory)
 OneSDelayTrace_data_map = ExtractData(OneSecDelayVTraceDirectory)
 VoltageTrace_data_map = ExtractData(VoltageTraceDirectory)
+Duty_cycle_data_map = ExtractData(DutyCycleTraceDirectory)
 
 ImmediateStop = False
 OneSecDelayStop = False
@@ -154,19 +156,27 @@ if OneSecDelayStop:
     if TraceGraph:
         PlotTraceData(OneSDelayTrace_data_map, r"OneSecDelayTrace", "1s delay voltage drift trace")
 
-
+legend_label = []
+plt.figure(figsize=(16,12))
 for j in range(len(VoltageTrace_data_map)):
     for i in range(len(VoltageTrace_data_map[j]["2"])):
+        plt.subplot(2, 1, 1)
         VoltageTrace_data_map[j]["2"][i] = np.asarray([list(x) for x in zip(* VoltageTrace_data_map[j]["2"][i])])
         plt.plot(VoltageTrace_data_map[j]["2"][i][0], VoltageTrace_data_map[j]["2"][i][1], color=color[j])
-        xdata = VoltageTrace_data_map[j]["2"][i][0]
-        ydata = VoltageTrace_data_map[j]["2"][i][1]
-        p0 = [max(ydata), np.median(xdata), 1, min(ydata)]
-        popt, pcov = op.curve_fit(sigmoid, xdata, ydata, p0, method='dogbox')
+        plt.xlabel("time(s)")
+        plt.ylabel("Voltage")
 
-plt.savefig("Voltage trace")
+for j in range(len(Duty_cycle_data_map)):
+    for i in range(len(Duty_cycle_data_map[j]["2"])):
+        plt.subplot(2, 1, 2)
+        Duty_cycle_data_map[j]["2"][i] = np.asarray([list(x) for x in zip(* Duty_cycle_data_map[j]["2"][i])])
+        plt.plot(Duty_cycle_data_map[j]["2"][i][0], Duty_cycle_data_map[j]["2"][i][1], color=color[j])
+        plt.xlabel("time(s)")
+        plt.ylabel("Duty cycle")
+    legend_label.append(mpatches.Patch(color=color[j], label=Max_duty_cycle[j]))
+plt.legend(handles=legend_label, fontsize=15, loc='upper right')
+plt.savefig("Duty cycle and voltage trace")
 plt.show()
-
 
 
 
