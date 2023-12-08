@@ -123,9 +123,9 @@ OneSecDelayVTraceDirectory = r"C:\Users\agrawal-admin\Desktop\Agrawal_Lab\OneSec
 VoltageTraceDirectory = r"C:\Users\agrawal-admin\Desktop\Agrawal_Lab\VoltageTrace.txt"
 DutyCycleTraceDirectory = r"C:\Users\agrawal-admin\Desktop\Agrawal_Lab\Duty cycle trace.txt"
 
-Immediate_data_map = ExtractData(ImmediateStopDirectory)
-OneSDelay_data_map = ExtractData(OneSecDelayVDirectory)
-OneSDelayTrace_data_map = ExtractData(OneSecDelayVTraceDirectory)
+# Immediate_data_map = ExtractData(ImmediateStopDirectory)
+# OneSDelay_data_map = ExtractData(OneSecDelayVDirectory)
+# OneSDelayTrace_data_map = ExtractData(OneSecDelayVTraceDirectory)
 VoltageTrace_data_map = ExtractData(VoltageTraceDirectory)
 Duty_cycle_data_map = ExtractData(DutyCycleTraceDirectory)
 
@@ -137,10 +137,10 @@ Voltage_Error_bar = True
 TraceGraph = True
 Adjust_undershoot = False
 
-
+"""
 if Adjust_undershoot:
-    Immediate_data_map = AdjustData(Immediate_data_map)
-    OneSDelay_data_map = AdjustData(OneSDelay_data_map)
+   Immediate_data_map = AdjustData(Immediate_data_map)
+   OneSDelay_data_map = AdjustData(OneSDelay_data_map)
 
 
 if ImmediateStop:
@@ -155,12 +155,13 @@ if OneSecDelayStop:
         PlotVoltageDiffErrorBar(OneSDelay_data_map, r"OneSecDelayVoltageDiffErr", "1s delay at target voltage average (Deadband adjusted)")
     if TraceGraph:
         PlotTraceData(OneSDelayTrace_data_map, r"OneSecDelayTrace", "1s delay voltage drift trace")
-
+"""
 legend_label = []
 plt.figure(figsize=(16,12))
 for j in range(len(VoltageTrace_data_map)):
     for i in range(len(VoltageTrace_data_map[j]["2"])):
         plt.subplot(2, 1, 1)
+        print(len(VoltageTrace_data_map[j]["2"]))
         VoltageTrace_data_map[j]["2"][i] = np.asarray([list(x) for x in zip(* VoltageTrace_data_map[j]["2"][i])])
         plt.plot(VoltageTrace_data_map[j]["2"][i][0], VoltageTrace_data_map[j]["2"][i][1], color=color[j])
         plt.xlabel("time(s)")

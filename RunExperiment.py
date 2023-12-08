@@ -1,4 +1,3 @@
-
 import pypylon.pylon as py
 import numpy as np
 import time
@@ -17,10 +16,7 @@ from nidaqmx.constants import (AcquisitionType, CountDirection, Edge, READ_ALL_A
 def save_video(cam_img):
     global filename
     global FPS
-    # Camera.StopGrabbing() is called automatically by the RetrieveResult() method
-    # when IMAGES_TO_GRAB images have been retrieved.
-    # Create writer
-    # print('C:/Users/Brandon Pratt/Desktop/Brandon/Linear Treadmill/Data/Videos/' + filename +'.mp4')
+
     # print(save_path + filename + cam_img[0] +'.mp4')
     writer = get_writer(
         save_path + filename + cam_img[0] + '.mp4',  # .mp4, mkv players often support H.264, Camera1
@@ -94,38 +90,33 @@ def CountFrames (Frames_Per_Second, Motor_Extend_time, Motor_Retract_time, Platf
 
 mk_dir = 1
 if mk_dir == 1:
-    dir_path = r"C:\Users\agrawal-admin\Desktop\Agrawal_Lab\DataFolder"
-    dir_path_vid = r"C:\Users\agrawal-admin\Desktop\Agrawal_Lab\DataFolder\videos-raw"
+    dir_path = r"C:\Users\agrawal-admin\Desktop\DataFolder"
+    dir_path_vid = r"C:\Users\agrawal-admin\Desktop\DataFolder\videos-raw"
     # Create target Directory if don't exist
     if not os.path.exists(dir_path_vid):
         os.mkdir(dir_path)
         os.mkdir(dir_path_vid)
         save_path = dir_path_vid + '/'
-        print("Directory ", dir_path_vid, " Created ")
     else:
         save_path = dir_path_vid + '/'
-        print("Directory ", dir_path_vid, " already exists...save videos to this path")
 else:
     print("Directory not created")
+    # save_path='D:/Sarah/Data/Videos/'
     save_path = r"C:\Users\agrawal-admin\Desktop\Agrawal_Lab\DataFolder\videos-raw"
-
 
 event_time_stamp = []
 camera_start_time_stamp = []
 camera_end_time_stamp = []
-
 
 video_frames = []
 video_frames2 = []
 video_frames3 = []
 video_frames4 = []
 
-
 camera1_videos = []
 camera2_videos = []
 camera3_videos = []
 camera4_videos = []
-
 
 stop_daq = False
 daq_start_time = 0
@@ -141,7 +132,6 @@ FPS = 200
 ExposureTime = ((1/FPS)*1000000) - 500
 print(f"ExposureTime: {ExposureTime} us")
 
-
 """
 Set up and configure camera
 """
@@ -151,7 +141,6 @@ print("Camera 1: " + str(devices[0].GetSerialNumber()))
 print("Camera 2: " + str(devices[1].GetSerialNumber()))
 print("Camera 3: " + str(devices[2].GetSerialNumber()))
 print("Camera 4: " + str(devices[3].GetSerialNumber()))
-
 
 camera1 = py.InstantCamera(py.TlFactory.GetInstance().CreateDevice(devices[0]))
 camera1.Open()
@@ -242,7 +231,7 @@ else:
 # Arguments to pass to the subprocess
 Target_V = 2.3
 Initial_V = 1
-Trial_num = 1
+Trial_num = 3
 Platform_stop_duration = 1
 inter_stim_wait_time = 5
 MotorExtendTime = 2
