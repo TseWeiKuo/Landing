@@ -8,7 +8,7 @@ import matplotlib.patches as mpatches
 
 def CreateLandingProbAcrossTrial(Landing_prob_data_path):
     LandingProbData = []
-    group_name = ["T2 FT 5s", "T2 FT 10s", "T2 FT 15s", "T2 BC 15s"]
+    group_name = ["T2 TF (n=20)"]
     trial = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]
 
     for path in Landing_prob_data_path:
@@ -41,7 +41,7 @@ def CreateLandingProbAcrossTrial(Landing_prob_data_path):
     plt.show()
 def CreateLandingProbAcrossFlies(Landing_prob_data_path):
     LandingProbData = []
-    group_name = ["T2 FT 5s (n=30)", "T2 FT 10s (n=25)", "T2 FT 15s (n=25)", "T2 BC 15s (n=25)"]
+    group_name = ["T2 TF (n=20)"]
 
     for path in Landing_prob_data_path:
         Temp = pd.read_excel(path)
@@ -170,11 +170,7 @@ def CreateLandingTimeAcrossFlyStripplot(Landing_time_data_path):
     plt.show()
 
 
-Landing_prob_data_path = [r"C:\Users\agrawal-admin\Desktop\Agrawal_Lab\DataFolder\Sorted_Data\Fly_conditioning\5s\T2\T2 5S Nan & Landing Prob.xlsx",
-                          r"C:\Users\agrawal-admin\Desktop\Agrawal_Lab\DataFolder\Sorted_Data\Fly_conditioning\10s\T2\T2 10S Nan & Landing Prob.xlsx",
-                          r"C:\Users\agrawal-admin\Desktop\Agrawal_Lab\DataFolder\Sorted_Data\Fly_conditioning\15s\T2\FT joint\Nan type and landing prob filtered.xlsx",
-                          r"C:\Users\agrawal-admin\Desktop\Agrawal_Lab\DataFolder\Sorted_Data\Fly_conditioning\15s\T2\FT joint\2T 15S Nan & Landing Prob.xlsx",
-                          r"C:\Users\agrawal-admin\Desktop\Agrawal_Lab\DataFolder\Sorted_Data\Fly_conditioning\15s\T2\BC joint\Nan & landing prob.xlsx"]
+Landing_prob_data_path = [r"C:\Users\agrawal-admin\Desktop\DataFolder\Sorted_Data\Fly_conditioning\10s\T2\TF joint\Landing Prob and Nan type.xlsx"]
 Landing_time_data_path = [r"C:\Users\agrawal-admin\Desktop\Agrawal_Lab\DataFolder\Sorted_Data\Fly_conditioning\5s\T2\T2_5S_Landing_time.xlsx",
                           r"C:\Users\agrawal-admin\Desktop\Agrawal_Lab\DataFolder\Sorted_Data\Fly_conditioning\10s\T2\T2 10S Landing time.xlsx",
                           r"C:\Users\agrawal-admin\Desktop\Agrawal_Lab\DataFolder\Sorted_Data\Fly_conditioning\15s\T2\FT joint\Landing time filtered.xlsx",
@@ -193,6 +189,11 @@ colors = [
     '#393b79', '#637939', '#8c6d31', '#843c39', '#7b4173',
     '#5254a3', '#637939', '#8c6d31', '#8c6d31', '#bd9e39',
 ]
+
+
+CreateLandingProbAcrossTrial(Landing_prob_data_path)
+
+
 """
 legend_label = []
 plt.figure(figsize=(15, 8))
@@ -219,7 +220,7 @@ plt.xlabel("Fly num")
 plt.savefig("Landing time across fly not clustered")
 plt.show()
 """
-
+"""
 for path in Landing_prob_data_path:
     Temp = pd.read_excel(path)
     Total = 0
@@ -251,7 +252,7 @@ for path in Landing_prob_data_path:
     print(f"N/A: {N_A/NANTotal}")
     print(f"Nan percentage: {NANTotal/Total}")
     print("*****************")
-
+"""
 """
 for path in Landing_prob_data_path:
     LandingProbData = pd.read_excel(path)

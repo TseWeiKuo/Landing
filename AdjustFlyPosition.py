@@ -1,4 +1,3 @@
-
 import pypylon.pylon as py
 import numpy as np
 import time
@@ -342,11 +341,7 @@ try:
         camera5.StartGrabbing(py.GrabStrategy_LatestImageOnly)
         camera6.StartGrabbing(py.GrabStrategy_LatestImageOnly)
 
-        # Start of video time stamp
-        print("Start grabbing videos")
-        camera_start_time_stamp.append((time.perf_counter() - daq_start_time) * ai_sample_rate)
-        cam_start = time.perf_counter()
-        # Start grabbing video
+
         while images_grabbed < frames_to_grab:
             try:
 
@@ -386,47 +381,6 @@ try:
         # End of video time stamp
         camera_end_time_stamp.append((time.perf_counter() - daq_start_time) * ai_sample_rate)
 
-        video_frames1.append(camera1_videos_seg)
-        video_frames2.append(camera2_videos_seg)
-        video_frames3.append(camera3_videos_seg)
-        video_frames4.append(camera4_videos_seg)
-        video_frames5.append(camera5_videos_seg)
-        video_frames6.append(camera6_videos_seg)
-        print("Stop Grabbing")
-        print(f"Recording time: {time.perf_counter() - cam_start}")
-        # Stop the camera
-        camera1.StopGrabbing()
-        camera2.StopGrabbing()
-        camera3.StopGrabbing()
-        camera4.StopGrabbing()
-        camera5.StopGrabbing()
-        camera6.StopGrabbing()
-
-        T += 1
-        time.sleep(inter_stim_wait_time/2)
-        print("Air puff time!")
-        time.sleep(inter_stim_wait_time/2)
-
-        if Trial_num <= T:
-            print("Finish all trials")
-            Exit = True
-            camera1.Close()
-            camera2.Close()
-            camera3.Close()
-            camera4.Close()
-            camera5.Close()
-            camera6.Close()
-            stop_daq = True
-            # DaqInputThread.join()
-
-    Date_and_time_of_exp = str(datetime.datetime.now().date())
-
-    for i in range(Trial_num):
-        filename = Date_and_time_of_exp + "_Trial_" + str(i + 1)
-        cam_imgs = [['_Cam1', video_frames1[i]], ['_Cam2', video_frames2[i]], ['_Cam3', video_frames3[i]],
-                    ['_Cam4', video_frames4[i]], ['_Cam5', video_frames5[i]], ['_Cam6', video_frames6[i]]]
-        with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
-            results = executor.map(save_video, cam_imgs)
 
 except KeyboardInterrupt as k:
     print(f"Key board interrupt: {k}")
@@ -436,146 +390,4 @@ except KeyboardInterrupt as k:
     camera4.Close()
     camera5.Close()
     camera6.Close()
-    """
-    while Run_Motor.poll() != 0:
-        continue
-    Run_Motor.kill()
-    Run_Motor.wait()
-    """
-    Send_signal_process.kill()
-    Send_signal_process.wait()
-    stop_daq = True
-    DaqInputThread.join()
-
-motor_delay_time = time.perf_counter()
-
-"""
-while Run_Motor.poll() != 0:
-    continue
-Run_Motor.kill()
-Run_Motor.wait()
-"""
-
-Send_signal_process.kill()
-Send_signal_process.wait()
-DaqInputThread.join()
-
-cam1_total_frames = 0
-cam2_total_frames = 0
-cam3_total_frames = 0
-cam4_total_frames = 0
-cam5_total_frames = 0
-cam6_total_frames = 0
-
-
-for frames in video_frames1:
-    cam1_total_frames += len(frames)
-for frames in video_frames2:
-    cam2_total_frames += len(frames)
-for frames in video_frames3:
-    cam3_total_frames += len(frames)
-for frames in video_frames4:
-    cam4_total_frames += len(frames)
-for frames in video_frames5:
-    cam5_total_frames += len(frames)
-for frames in video_frames6:
-    cam6_total_frames += len(frames)
-
-
-print("Total Number of images grabbed (Cam 1): " + str(cam1_total_frames))
-for i in range(len(video_frames1)):
-    print(f"Segment {i + 1}'s number of frames: {len(video_frames1[i])}")
-
-print("Total Number of images grabbed (Cam 2): " + str(cam2_total_frames))
-for i in range(len(video_frames2)):
-    print(f"Segment {i + 1}'s number of frames: {len(video_frames2[i])}")
-
-print("Total Number of images grabbed (Cam 3): " + str(cam3_total_frames))
-for i in range(len(video_frames3)):
-    print(f"Segment {i + 1}'s number of frames: {len(video_frames3[i])}")
-
-print("Total Number of images grabbed (Cam 4): " + str(cam4_total_frames))
-for i in range(len(video_frames4)):
-    print(f"Segment {i + 1}'s number of frames: {len(video_frames4[i])}")
-
-print("Total Number of images grabbed (Cam 5): " + str(cam5_total_frames))
-for i in range(len(video_frames5)):
-    print(f"Segment {i + 1}'s number of frames: {len(video_frames5[i])}")
-
-print(f"Total Number of images grabbed (Cam 6): " + str(cam6_total_frames))
-for i in range(len(video_frames6)):
-    print(f"Segment {i + 1}'s number of frames: {len(video_frames6[i])}")
-
-time_tick = list(range(0, len(ai_1_data)))
-time_tick = [(x / ai_sample_rate) for x in time_tick]
-
-print("Total Cam 1 peaks num (ai 1 data): " + str(len(Find_Peak(ai_1_data)[0])))
-for i in range(len(camera_start_time_stamp)):
-    print(f"Segment: {i + 1}'s number of peaks: {len(Find_Peak(ai_1_data[int(camera_start_time_stamp[i]):int(camera_end_time_stamp[i])])[0])}")
-
-print("Total Cam 2 peaks num (ai 2 data): " + str(len(Find_Peak(ai_2_data)[0])))
-for i in range(len(camera_start_time_stamp)):
-    print(f"Segment: {i + 1}'s number of peaks: {len(Find_Peak(ai_2_data[int(camera_start_time_stamp[i]):int(camera_end_time_stamp[i])])[0])}")
-
-print("Total Cam 3 peaks num (ai 3 data): " + str(len(Find_Peak(ai_3_data)[0])))
-for i in range(len(camera_start_time_stamp)):
-    print(f"Segment: {i + 1}'s number of peaks: {len(Find_Peak(ai_3_data[int(camera_start_time_stamp[i]):int(camera_end_time_stamp[i])])[0])}")
-
-print("Total Cam 4 peaks num (ai 4 data): " + str(len(Find_Peak(ai_4_data)[0])))
-for i in range(len(camera_start_time_stamp)):
-    print(f"Segment: {i + 1}'s number of peaks: {len(Find_Peak(ai_4_data[int(camera_start_time_stamp[i]):int(camera_end_time_stamp[i])])[0])}")
-
-print("Total Cam 5 peaks num (ai 5 data): " + str(len(Find_Peak(ai_5_data)[0])))
-for i in range(len(camera_start_time_stamp)):
-    print(f"Segment: {i + 1}'s number of peaks: {len(Find_Peak(ai_5_data[int(camera_start_time_stamp[i]):int(camera_end_time_stamp[i])])[0])}")
-
-print("Total Cam 6 peaks num (ai 6 data): " + str(len(Find_Peak(ai_6_data)[0])))
-for i in range(len(camera_start_time_stamp)):
-    print(f"Segment: {i + 1}'s number of peaks: {len(Find_Peak(ai_6_data[int(camera_start_time_stamp[i]):int(camera_end_time_stamp[i])])[0])}")
-
-
-peaks, _ = Find_Peak(ai_1_data)
-peaks_val = [ai_1_data[i] for i in peaks]
-peaks_time_stamp = [time_tick[i] for i in peaks]
-plt.plot(time_tick, ai_1_data, color='blue')
-plt.plot(peaks_time_stamp, peaks_val, "x", color='cyan', linewidth=2, markersize=10)
-
-peaks, _ = Find_Peak(ai_2_data)
-peaks_val = [ai_2_data[i] for i in peaks]
-peaks_time_stamp = [time_tick[i] for i in peaks]
-plt.plot(time_tick, ai_2_data, color='gold')
-plt.plot(peaks_time_stamp, peaks_val, "o", color='yellow', linewidth=2, markersize=10)
-
-peaks, _ = Find_Peak(ai_3_data)
-peaks_val = [ai_3_data[i] for i in peaks]
-peaks_time_stamp = [time_tick[i] for i in peaks]
-plt.plot(time_tick, ai_3_data, color='green')
-plt.plot(peaks_time_stamp, peaks_val, "*", color='lime', linewidth=2, markersize=10)
-
-peaks, _ = Find_Peak(ai_4_data)
-peaks_val = [ai_4_data[i] for i in peaks]
-peaks_time_stamp = [time_tick[i] for i in peaks]
-plt.plot(time_tick, ai_4_data, color='red')
-plt.plot(peaks_time_stamp, peaks_val, "^", color='orange', linewidth=2, markersize=10)
-
-peaks, _ = Find_Peak(ai_5_data)
-peaks_val = [ai_5_data[i] for i in peaks]
-peaks_time_stamp = [time_tick[i] for i in peaks]
-plt.plot(time_tick, ai_5_data, color='maroon')
-plt.plot(peaks_time_stamp, peaks_val, ">", color='coral', linewidth=2, markersize=10)
-
-peaks, _ = Find_Peak(ai_6_data)
-peaks_val = [ai_6_data[i] for i in peaks]
-peaks_time_stamp = [time_tick[i] for i in peaks]
-plt.plot(time_tick, ai_6_data, color='indigo')
-plt.plot(peaks_time_stamp, peaks_val, ">", color='purple', linewidth=2, markersize=10)
-
-for i in event_time_stamp:
-    plt.axvline(x=i, color='olive')
-for i in camera_start_time_stamp:
-    plt.axvline(x=i/ai_sample_rate, color='teal')
-for i in camera_end_time_stamp:
-    plt.axvline(x=i/ai_sample_rate, color='black')
-plt.show()
-
 

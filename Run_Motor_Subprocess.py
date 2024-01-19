@@ -55,7 +55,8 @@ voltageInput0.setOnVoltageChangeHandler(onVoltageChange)
 voltageInput0.setChannel(0)
 voltageInput0.setDataRate(125)
 
-time.sleep(2)
+time.sleep(5)
+print("Start motor")
 try:
     try:
         # time.sleep(1)
@@ -64,7 +65,7 @@ try:
             start_time = time.perf_counter()
             while True:
                 Current_target_position = Target_V
-                if (abs(dcMotor0.getVelocity()) < 0.01 and abs(Current_target_position - voltageInput0.getVoltage()) < deadband) or (time.perf_counter() - start_time) > 2:
+                if (abs(dcMotor0.getVelocity()) < 0.01 and abs(Current_target_position - voltageInput0.getVoltage()) < deadband) or (time.perf_counter() - start_time) > 3:
                     dcMotor0.setTargetVelocity(0)
                     time.sleep(Platform_stop_duration)
                     Retract_time_start = time.perf_counter()
@@ -72,9 +73,8 @@ try:
                     Current_target_position = Initial_V
                     # Retract back to start position
                     while Retract:
-                        if abs(dcMotor0.getVelocity()) < 0.01 and (abs(voltageInput0.getVoltage() - Current_target_position) < deadband) or (time.perf_counter() - Retract_time_start) > 2:
+                        if abs(dcMotor0.getVelocity()) < 0.01 and (abs(voltageInput0.getVoltage() - Current_target_position) < deadband) or (time.perf_counter() - Retract_time_start) > 3:
                             dcMotor0.setTargetVelocity(0)
-                            print(f"Video duration {time.perf_counter() - video_start_time}")
                             Retract = False
                             start_time = time.perf_counter()
                     break

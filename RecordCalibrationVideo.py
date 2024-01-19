@@ -1,4 +1,3 @@
-
 import pypylon.pylon as py
 import numpy as np
 import time
@@ -86,30 +85,20 @@ def ListeningCam():
         # Handle if the user interrupts the program (e.g., with Ctrl+C)
         print("Data acquisition interrupted.")
 
-def Plot_AI_Data(ai_data):
-    return
 def Find_Peak(ai_data):
     return scipy.signal.find_peaks(ai_data, distance=95, prominence=[3, 5])
-
-def CountFrames (Frames_Per_Second, Motor_Extend_time, Motor_Retract_time, Platform_stop_duration):
-    return (Motor_Extend_time + Motor_Retract_time + Platform_stop_duration) * Frames_Per_Second
 
 mk_dir = 1
 if mk_dir == 1:
     dir_path = r"C:\Users\agrawal-admin\Desktop\DataFolder"
-    dir_path_vid = r"C:\Users\agrawal-admin\Desktop\DataFolder\videos-raw"
+    dir_path_vid = r"C:\Users\agrawal-admin\Desktop\DataFolder\calibration/"
     # Create target Directory if don't exist
     if not os.path.exists(dir_path_vid):
-        os.mkdir(dir_path)
         os.mkdir(dir_path_vid)
         save_path = dir_path_vid + '/'
         print("Directory ", dir_path_vid, " Created ")
     else:
-        FlyNum = 1
-        for path in os.listdir(dir_path_vid):
-            FlyNum += 1
-        save_path = dir_path_vid + '\Fly' + str(FlyNum) + '/'
-        os.mkdir(save_path)
+        save_path = dir_path_vid
         print(save_path)
 else:
     print("Directory not created")
@@ -135,7 +124,6 @@ camera4_videos_seg = []
 camera5_videos_seg = []
 camera6_videos_seg = []
 
-FPS = 250
 stop_daq = False
 daq_start_time = 0
 ai_6_data = []
@@ -144,11 +132,13 @@ ai_4_data = []
 ai_3_data = []
 ai_2_data = []
 ai_1_data = []
-ai_sample_rate = FPS * 100
+ai_sample_rate = 20000
 
 
 T = 0
-ExposureTime = ((1/FPS)*1000000) - 300
+FPS = 30
+Duration = 200
+ExposureTime = ((1/FPS)*1000000) - 28000
 print(f"ExposureTime: {ExposureTime} us")
 
 
@@ -296,137 +286,104 @@ else:
     camera6.TriggerMode = "On"
 
 
-# Arguments to pass to the subprocess
-Target_V = 2.45
-Initial_V = 1
-Trial_num = 5
-Platform_stop_duration = 1
-inter_stim_wait_time = 10
-MotorExtendTime = 3
-MotorRetractTime = 3
-frames_to_grab = CountFrames(Platform_stop_duration=Platform_stop_duration,
-                             Motor_Extend_time=MotorExtendTime,
-                             Motor_Retract_time=MotorRetractTime,
-                             Frames_Per_Second=FPS)
-print(f"# of frames to grab: {frames_to_grab}")
 
 
-DaqInputThread = threading.Thread(target=ListeningCam)
-DaqInputThread.start()
-time.sleep(3)
+# DaqInputThread = threading.Thread(target=ListeningCam)
+# DaqInputThread.start()
 # Launch the subprocess
 Send_signal_process = Popen(['python', 'subprocess_daq_trigger.py', str(FPS)])
-
-# Run_Motor = Popen(["python", "Run_Motor_Subprocess.py", str(Target_V), str(Initial_V), str(Trial_num), str(Platform_stop_duration), str(inter_stim_wait_time)])
-
+frames_to_grab = FPS * Duration
 filename = ""
 
 Exit = False
 try:
     wait_time = 5000
-    while not Exit:
-        images_grabbed = 0
-        # Clear previous video segment
-        camera1_videos_seg.clear()
-        camera2_videos_seg.clear()
-        camera3_videos_seg.clear()
-        camera4_videos_seg.clear()
-        camera5_videos_seg.clear()
-        camera6_videos_seg.clear()
+    images_grabbed = 0
+    # Clear previous video segment
+    camera1_videos_seg.clear()
+    camera2_videos_seg.clear()
+    camera3_videos_seg.clear()
+    camera4_videos_seg.clear()
+    camera5_videos_seg.clear()
+    camera6_videos_seg.clear()
 
-        # Start the camera
-        camera1.StartGrabbing(py.GrabStrategy_LatestImageOnly)
-        camera2.StartGrabbing(py.GrabStrategy_LatestImageOnly)
-        camera3.StartGrabbing(py.GrabStrategy_LatestImageOnly)
-        camera4.StartGrabbing(py.GrabStrategy_LatestImageOnly)
-        camera5.StartGrabbing(py.GrabStrategy_LatestImageOnly)
-        camera6.StartGrabbing(py.GrabStrategy_LatestImageOnly)
+    # Start the camera
+    camera1.StartGrabbing(py.GrabStrategy_LatestImageOnly)
+    camera2.StartGrabbing(py.GrabStrategy_LatestImageOnly)
+    camera3.StartGrabbing(py.GrabStrategy_LatestImageOnly)
+    camera4.StartGrabbing(py.GrabStrategy_LatestImageOnly)
+    camera5.StartGrabbing(py.GrabStrategy_LatestImageOnly)
+    camera6.StartGrabbing(py.GrabStrategy_LatestImageOnly)
 
-        # Start of video time stamp
-        print("Start grabbing videos")
-        camera_start_time_stamp.append((time.perf_counter() - daq_start_time) * ai_sample_rate)
-        cam_start = time.perf_counter()
-        # Start grabbing video
-        while images_grabbed < frames_to_grab:
-            try:
+    # Start of video time stamp
+    print("Start grabbing videos")
+    camera_start_time_stamp.append((time.perf_counter() - daq_start_time) * ai_sample_rate)
+    cam_start = time.perf_counter()
+    second = 0
+    # Start grabbing video
+    while images_grabbed < frames_to_grab:
+        try:
+            if images_grabbed % FPS == 0:
+                second += 1
+                print(second)
+            grabResult1 = camera1.RetrieveResult(wait_time, py.TimeoutHandling_ThrowException)
+            grabResult2 = camera2.RetrieveResult(wait_time, py.TimeoutHandling_ThrowException)
+            grabResult3 = camera3.RetrieveResult(wait_time, py.TimeoutHandling_ThrowException)
+            grabResult4 = camera4.RetrieveResult(wait_time, py.TimeoutHandling_ThrowException)
+            grabResult5 = camera5.RetrieveResult(wait_time, py.TimeoutHandling_ThrowException)
+            grabResult6 = camera6.RetrieveResult(wait_time, py.TimeoutHandling_ThrowException)
 
-                grabResult1 = camera1.RetrieveResult(wait_time, py.TimeoutHandling_ThrowException)
-                grabResult2 = camera2.RetrieveResult(wait_time, py.TimeoutHandling_ThrowException)
-                grabResult3 = camera3.RetrieveResult(wait_time, py.TimeoutHandling_ThrowException)
-                grabResult4 = camera4.RetrieveResult(wait_time, py.TimeoutHandling_ThrowException)
-                grabResult5 = camera5.RetrieveResult(wait_time, py.TimeoutHandling_ThrowException)
-                grabResult6 = camera6.RetrieveResult(wait_time, py.TimeoutHandling_ThrowException)
+            if grabResult1.GrabSucceeded() and grabResult2.GrabSucceeded() and grabResult3.GrabSucceeded()\
+                    and grabResult4.GrabSucceeded() and grabResult5.GrabSucceeded() and grabResult6.GrabSucceeded():
+                images_grabbed += 1
+                event_time_stamp.append(time.perf_counter() - daq_start_time)
+                camera1_videos_seg.append(grabResult1.Array)
+                camera2_videos_seg.append(grabResult2.Array)
+                camera3_videos_seg.append(grabResult3.Array)
+                camera4_videos_seg.append(grabResult4.Array)
+                camera5_videos_seg.append(grabResult5.Array)
+                camera6_videos_seg.append(grabResult6.Array)
 
-                if grabResult1.GrabSucceeded() and grabResult2.GrabSucceeded() and grabResult3.GrabSucceeded()\
-                        and grabResult4.GrabSucceeded() and grabResult5.GrabSucceeded() and grabResult6.GrabSucceeded():
-                    images_grabbed += 1
-                    event_time_stamp.append(time.perf_counter() - daq_start_time)
-                    camera1_videos_seg.append(grabResult1.Array)
-                    camera2_videos_seg.append(grabResult2.Array)
-                    camera3_videos_seg.append(grabResult3.Array)
-                    camera4_videos_seg.append(grabResult4.Array)
-                    camera5_videos_seg.append(grabResult5.Array)
-                    camera6_videos_seg.append(grabResult6.Array)
-
-                grabResult1.Release()
-                grabResult2.Release()
-                grabResult3.Release()
-                grabResult4.Release()
-                grabResult5.Release()
-                grabResult6.Release()
-            except py.TimeoutException as e:
-                camera1.Close()
-                camera2.Close()
-                camera3.Close()
-                camera4.Close()
-                camera5.Close()
-                camera6.Close()
-                print(f"Timeout exception: {e}")
-                break
-        # End of video time stamp
-        camera_end_time_stamp.append((time.perf_counter() - daq_start_time) * ai_sample_rate)
-
-        video_frames1.append(camera1_videos_seg)
-        video_frames2.append(camera2_videos_seg)
-        video_frames3.append(camera3_videos_seg)
-        video_frames4.append(camera4_videos_seg)
-        video_frames5.append(camera5_videos_seg)
-        video_frames6.append(camera6_videos_seg)
-        print("Stop Grabbing")
-        print(f"Recording time: {time.perf_counter() - cam_start}")
-        # Stop the camera
-        camera1.StopGrabbing()
-        camera2.StopGrabbing()
-        camera3.StopGrabbing()
-        camera4.StopGrabbing()
-        camera5.StopGrabbing()
-        camera6.StopGrabbing()
-
-        T += 1
-        time.sleep(inter_stim_wait_time/2)
-        print("Air puff time!")
-        time.sleep(inter_stim_wait_time/2)
-
-        if Trial_num <= T:
-            print("Finish all trials")
-            Exit = True
+            grabResult1.Release()
+            grabResult2.Release()
+            grabResult3.Release()
+            grabResult4.Release()
+            grabResult5.Release()
+            grabResult6.Release()
+        except py.TimeoutException as e:
             camera1.Close()
             camera2.Close()
             camera3.Close()
             camera4.Close()
             camera5.Close()
             camera6.Close()
-            stop_daq = True
-            # DaqInputThread.join()
+            print(f"Timeout exception: {e}")
+            break
+        # End of video time stamp
+    camera_end_time_stamp.append((time.perf_counter() - daq_start_time) * ai_sample_rate)
 
-    Date_and_time_of_exp = str(datetime.datetime.now().date())
+    # Stop the camera
+    camera1.StopGrabbing()
+    camera2.StopGrabbing()
+    camera3.StopGrabbing()
+    camera4.StopGrabbing()
+    camera5.StopGrabbing()
+    camera6.StopGrabbing()
 
-    for i in range(Trial_num):
-        filename = Date_and_time_of_exp + "_Trial_" + str(i + 1)
-        cam_imgs = [['_Cam1', video_frames1[i]], ['_Cam2', video_frames2[i]], ['_Cam3', video_frames3[i]],
-                    ['_Cam4', video_frames4[i]], ['_Cam5', video_frames5[i]], ['_Cam6', video_frames6[i]]]
-        with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
-            results = executor.map(save_video, cam_imgs)
+    T += 1
+    camera1.Close()
+    camera2.Close()
+    camera3.Close()
+    camera4.Close()
+    camera5.Close()
+    camera6.Close()
+    stop_daq = True
+    # DaqInputThread.join()
+    Cam = "2_"
+    cam_imgs = [[Cam + 'Cam1', camera1_videos_seg], [Cam + 'Cam2', camera2_videos_seg], [Cam + 'Cam3', camera3_videos_seg],
+                [Cam + 'Cam4', camera4_videos_seg], [Cam + 'Cam5', camera5_videos_seg], [Cam + 'Cam6', camera6_videos_seg]]
+    with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
+        results = executor.map(save_video, cam_imgs)
 
 except KeyboardInterrupt as k:
     print(f"Key board interrupt: {k}")
@@ -436,29 +393,14 @@ except KeyboardInterrupt as k:
     camera4.Close()
     camera5.Close()
     camera6.Close()
-    """
-    while Run_Motor.poll() != 0:
-        continue
-    Run_Motor.kill()
-    Run_Motor.wait()
-    """
     Send_signal_process.kill()
     Send_signal_process.wait()
     stop_daq = True
-    DaqInputThread.join()
-
-motor_delay_time = time.perf_counter()
-
-"""
-while Run_Motor.poll() != 0:
-    continue
-Run_Motor.kill()
-Run_Motor.wait()
-"""
+    # DaqInputThread.join()
 
 Send_signal_process.kill()
 Send_signal_process.wait()
-DaqInputThread.join()
+# DaqInputThread.join()
 
 cam1_total_frames = 0
 cam2_total_frames = 0
@@ -577,5 +519,3 @@ for i in camera_start_time_stamp:
 for i in camera_end_time_stamp:
     plt.axvline(x=i/ai_sample_rate, color='black')
 plt.show()
-
-
