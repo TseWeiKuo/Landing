@@ -294,15 +294,15 @@ if mk_dir==1:
     if not os.path.exists(dir_path_vid):
         os.mkdir(dir_path)
         os.mkdir(dir_path_vid)
-        save_path=dir_path_vid+'/'
+        save_date= dir_path_vid + '/'
         print("Directory " , dir_path_vid,  " Created ")
     else:
-        save_path=dir_path_vid+'/'
+        save_date= dir_path_vid + '/'
         print("Directory " , dir_path_vid ,  " already exists...save videos to this path")
 else:
     print("Directory not created")
     #save_path='D:/Sarah/Data/Videos/'
-    save_path='F:/Brandon/Data/linear_belt/speed_dependent/52A01_DBD_tnt'
+    save_date= 'F:/Brandon/Data/linear_belt/speed_dependent/52A01_DBD_tnt'
 
 #parameter loadout
 fly_num=str(input('Fly number (#):'))
@@ -358,7 +358,7 @@ def save_video(cam_img):
         # Create writer
     #print('C:/Users/Brandon Pratt/Desktop/Brandon/Linear Treadmill/Data/Videos/' + filename +'.mp4')
     writer=get_writer(
-       save_path + filename + cam_img[0] +'.avi',  # .mp4, mkv players often support H.264, Camera1
+        save_date + filename + cam_img[0] + '.avi',  # .mp4, mkv players often support H.264, Camera1
         # test harddrive speed
        #'E:/Brandon_Test/'+ filename +'.avi',
         # use .avi (not .mp4) format because can be opened in virtualdub
@@ -856,12 +856,12 @@ while exit == True: #True
 
             # treadmill belt speed update time
             belt_timestamps = numpy.array(belt_time)
-            numpy.savetxt(save_path + filename+'_Belt_TimeStamps.txt', belt_timestamps, delimiter=',')
+            numpy.savetxt(save_date + filename + '_Belt_TimeStamps.txt', belt_timestamps, delimiter=',')
 
             # save converted numpy array as text file
             belt_stimulus = numpy.array(belt_speed)
-            numpy.savetxt(save_path + filename+'_Belt_Speed.txt', belt_stimulus, delimiter=',')
-            numpy.savetxt(save_path + filename+'_Prescribed_Belt_Speed.txt', numpy.array(stimulus), delimiter=',')
+            numpy.savetxt(save_date + filename + '_Belt_Speed.txt', belt_stimulus, delimiter=',')
+            numpy.savetxt(save_date + filename + '_Prescribed_Belt_Speed.txt', numpy.array(stimulus), delimiter=',')
             print('Saving Videos')
 
             #compute the time for delaying between stimuli bouts
@@ -882,7 +882,7 @@ while exit == True: #True
             camera_timestamp=numpy.array(timestamp)
             camera_timestamp=camera_timestamp-camera_timestamp[0]
             #print('length of timestamp array', len(timestamp))
-            numpy.savetxt(save_path + filename+'_Camera_TimeStamps.txt',camera_timestamp,delimiter=',')
+            numpy.savetxt(save_date + filename + '_Camera_TimeStamps.txt', camera_timestamp, delimiter=',')
             print('Finsihed Saving')
 
         except genicam.GenericException as e:

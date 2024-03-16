@@ -5,6 +5,7 @@ import time
 from matplotlib import pyplot as plt
 from imageio import get_writer
 from subprocess import Popen
+import subprocess
 import os
 import concurrent.futures
 import datetime
@@ -13,21 +14,28 @@ import threading
 import nidaqmx.system
 from nidaqmx.constants import (AcquisitionType, CountDirection, Edge, READ_ALL_AVAILABLE, TaskMode,
                                TriggerType, WAIT_INFINITELY, TerminalConfiguration)
-
+def send_command(subprocess_instance, command):
+    try:
+        if subprocess_instance.poll() is None:
+            subprocess_instance.stdin.write(command + '\n')
+            subprocess_instance.stdin.flush()
+            # print("Sent command:", command)
+        else:
+            print("Subprocess has terminated with return code:", subprocess_instance.returncode)
+            out, err = subprocess_instance.communicate()
+            if out:
+                print("Subprocess output:", out)
+            if err:
+                print("Subprocess error:", err)
+    except IOError as e:
+        print(f"Error writing to subprocess: {e}")
 def save_video(cam_img):
     global filename
     global FPS
-    # Camera.StopGrabbing() is called automatically by the RetrieveResult() method
-    # when IMAGES_TO_GRAB images have been retrieved.
-    # Create writer
-    # print('C:/Users/Brandon Pratt/Desktop/Brandon/Linear Treadmill/Data/Videos/' + filename +'.mp4')
-    # print(save_path + filename + cam_img[0] +'.mp4')
+    global Fly_Folder
     writer = get_writer(
-        save_path + filename + cam_img[0] + '.mp4',  # .mp4, mkv players often support H.264, Camera1
-        # test harddrive speed
-        # 'E:/Brandon_Test/'+ filename +'.avi',
-        # use .avi (not .mp4) format because can be opened in virtualdub
-        fps=FPS,  # FPS is in units Hz; should be real-time...playback...set to actual
+        os.path.join(Fly_Folder, filename) + cam_img[0] + '.mp4',
+        fps=FPS,
         codec='libx264',  # When used properly, this is basically
         # "PNG for video" (i.e. lossless)
         quality=None,  # disables variable compression...0 to 10
@@ -46,74 +54,40 @@ def save_video(cam_img):
     writer.close()
     return cam_img[0] + ' saved'
 
-def ListeningCam():
-    read_task_1 = nidaqmx.Task()
-    global ai_1_data
-    global ai_2_data
-    global ai_3_data
-    global ai_4_data
-    global ai_5_data
-    global ai_6_data
-    global daq_start_time
-    global event_time_stamp
-    global ai_sample_rate
-    print("Start acquiring signal")
-    # Create a task for voltage measurement
-    read_task_1.ai_channels.add_ai_voltage_chan("Dev2/ai1:6",
-                                                terminal_config=nidaqmx.constants.TerminalConfiguration.RSE)  # Specify the channel
-
-    # Set the acquisition time to 5 seconds
-    read_task_1.timing.cfg_samp_clk_timing(rate=ai_sample_rate,
-                                           sample_mode=nidaqmx.constants.AcquisitionType.CONTINUOUS,
-                                           source="OnboardClock")
-    # Start the task
-    read_task_1.start()
-    try:
-        buffer_size = 10000
-        event_time_stamp.append(0)
-        daq_start_time = time.perf_counter()
-        while not stop_daq:
-            data = read_task_1.read(number_of_samples_per_channel=buffer_size)
-            ai_1_data.extend(data[0])
-            ai_2_data.extend(data[1])
-            ai_3_data.extend(data[2])
-            ai_4_data.extend(data[3])
-            ai_5_data.extend(data[4])
-            ai_6_data.extend(data[5])
-        read_task_1.stop()
-        read_task_1.close()
-    except KeyboardInterrupt:
-        # Handle if the user interrupts the program (e.g., with Ctrl+C)
-        print("Data acquisition interrupted.")
-
-def Plot_AI_Data(ai_data):
-    return
 def Find_Peak(ai_data):
     return scipy.signal.find_peaks(ai_data, distance=95, prominence=[3, 5])
 
 def CountFrames (Frames_Per_Second, Motor_Extend_time, Motor_Retract_time, Platform_stop_duration):
     return (Motor_Extend_time + Motor_Retract_time + Platform_stop_duration) * Frames_Per_Second
 
-mk_dir = 1
-if mk_dir == 1:
-    dir_path = r"C:\Users\agrawal-admin\Desktop\DataFolder"
-    dir_path_vid = r"C:\Users\agrawal-admin\Desktop\DataFolder\videos-raw"
-    # Create target Directory if don't exist
-    if not os.path.exists(dir_path_vid):
-        os.mkdir(dir_path)
-        os.mkdir(dir_path_vid)
-        save_path = dir_path_vid + '/'
-        print("Directory ", dir_path_vid, " Created ")
-    else:
-        FlyNum = 1
-        for path in os.listdir(dir_path_vid):
-            FlyNum += 1
-        save_path = dir_path_vid + '\Fly' + str(FlyNum) + '/'
-        os.mkdir(save_path)
-        print(save_path)
-else:
-    print("Directory not created")
-    save_path = r"C:\Users\agrawal-admin\Desktop\DataFolder\videos-raw"
+Data_Folder_Path = r"C:\Users\agrawal-admin\Desktop\DataFolder"
+Experiment = "Different_Legs_Experiment"
+Group_name = "Starved_T3_CTF"
+Fly_num = ""
+save_date = ""
+Date = datetime.datetime.now().date()
+
+
+save_folder = os.path.join(Data_Folder_Path, Experiment)
+if Experiment not in os.listdir(Data_Folder_Path):
+    os.mkdir(save_folder)
+os.chdir(save_folder)
+
+Group_Folder = os.path.join(save_folder, Group_name)
+if Group_name not in os.listdir(save_folder):
+    os.mkdir(Group_Folder)
+os.chdir(Group_Folder)
+
+Date_Folder = os.path.join(Group_Folder, str(Date))
+if str(Date) not in os.listdir(Group_Folder):
+    os.mkdir(Date_Folder)
+os.chdir(Date_Folder)
+
+Fly_num = "Fly_" + str(len(os.listdir(Date_Folder)) + 1)
+Fly_Folder = os.path.join(Date_Folder, Fly_num)
+os.mkdir(Fly_Folder)
+os.chdir(Fly_Folder)
+
 
 
 event_time_stamp = []
@@ -148,7 +122,7 @@ ai_sample_rate = FPS * 100
 
 
 T = 0
-ExposureTime = ((1/FPS)*1000000) - 300
+ExposureTime = ((1/FPS)*1000000) - 500
 print(f"ExposureTime: {ExposureTime} us")
 
 
@@ -297,9 +271,10 @@ else:
 
 
 # Arguments to pass to the subprocess
-Target_V = 2.45
+UseMotor = True
+Target_V = 2.2
 Initial_V = 1
-Trial_num = 5
+Trial_num = 20
 Platform_stop_duration = 1
 inter_stim_wait_time = 10
 MotorExtendTime = 3
@@ -308,17 +283,15 @@ frames_to_grab = CountFrames(Platform_stop_duration=Platform_stop_duration,
                              Motor_Extend_time=MotorExtendTime,
                              Motor_Retract_time=MotorRetractTime,
                              Frames_Per_Second=FPS)
-print(f"# of frames to grab: {frames_to_grab}")
 
-
-DaqInputThread = threading.Thread(target=ListeningCam)
-DaqInputThread.start()
-time.sleep(3)
+os.chdir(r"C:\Users\agrawal-admin\Desktop\Agrawal_Lab")
 # Launch the subprocess
 Send_signal_process = Popen(['python', 'subprocess_daq_trigger.py', str(FPS)])
-
-# Run_Motor = Popen(["python", "Run_Motor_Subprocess.py", str(Target_V), str(Initial_V), str(Trial_num), str(Platform_stop_duration), str(inter_stim_wait_time)])
-
+time.sleep(5)
+command = ["python", "Run_Motor_Subprocess.py", str(Target_V), str(Initial_V),
+           str(Trial_num), str(Platform_stop_duration), str(inter_stim_wait_time)]
+Run_Motor = subprocess.Popen(command, stdin=subprocess.PIPE, text=True)
+time.sleep(3)
 filename = ""
 
 Exit = False
@@ -346,6 +319,8 @@ try:
         print("Start grabbing videos")
         camera_start_time_stamp.append((time.perf_counter() - daq_start_time) * ai_sample_rate)
         cam_start = time.perf_counter()
+
+        send_command(Run_Motor, "RunMotor")
         # Start grabbing video
         while images_grabbed < frames_to_grab:
             try:
@@ -383,15 +358,10 @@ try:
                 camera6.Close()
                 print(f"Timeout exception: {e}")
                 break
+        send_command(Run_Motor, "StopMotor")
         # End of video time stamp
         camera_end_time_stamp.append((time.perf_counter() - daq_start_time) * ai_sample_rate)
 
-        video_frames1.append(camera1_videos_seg)
-        video_frames2.append(camera2_videos_seg)
-        video_frames3.append(camera3_videos_seg)
-        video_frames4.append(camera4_videos_seg)
-        video_frames5.append(camera5_videos_seg)
-        video_frames6.append(camera6_videos_seg)
         print("Stop Grabbing")
         print(f"Recording time: {time.perf_counter() - cam_start}")
         # Stop the camera
@@ -403,7 +373,17 @@ try:
         camera6.StopGrabbing()
 
         T += 1
+        print(f"Trial {T}")
         time.sleep(inter_stim_wait_time/2)
+        tm = str(datetime.datetime.now().time())
+        tm = tm.replace(":", "-")[:-4]
+        Date_and_time_of_exp = str(datetime.datetime.now().date()) + "-" + tm
+        filename = Date_and_time_of_exp + "_" + Group_name + "_" + Fly_num + "_Trial_" + str(T)
+        cam_imgs = [['_Cam1', camera1_videos_seg], ['_Cam2', camera2_videos_seg], ['_Cam3', camera3_videos_seg],
+                    ['_Cam4', camera4_videos_seg], ['_Cam5', camera5_videos_seg], ['_Cam6', camera6_videos_seg]]
+        video_saving_time = time.perf_counter()
+        with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
+            results = executor.map(save_video, cam_imgs)
         print("Air puff time!")
         time.sleep(inter_stim_wait_time/2)
 
@@ -416,17 +396,9 @@ try:
             camera4.Close()
             camera5.Close()
             camera6.Close()
+            Run_Motor.stdin.close()
             stop_daq = True
             # DaqInputThread.join()
-
-    Date_and_time_of_exp = str(datetime.datetime.now().date())
-
-    for i in range(Trial_num):
-        filename = Date_and_time_of_exp + "_Trial_" + str(i + 1)
-        cam_imgs = [['_Cam1', video_frames1[i]], ['_Cam2', video_frames2[i]], ['_Cam3', video_frames3[i]],
-                    ['_Cam4', video_frames4[i]], ['_Cam5', video_frames5[i]], ['_Cam6', video_frames6[i]]]
-        with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
-            results = executor.map(save_video, cam_imgs)
 
 except KeyboardInterrupt as k:
     print(f"Key board interrupt: {k}")
@@ -436,29 +408,28 @@ except KeyboardInterrupt as k:
     camera4.Close()
     camera5.Close()
     camera6.Close()
-    """
     while Run_Motor.poll() != 0:
         continue
     Run_Motor.kill()
     Run_Motor.wait()
-    """
+
     Send_signal_process.kill()
     Send_signal_process.wait()
     stop_daq = True
-    DaqInputThread.join()
+    # DaqInputThread.join()
 
 motor_delay_time = time.perf_counter()
 
-"""
+
 while Run_Motor.poll() != 0:
     continue
 Run_Motor.kill()
 Run_Motor.wait()
-"""
+
 
 Send_signal_process.kill()
 Send_signal_process.wait()
-DaqInputThread.join()
+# DaqInputThread.join()
 
 cam1_total_frames = 0
 cam2_total_frames = 0
@@ -467,7 +438,7 @@ cam4_total_frames = 0
 cam5_total_frames = 0
 cam6_total_frames = 0
 
-
+"""
 for frames in video_frames1:
     cam1_total_frames += len(frames)
 for frames in video_frames2:
@@ -576,6 +547,6 @@ for i in camera_start_time_stamp:
     plt.axvline(x=i/ai_sample_rate, color='teal')
 for i in camera_end_time_stamp:
     plt.axvline(x=i/ai_sample_rate, color='black')
-plt.show()
-
+# plt.show()
+"""
 

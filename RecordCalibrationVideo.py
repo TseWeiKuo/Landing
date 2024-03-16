@@ -22,7 +22,7 @@ def save_video(cam_img):
     # print('C:/Users/Brandon Pratt/Desktop/Brandon/Linear Treadmill/Data/Videos/' + filename +'.mp4')
     # print(save_path + filename + cam_img[0] +'.mp4')
     writer = get_writer(
-        save_path + filename + cam_img[0] + '.mp4',  # .mp4, mkv players often support H.264, Camera1
+        save_date + filename + cam_img[0] + '.mp4',  # .mp4, mkv players often support H.264, Camera1
         # test harddrive speed
         # 'E:/Brandon_Test/'+ filename +'.avi',
         # use .avi (not .mp4) format because can be opened in virtualdub
@@ -95,14 +95,14 @@ if mk_dir == 1:
     # Create target Directory if don't exist
     if not os.path.exists(dir_path_vid):
         os.mkdir(dir_path_vid)
-        save_path = dir_path_vid + '/'
+        save_date = dir_path_vid + '/'
         print("Directory ", dir_path_vid, " Created ")
     else:
-        save_path = dir_path_vid
-        print(save_path)
+        save_date = dir_path_vid
+        print(save_date)
 else:
     print("Directory not created")
-    save_path = r"C:\Users\agrawal-admin\Desktop\DataFolder\videos-raw"
+    save_date = r"C:\Users\agrawal-admin\Desktop\DataFolder\videos-raw"
 
 
 event_time_stamp = []
@@ -379,7 +379,7 @@ try:
     camera6.Close()
     stop_daq = True
     # DaqInputThread.join()
-    Cam = "2_"
+    Cam = ""
     cam_imgs = [[Cam + 'Cam1', camera1_videos_seg], [Cam + 'Cam2', camera2_videos_seg], [Cam + 'Cam3', camera3_videos_seg],
                 [Cam + 'Cam4', camera4_videos_seg], [Cam + 'Cam5', camera5_videos_seg], [Cam + 'Cam6', camera6_videos_seg]]
     with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:

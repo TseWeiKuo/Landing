@@ -9,7 +9,7 @@ import sys
 channels = ["Dev2/ao1"]  # Add more channels as needed
 data = []
 fps = int(sys.argv[1])
-trial_duration = 400  # was 20 seconds
+trial_duration = 500  # was 20 seconds
 dac_rate = 50000
 trigger_duration = trial_duration + 1
 n_samp = int(trigger_duration * dac_rate)

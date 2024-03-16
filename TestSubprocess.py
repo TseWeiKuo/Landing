@@ -1,17 +1,9 @@
-import pypylon.pylon as py
+import csv
 import numpy as np
-import time
-from matplotlib import pyplot as plt
-from imageio import get_writer
-from subprocess import Popen
-import os
-import concurrent.futures
-import datetime
-import scipy
-import threading
-import nidaqmx.system
-from nidaqmx.constants import (AcquisitionType, CountDirection, Edge, READ_ALL_AVAILABLE, TaskMode,
-                               TriggerType, WAIT_INFINITELY, TerminalConfiguration)
 
-print("Subprocess Start")
-time.sleep(3)
+l = np.full(20, 1)
+print(l)
+
+with open(r"C:\Users\agrawal-admin\Desktop\Sample_CSV.xlsx", 'wb') as f:
+    writer = csv.writer(f)
+    writer.writerows(l)
