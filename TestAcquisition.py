@@ -1,32 +1,31 @@
 import pypylon.pylon as py
+from pypylon import genicam
 import numpy as np
 import time
 from matplotlib import pyplot as plt
+from Project3Dto2D import ConfigurationEventPrinter
+from cameraeventprinter import CameraEventPrinter
 from imageio import get_writer
 from subprocess import Popen
+import subprocess
 import os
 import concurrent.futures
 import datetime
 import scipy
+import pandas as pd
+import json
+import csv
 import threading
 import nidaqmx.system
 from nidaqmx.constants import (AcquisitionType, CountDirection, Edge, READ_ALL_AVAILABLE, TaskMode,
                                TriggerType, WAIT_INFINITELY, TerminalConfiguration)
-
 def save_video(cam_img):
     global filename
     global FPS
-    # Camera.StopGrabbing() is called automatically by the RetrieveResult() method
-    # when IMAGES_TO_GRAB images have been retrieved.
-    # Create writer
-    # print('C:/Users/Brandon Pratt/Desktop/Brandon/Linear Treadmill/Data/Videos/' + filename +'.mp4')
-    # print(save_path + filename + cam_img[0] +'.mp4')
+    global Fly_Folder
     writer = get_writer(
-        save_date + filename + cam_img[0] + '.mp4',  # .mp4, mkv players often support H.264, Camera1
-        # test harddrive speed
-        # 'E:/Brandon_Test/'+ filename +'.avi',
-        # use .avi (not .mp4) format because can be opened in virtualdub
-        fps=FPS,  # FPS is in units Hz; should be real-time...playback...set to actual
+        os.path.join(Fly_Folder, filename) + cam_img[0] + '.mp4',
+        fps=FPS,
         codec='libx264',  # When used properly, this is basically
         # "PNG for video" (i.e. lossless)
         quality=None,  # disables variable compression...0 to 10
@@ -44,71 +43,58 @@ def save_video(cam_img):
     # close writer
     writer.close()
     return cam_img[0] + ' saved'
-
-def ListeningCam():
-    read_task_1 = nidaqmx.Task()
-    global ai_1_data
-    global ai_2_data
-    global ai_3_data
-    global ai_4_data
-    global ai_5_data
-    global ai_6_data
-    global daq_start_time
-    global event_time_stamp
-    global ai_sample_rate
-    print("Start acquiring signal")
-    # Create a task for voltage measurement
-    read_task_1.ai_channels.add_ai_voltage_chan("Dev2/ai1:6",
-                                                terminal_config=nidaqmx.constants.TerminalConfiguration.RSE)  # Specify the channel
-
-    # Set the acquisition time to 5 seconds
-    read_task_1.timing.cfg_samp_clk_timing(rate=ai_sample_rate,
-                                           sample_mode=nidaqmx.constants.AcquisitionType.CONTINUOUS,
-                                           source="OnboardClock")
-    # Start the task
-    read_task_1.start()
-    try:
-        buffer_size = 10000
-        event_time_stamp.append(0)
-        daq_start_time = time.perf_counter()
-        while not stop_daq:
-            data = read_task_1.read(number_of_samples_per_channel=buffer_size)
-            ai_1_data.extend(data[0])
-            ai_2_data.extend(data[1])
-            ai_3_data.extend(data[2])
-            ai_4_data.extend(data[3])
-            ai_5_data.extend(data[4])
-            ai_6_data.extend(data[5])
-        read_task_1.stop()
-        read_task_1.close()
-    except KeyboardInterrupt:
-        # Handle if the user interrupts the program (e.g., with Ctrl+C)
-        print("Data acquisition interrupted.")
-
 def Find_Peak(ai_data):
     return scipy.signal.find_peaks(ai_data, distance=95, prominence=[3, 5])
+def CountFrames (Frames_Per_Second, Motor_Extend_time, Motor_Retract_time, Platform_stop_duration):
+    return (Motor_Extend_time + Motor_Retract_time + Platform_stop_duration) * Frames_Per_Second
 
-mk_dir = 1
-if mk_dir == 1:
-    dir_path = r"C:\Users\agrawal-admin\OneDrive - Virginia Tech\Desktop\DataFolder"
-    dir_path_vid = r"C:\Users\agrawal-admin\OneDrive - Virginia Tech\Desktop\DataFolder\calibration/"
-    # Create target Directory if don't exist
-    if not os.path.exists(dir_path_vid):
-        os.mkdir(dir_path_vid)
-        save_date = dir_path_vid + '/'
-        print("Directory ", dir_path_vid, " Created ")
-    else:
-        save_date = dir_path_vid
-        print(save_date)
-else:
-    print("Directory not created")
-    save_date = r"C:\Users\agrawal-admin\Desktop\DataFolder\videos-raw"
+# Example handler for camera events.
+class SampleCameraEventHandler(py.CameraEventHandler):
+    # Only very short processing tasks should be performed by this method. Otherwise, the event notification will block the
+    # processing of images.
+    def OnCameraEvent(self, camera, userProvidedId, node):
+        print("Exposure End event. FrameID: ", camera.EventExposureEndFrameID.Value, " Timestamp: ",
+                  camera.EventExposureEndTimestamp.Value)
+            # More events can be added here.
 
 
-event_time_stamp = []
-camera_start_time_stamp = []
-camera_end_time_stamp = []
+# Example of an image event handler.
+class SampleImageEventHandler(py.ImageEventHandler):
+    def OnImageGrabbed(self, camera, grabResult):
+        print("CSampleImageEventHandler.OnImageGrabbed called.")
+        print()
+        print()
 
+
+Data_Folder_Path = r"C:\Users\agrawal-admin\OneDrive - Virginia Tech\Desktop\DataFolder"
+Experiment = "Test Acquisition"
+Group_name = "EventStartTrigger"
+MetaData_csv_file = ""
+Fly_num = ""
+save_date = ""
+Date = datetime.datetime.now().date()
+
+
+
+save_folder = os.path.join(Data_Folder_Path, Experiment)
+if Experiment not in os.listdir(Data_Folder_Path):
+    os.mkdir(save_folder)
+os.chdir(save_folder)
+
+Group_Folder = os.path.join(save_folder, Group_name)
+if Group_name not in os.listdir(save_folder):
+    os.mkdir(Group_Folder)
+os.chdir(Group_Folder)
+
+Date_Folder = os.path.join(Group_Folder, str(Date))
+if str(Date) not in os.listdir(Group_Folder):
+    os.mkdir(Date_Folder)
+os.chdir(Date_Folder)
+
+Fly_num = "Fly_" + str(len([dirs for dirs in os.listdir(Date_Folder) if os.path.isdir(dirs)]) + 1)
+Fly_Folder = os.path.join(Date_Folder, Fly_num)
+os.mkdir(Fly_Folder)
+os.chdir(Fly_Folder)
 
 video_frames1 = []
 video_frames2 = []
@@ -124,6 +110,8 @@ camera4_videos_seg = []
 camera5_videos_seg = []
 camera6_videos_seg = []
 
+FPS = 200
+eMyExposureEndEvent = 100
 stop_daq = False
 daq_start_time = 0
 ai_6_data = []
@@ -132,22 +120,18 @@ ai_4_data = []
 ai_3_data = []
 ai_2_data = []
 ai_1_data = []
-ai_sample_rate = 20000
+ai_sample_rate = FPS * 100
 
 
 T = 0
-FPS = 30
-Duration = 250
-ExposureTime = 12000
-Cropped = False
+ExposureTime = 500
 noise_reduction_value = 1
 sharpness = 2
+Cropped = False
 print(f"ExposureTime: {ExposureTime} us")
 
 
-"""
-Set up and configure camera
-"""
+
 tlFactory = py.TlFactory.GetInstance()
 devices = tlFactory.EnumerateDevices()
 print("Camera 1: " + str(devices[0].GetSerialNumber()))
@@ -156,7 +140,6 @@ print("Camera 3: " + str(devices[2].GetSerialNumber()))
 print("Camera 4: " + str(devices[3].GetSerialNumber()))
 print("Camera 5: " + str(devices[4].GetSerialNumber()))
 print("Camera 6: " + str(devices[5].GetSerialNumber()))
-
 if Cropped:
     camera1 = py.InstantCamera(py.TlFactory.GetInstance().CreateDevice(devices[0]))
     camera1.Open()
@@ -167,13 +150,12 @@ if Cropped:
     camera1.PgiMode.Value = "On"
     camera1.NoiseReduction.Value = noise_reduction_value
     camera1.SensorReadoutMode.Value = "Fast"
-    print(camera1.SensorReadoutMode.Value)
     camera1.SharpnessEnhancement.Value = sharpness
     camera1.ExposureTime = ExposureTime
     camera1.LineSelector = "Line4"
     camera1.LineMode = "Output"
     camera1.LineInverter = False
-    camera1.LineSource = "ExposureActive"
+    camera1.LineSource = "FrameTriggerWait"
     camera1.Gain = camera1.Gain.Max
     camera1.MaxNumBuffer = 100
     camera1.LineSelector = "Line3"
@@ -315,7 +297,6 @@ else:
     camera1.PgiMode.Value = "On"
     camera1.NoiseReduction.Value = noise_reduction_value
     camera1.SharpnessEnhancement.Value = sharpness
-    camera1.SensorReadoutMode.Value = "Fast"
     camera1.ExposureTime = ExposureTime
     camera1.LineSelector = "Line4"
     camera1.LineMode = "Output"
@@ -337,7 +318,6 @@ else:
     camera2.PgiMode.Value = "On"
     camera2.NoiseReduction.Value = noise_reduction_value
     camera2.SharpnessEnhancement.Value = sharpness
-    camera2.SensorReadoutMode.Value = "Fast"
     camera2.ExposureTime = ExposureTime
     camera2.LineSelector = "Line4"
     camera2.LineMode = "Output"
@@ -359,7 +339,6 @@ else:
     camera3.PgiMode.Value = "On"
     camera3.NoiseReduction.Value = noise_reduction_value
     camera3.SharpnessEnhancement.Value = sharpness
-    camera3.SensorReadoutMode.Value = "Fast"
     camera3.ExposureTime = ExposureTime
     camera3.LineSelector = "Line4"
     camera3.LineMode = "Output"
@@ -381,7 +360,6 @@ else:
     camera4.PgiMode.Value = "On"
     camera4.NoiseReduction.Value = noise_reduction_value
     camera4.SharpnessEnhancement.Value = sharpness
-    camera4.SensorReadoutMode.Value = "Fast"
     camera4.ExposureTime = ExposureTime
     camera4.LineSelector = "Line4"
     camera4.LineMode = "Output"
@@ -403,7 +381,6 @@ else:
     camera5.PgiMode.Value = "On"
     camera5.NoiseReduction.Value = noise_reduction_value
     camera5.SharpnessEnhancement.Value = sharpness
-    camera5.SensorReadoutMode.Value = "Fast"
     camera5.ExposureTime = ExposureTime
     camera5.LineSelector = "Line4"
     camera5.LineMode = "Output"
@@ -425,7 +402,6 @@ else:
     camera6.PgiMode.Value = "On"
     camera6.NoiseReduction.Value = noise_reduction_value
     camera6.SharpnessEnhancement.Value = sharpness
-    camera6.SensorReadoutMode.Value = "Fast"
     camera6.ExposureTime = ExposureTime
     camera6.LineSelector = "Line4"
     camera6.LineMode = "Output"
@@ -437,8 +413,53 @@ else:
     camera6.LineMode = "Input"
     camera6.TriggerSelector = "FrameStart"
     camera6.TriggerSource = "Line3"
+    camera6.EventSelector.Value = "ExposureEnd"
+    camera6.EventNotification.Value = "On"
     camera6.TriggerActivation = "RisingEdge"
     camera6.TriggerDelay = 0
+
+    # Create an example event handler. In the present case, we use one single camera handler for handling multiple camera events.
+    # The handler prints a message for each received event.
+    handler1 = SampleCameraEventHandler()
+
+    # Create another more generic event handler printing out information about the node for which an event callback
+    # is fired.
+    handler2 = CameraEventPrinter()
+    # Register the standard configuration event handler for enabling software triggering.
+    # The software trigger configuration handler replaces the default configuration
+    # as all currently registered configuration handlers are removed by setting the registration mode to RegistrationMode_ReplaceAll.
+    camera6.RegisterConfiguration(py.SoftwareTriggerConfiguration(), py.RegistrationMode_ReplaceAll,
+                                 py.Cleanup_Delete)
+
+    # For demonstration purposes only, add sample configuration event handlers to print out information
+    # about camera use and image grabbing.
+    camera6.RegisterConfiguration(ConfigurationEventPrinter(), py.RegistrationMode_Append,
+                                 py.Cleanup_Delete)  # Camera use.
+
+    # For demonstration purposes only, register another image event handler.
+    camera6.RegisterImageEventHandler(SampleImageEventHandler(), py.RegistrationMode_Append, py.Cleanup_Delete)
+
+    # Camera event processing must be activated first, the default is off.
+    # camera6.GrabCameraEvents.SetValue(True)
+
+    # Register an event handler for the Exposure End event. For each event type, there is a "data" node
+    # representing the event. The actual data that is carried by the event is held by child nodes of the
+    # data node. In the case of the Exposure End event, the child nodes are EventExposureEndFrameID and EventExposureEndTimestamp.
+    # The CSampleCameraEventHandler demonstrates how to access the child nodes within
+    # a callback that is fired for the parent data node.
+    # The user-provided ID eMyExposureEndEvent can be used to distinguish between multiple events (not shown).
+    camera6.RegisterCameraEventHandler(handler1, "EventExposureEndData", eMyExposureEndEvent,
+                                      py.RegistrationMode_ReplaceAll, py.Cleanup_None)
+
+    # The handler is registered for both, the EventExposureEndFrameID and the EventExposureEndTimestamp
+    # node. These nodes represent the data carried by the Exposure End event.
+    # For each Exposure End event received, the handler will be called twice, once for the frame ID, and
+    # once for the time stamp.
+    camera6.RegisterCameraEventHandler(handler2, "EventExposureEndFrameID", eMyExposureEndEvent,
+                                      py.RegistrationMode_Append, py.Cleanup_None)
+    camera6.RegisterCameraEventHandler(handler2, "EventExposureEndTimestamp", eMyExposureEndEvent,
+                                      py.RegistrationMode_Append, py.Cleanup_None)
+
 TriggerM = True
 if not TriggerM:
     camera1.TriggerMode = "Off"
@@ -456,13 +477,11 @@ else:
     camera6.TriggerMode = "On"
 
 
-
-
-# DaqInputThread = threading.Thread(target=ListeningCam)
-# DaqInputThread.start()
+frames_to_grab = 200
+os.chdir(r"C:\Users\agrawal-admin\OneDrive - Virginia Tech\Desktop\Agrawal_Lab")
 # Launch the subprocess
-Send_signal_process = Popen(['python', 'subprocess_daq_trigger.py', str(FPS), str(20)])
-frames_to_grab = FPS * Duration
+Send_signal_process = Popen(['python', 'SendAO.py', str(FPS)], stdin=subprocess.PIPE, text=True)
+time.sleep(5)
 filename = ""
 
 Exit = False
@@ -485,17 +504,9 @@ try:
     camera5.StartGrabbing(py.GrabStrategy_LatestImageOnly)
     camera6.StartGrabbing(py.GrabStrategy_LatestImageOnly)
 
-    # Start of video time stamp
-    print("Start grabbing videos")
-    camera_start_time_stamp.append((time.perf_counter() - daq_start_time) * ai_sample_rate)
-    cam_start = time.perf_counter()
-    second = 0
-    # Start grabbing video
     while images_grabbed < frames_to_grab:
         try:
-            if images_grabbed % FPS == 0:
-                second += 1
-                print(second)
+            print(images_grabbed)
             grabResult1 = camera1.RetrieveResult(wait_time, py.TimeoutHandling_ThrowException)
             grabResult2 = camera2.RetrieveResult(wait_time, py.TimeoutHandling_ThrowException)
             grabResult3 = camera3.RetrieveResult(wait_time, py.TimeoutHandling_ThrowException)
@@ -506,14 +517,12 @@ try:
             if grabResult1.GrabSucceeded() and grabResult2.GrabSucceeded() and grabResult3.GrabSucceeded()\
                     and grabResult4.GrabSucceeded() and grabResult5.GrabSucceeded() and grabResult6.GrabSucceeded():
                 images_grabbed += 1
-                event_time_stamp.append(time.perf_counter() - daq_start_time)
                 camera1_videos_seg.append(grabResult1.Array)
                 camera2_videos_seg.append(grabResult2.Array)
                 camera3_videos_seg.append(grabResult3.Array)
                 camera4_videos_seg.append(grabResult4.Array)
                 camera5_videos_seg.append(grabResult5.Array)
                 camera6_videos_seg.append(grabResult6.Array)
-
             grabResult1.Release()
             grabResult2.Release()
             grabResult3.Release()
@@ -529,9 +538,6 @@ try:
             camera6.Close()
             print(f"Timeout exception: {e}")
             break
-        # End of video time stamp
-    camera_end_time_stamp.append((time.perf_counter() - daq_start_time) * ai_sample_rate)
-
     # Stop the camera
     camera1.StopGrabbing()
     camera2.StopGrabbing()
@@ -541,20 +547,25 @@ try:
     camera6.StopGrabbing()
 
     T += 1
+    print(f"Trial {T}")
+    tm = str(datetime.datetime.now().time())
+    tm = tm.replace(":", "-")[:-4]
+    Date_and_time_of_exp = str(datetime.datetime.now().date()) + "-" + tm
+    filename = Date_and_time_of_exp + "_" + Group_name + "_" + Fly_num + "_Trial_" + str(T)
+    cam_imgs = [['_Cam1', camera1_videos_seg], ['_Cam2', camera2_videos_seg], ['_Cam3', camera3_videos_seg],
+                ['_Cam4', camera4_videos_seg], ['_Cam5', camera5_videos_seg], ['_Cam6', camera6_videos_seg]]
+    video_saving_time = time.perf_counter()
+    with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
+        results = executor.map(save_video, cam_imgs)
+    print("Air puff time!")
+
     camera1.Close()
     camera2.Close()
     camera3.Close()
     camera4.Close()
     camera5.Close()
     camera6.Close()
-    stop_daq = True
-    # DaqInputThread.join()
-    Cam = ""
-    cam_imgs = [[Cam + 'Cam1', camera1_videos_seg], [Cam + 'Cam2', camera2_videos_seg], [Cam + 'Cam3', camera3_videos_seg],
-                [Cam + 'Cam4', camera4_videos_seg], [Cam + 'Cam5', camera5_videos_seg], [Cam + 'Cam6', camera6_videos_seg]]
-    with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
-        results = executor.map(save_video, cam_imgs)
-
+    Send_signal_process.stdin.close()
 except KeyboardInterrupt as k:
     print(f"Key board interrupt: {k}")
     camera1.Close()
@@ -563,129 +574,16 @@ except KeyboardInterrupt as k:
     camera4.Close()
     camera5.Close()
     camera6.Close()
+
+    while Send_signal_process.poll() != 0:
+        continue
     Send_signal_process.kill()
     Send_signal_process.wait()
-    stop_daq = True
-    # DaqInputThread.join()
 
+
+while Send_signal_process.poll() != 0:
+    continue
 Send_signal_process.kill()
 Send_signal_process.wait()
-# DaqInputThread.join()
-
-cam1_total_frames = 0
-cam2_total_frames = 0
-cam3_total_frames = 0
-cam4_total_frames = 0
-cam5_total_frames = 0
-cam6_total_frames = 0
 
 
-for frames in video_frames1:
-    cam1_total_frames += len(frames)
-for frames in video_frames2:
-    cam2_total_frames += len(frames)
-for frames in video_frames3:
-    cam3_total_frames += len(frames)
-for frames in video_frames4:
-    cam4_total_frames += len(frames)
-for frames in video_frames5:
-    cam5_total_frames += len(frames)
-for frames in video_frames6:
-    cam6_total_frames += len(frames)
-
-
-print("Total Number of images grabbed (Cam 1): " + str(cam1_total_frames))
-for i in range(len(video_frames1)):
-    print(f"Segment {i + 1}'s number of frames: {len(video_frames1[i])}")
-
-print("Total Number of images grabbed (Cam 2): " + str(cam2_total_frames))
-for i in range(len(video_frames2)):
-    print(f"Segment {i + 1}'s number of frames: {len(video_frames2[i])}")
-
-print("Total Number of images grabbed (Cam 3): " + str(cam3_total_frames))
-for i in range(len(video_frames3)):
-    print(f"Segment {i + 1}'s number of frames: {len(video_frames3[i])}")
-
-print("Total Number of images grabbed (Cam 4): " + str(cam4_total_frames))
-for i in range(len(video_frames4)):
-    print(f"Segment {i + 1}'s number of frames: {len(video_frames4[i])}")
-
-print("Total Number of images grabbed (Cam 5): " + str(cam5_total_frames))
-for i in range(len(video_frames5)):
-    print(f"Segment {i + 1}'s number of frames: {len(video_frames5[i])}")
-
-print(f"Total Number of images grabbed (Cam 6): " + str(cam6_total_frames))
-for i in range(len(video_frames6)):
-    print(f"Segment {i + 1}'s number of frames: {len(video_frames6[i])}")
-
-time_tick = list(range(0, len(ai_1_data)))
-time_tick = [(x / ai_sample_rate) for x in time_tick]
-
-print("Total Cam 1 peaks num (ai 1 data): " + str(len(Find_Peak(ai_1_data)[0])))
-for i in range(len(camera_start_time_stamp)):
-    print(f"Segment: {i + 1}'s number of peaks: {len(Find_Peak(ai_1_data[int(camera_start_time_stamp[i]):int(camera_end_time_stamp[i])])[0])}")
-
-print("Total Cam 2 peaks num (ai 2 data): " + str(len(Find_Peak(ai_2_data)[0])))
-for i in range(len(camera_start_time_stamp)):
-    print(f"Segment: {i + 1}'s number of peaks: {len(Find_Peak(ai_2_data[int(camera_start_time_stamp[i]):int(camera_end_time_stamp[i])])[0])}")
-
-print("Total Cam 3 peaks num (ai 3 data): " + str(len(Find_Peak(ai_3_data)[0])))
-for i in range(len(camera_start_time_stamp)):
-    print(f"Segment: {i + 1}'s number of peaks: {len(Find_Peak(ai_3_data[int(camera_start_time_stamp[i]):int(camera_end_time_stamp[i])])[0])}")
-
-print("Total Cam 4 peaks num (ai 4 data): " + str(len(Find_Peak(ai_4_data)[0])))
-for i in range(len(camera_start_time_stamp)):
-    print(f"Segment: {i + 1}'s number of peaks: {len(Find_Peak(ai_4_data[int(camera_start_time_stamp[i]):int(camera_end_time_stamp[i])])[0])}")
-
-print("Total Cam 5 peaks num (ai 5 data): " + str(len(Find_Peak(ai_5_data)[0])))
-for i in range(len(camera_start_time_stamp)):
-    print(f"Segment: {i + 1}'s number of peaks: {len(Find_Peak(ai_5_data[int(camera_start_time_stamp[i]):int(camera_end_time_stamp[i])])[0])}")
-
-print("Total Cam 6 peaks num (ai 6 data): " + str(len(Find_Peak(ai_6_data)[0])))
-for i in range(len(camera_start_time_stamp)):
-    print(f"Segment: {i + 1}'s number of peaks: {len(Find_Peak(ai_6_data[int(camera_start_time_stamp[i]):int(camera_end_time_stamp[i])])[0])}")
-
-
-peaks, _ = Find_Peak(ai_1_data)
-peaks_val = [ai_1_data[i] for i in peaks]
-peaks_time_stamp = [time_tick[i] for i in peaks]
-plt.plot(time_tick, ai_1_data, color='blue')
-plt.plot(peaks_time_stamp, peaks_val, "x", color='cyan', linewidth=2, markersize=10)
-
-peaks, _ = Find_Peak(ai_2_data)
-peaks_val = [ai_2_data[i] for i in peaks]
-peaks_time_stamp = [time_tick[i] for i in peaks]
-plt.plot(time_tick, ai_2_data, color='gold')
-plt.plot(peaks_time_stamp, peaks_val, "o", color='yellow', linewidth=2, markersize=10)
-
-peaks, _ = Find_Peak(ai_3_data)
-peaks_val = [ai_3_data[i] for i in peaks]
-peaks_time_stamp = [time_tick[i] for i in peaks]
-plt.plot(time_tick, ai_3_data, color='green')
-plt.plot(peaks_time_stamp, peaks_val, "*", color='lime', linewidth=2, markersize=10)
-
-peaks, _ = Find_Peak(ai_4_data)
-peaks_val = [ai_4_data[i] for i in peaks]
-peaks_time_stamp = [time_tick[i] for i in peaks]
-plt.plot(time_tick, ai_4_data, color='red')
-plt.plot(peaks_time_stamp, peaks_val, "^", color='orange', linewidth=2, markersize=10)
-
-peaks, _ = Find_Peak(ai_5_data)
-peaks_val = [ai_5_data[i] for i in peaks]
-peaks_time_stamp = [time_tick[i] for i in peaks]
-plt.plot(time_tick, ai_5_data, color='maroon')
-plt.plot(peaks_time_stamp, peaks_val, ">", color='coral', linewidth=2, markersize=10)
-
-peaks, _ = Find_Peak(ai_6_data)
-peaks_val = [ai_6_data[i] for i in peaks]
-peaks_time_stamp = [time_tick[i] for i in peaks]
-plt.plot(time_tick, ai_6_data, color='indigo')
-plt.plot(peaks_time_stamp, peaks_val, ">", color='purple', linewidth=2, markersize=10)
-
-for i in event_time_stamp:
-    plt.axvline(x=i, color='olive')
-for i in camera_start_time_stamp:
-    plt.axvline(x=i/ai_sample_rate, color='teal')
-for i in camera_end_time_stamp:
-    plt.axvline(x=i/ai_sample_rate, color='black')
-plt.show()
