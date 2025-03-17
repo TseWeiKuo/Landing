@@ -134,7 +134,7 @@ def ViewFly():
     camera6.Close()
 
 FPS = 40
-ExposureTime = 60
+ExposureTime = 80
 noise_reduction_value = 1.2
 sharpness = 3
 Continuous_recording = 1

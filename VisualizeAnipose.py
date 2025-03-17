@@ -11,7 +11,9 @@ from scipy.stats import sem
 from matplotlib.gridspec import GridSpec
 from scipy.stats import ttest_ind, ttest_rel
 from scipy.stats import ttest_ind, ttest_rel
-
+import re
+from collections import defaultdict
+from scipy.stats import kendalltau
 
 def perform_t_test(data1, data2, alpha=0.05, paired=False):
     """
@@ -381,8 +383,6 @@ def Get_file_path(source_folder):
                 file_paths.append(input_file_path)
                 # file_paths.append(input_file_path.split("\\"))
     return file_paths
-
-
 def rename_files_in_directory(source_folder, target, replacement, modify):
     # Walk through the directory
     for root, _, files in os.walk(source_folder):
@@ -403,8 +403,103 @@ def rename_files_in_directory(source_folder, target, replacement, modify):
                             print(f"Renamed: {old_file_path} -> {new_file_path}")
                         except Exception as e:
                             print(f"Error renaming {old_file_path}: {e}")
+def group_files_by_fly(file_names):
+    # Regular expression to extract the relevant parts of the file name
+    pattern = re.compile(r"(\d{4}-\d{2}-\d{2})-\d{2}-\d{2}-\d{2}\.\d+.*?_Fly_(\d+)_Trial_\d+_")
+    print(pattern)
+    # Dictionary to map unique combinations to "Fly_N"
+    unique_combinations = {}
+    grouped_files = {}
+
+    current_fly_number = 1  # Counter for Fly_N keys
+
+    for file in file_names:
+        match = pattern.search(file)
+        if match:
+            date = match.group(1)
+            fly_number = match.group(2)
+            unique_id = (date, fly_number)  # Unique identifier based on date and fly number
+
+            # Assign a new Fly_N key if the combination is not seen before
+            if unique_id not in unique_combinations:
+                unique_combinations[unique_id] = f"Fly_{current_fly_number}"
+                current_fly_number += 1
+
+            # Get the Fly_N key
+            fly_key = unique_combinations[unique_id]
+
+            # Add the file to the corresponding Fly_N group
+            if fly_key not in grouped_files:
+                grouped_files[fly_key] = []
+            grouped_files[fly_key].append(file)
+
+    return grouped_files
+def TransposeFlyData(df):
+    df = pd.DataFrame(df)
+    df = df.T
+    # Rename the columns to indicate trials
+    df.columns = [f"Trial_{i+1}" for i in range(df.shape[1])]
+    return df
 def DetermineFlying(WingAngleData):
-    return np.max(WingAngleData[:100]) > 100
+    return np.mean(WingAngleData[:100]) > 110
+def DetermineStablePostureAngle(AngleData, angle):
+    Angles = ["R_fBC-CT-FT_flexion",
+              "R_fCT-FT-TT_flexion",
+              "R_fFT-TT-LT_flexion",
+              "R_mBC-CT-FT_flexion",
+              "R_mCT-FT-TT_flexion",
+              "R_mFT-TT-LT_flexion",
+              "R_hBC-CT-FT_flexion",
+              "R_hCT-FT-TT_flexion",
+              "R_hFT-TT-LT_flexion",
+              "L_fBC-CT-FT_flexion",
+              "L_fCT-FT-TT_flexion",
+              "L_fFT-TT-LT_flexion",
+              "L_mBC-CT-FT_flexion",
+              "L_mCT-FT-TT_flexion",
+              "L_mFT-TT-LT_flexion",
+              "L_hBC-CT-FT_flexion",
+              "L_hCT-FT-TT_flexion",
+              "L_hFT-TT-LT_flexion"]
+    return np.mean(AngleData[angle][:100])
+def MannKendallTest(Data):
+    # Flatten the data for Kendall's Tau test
+    if not isinstance(Data[0], float):
+        flat_data = [item for sublist in Data for item in sublist]
+
+        # Create corresponding x-values (trial numbers)
+        x_values = np.concatenate([[i + 1] * len(trial) for i, trial in enumerate(Data)])
+        print(flat_data)
+        print(x_values)
+        # Perform Kendall's Tau test
+        tau, p_value = kendalltau(x_values, flat_data)
+        # Output results
+        print(f"Kendall's Tau: {tau}")
+        print(f"P-value: {p_value}")
+
+        # Check significance at a 0.05 level
+        if p_value < 0.05:
+            print("Reject the null hypothesis: There is a significant trend.")
+        else:
+            print("Fail to reject the null hypothesis: No significant trend detected.")
+    else:
+        tau, p_value = kendalltau(range(len(Data)), Data)
+        # Output results
+        print(f"Kendall's Tau: {tau}")
+        print(f"P-value: {p_value}")
+
+        # Check significance at a 0.05 level
+        if p_value < 0.05:
+            print("Reject the null hypothesis: There is a significant trend.")
+        else:
+            print("Fail to reject the null hypothesis: No significant trend detected.")
+def Determinlimbcontact(data):
+    wind_size = 2
+    for i in range(0, len(data), wind_size):
+        if np.mean(data[i:i + wind_size]) < 0.7:
+            return i
+    return 0
+
 source_folder_kine = r"C:\Users\agrawal-admin\OneDrive - Virginia Tech\Desktop\Kinematic_data"
 source_folder_ang = r"C:\Users\agrawal-admin\OneDrive - Virginia Tech\Desktop\DataFolder\Kir Experiment\WT_Control\2024-11-14\Fly_1\Angles"
 bodyparts = ["L-wing", "L-wing-hinge", "R-wing", "R-wing-hinge", "abdomen-tip", "platform-tip",
@@ -459,6 +554,7 @@ skeletons = [["R-fFT", "platform-axis"], ["R-mFT", "platform-axis"], ["R-hFT", "
              ["R-fFT", "platform-tip"], ["R-mFT", "platform-tip"], ["R-hFT", "platform-tip"],
              ["L-fFT", "platform-tip"], ["L-mFT", "platform-tip"], ["L-hFT", "platform-tip"]]
 
+
 skeletons = [["R-fTT", "platform-axis"], ["R-mTT", "platform-axis"], ["R-hTT", "platform-axis"],
              ["L-fTT", "platform-axis"], ["L-mTT", "platform-axis"], ["L-hTT", "platform-axis"],
              ["R-fTT", "L-platform-tip"], ["R-mTT", "L-platform-tip"], ["R-hTT", "L-platform-tip"],
@@ -466,19 +562,18 @@ skeletons = [["R-fTT", "platform-axis"], ["R-mTT", "platform-axis"], ["R-hTT", "
              ["R-fTT", "R-platform-tip"], ["R-mTT", "R-platform-tip"], ["R-hTT", "R-platform-tip"],
              ["L-fTT", "R-platform-tip"], ["L-mTT", "R-platform-tip"], ["L-hTT", "R-platform-tip"],
              ["R-fTT", "platform-tip"], ["R-mTT", "platform-tip"], ["R-hTT", "platform-tip"],
-             ["L-fTT", "platform-tip"], ["L-mTT", "platform-tip"], ["L-hTT", "platform-tip"]]
-
-"""skeletons = [["R-fLT", "platform-axis"], ["R-mLT", "platform-axis"], ["R-hLT", "platform-axis"],
+             ["L-fTT", "platform-tip"], ["L-mTT", "platform-tip"], ["L-hTT", "platform-tip"],
+             ["R-fLT", "platform-axis"], ["R-mLT", "platform-axis"], ["R-hLT", "platform-axis"],
              ["L-fLT", "platform-axis"], ["L-mLT", "platform-axis"], ["L-hLT", "platform-axis"],
              ["R-fLT", "L-platform-tip"], ["R-mLT", "L-platform-tip"], ["R-hLT", "L-platform-tip"],
              ["L-fLT", "L-platform-tip"], ["L-mLT", "L-platform-tip"], ["L-hLT", "L-platform-tip"],
              ["R-fLT", "R-platform-tip"], ["R-mLT", "R-platform-tip"], ["R-hLT", "R-platform-tip"],
              ["L-fLT", "R-platform-tip"], ["L-mLT", "R-platform-tip"], ["L-hLT", "R-platform-tip"],
              ["R-fLT", "platform-tip"], ["R-mLT", "platform-tip"], ["R-hLT", "platform-tip"],
-             ["L-fLT", "platform-tip"], ["L-mLT", "platform-tip"], ["L-hLT", "platform-tip"]]"""
+             ["L-fLT", "platform-tip"], ["L-mLT", "platform-tip"], ["L-hLT", "platform-tip"]]
 
 
-skeletons = [["L-fTT", "L-platform-tip"], ["L-mTT", "L-platform-tip"], ["L-hTT", "L-platform-tip"]]
+
 KeyPoints = ["L-fFT", "L-fTT", "L-fLT"]
 Average_distances_to_tip = ["L-fTT", "L-mTT", "L-hTT"]
 
@@ -544,15 +639,287 @@ total_trials = 0
 
 # angles_paths = Get_file_path(r"C:\Users\agrawal-admin\Desktop\TibiaTarsusPlatformODLight-Wayne-2024-10-19\videos\angles")
 # print(angles_paths)
-angle_data_paths = Get_file_path(r"C:\Users\agrawal-admin\Desktop\TibiaTarsusPlatformODLight-Wayne-2024-10-19\videos\angles")
-groups = ["5sInterval", "10sInterval", "30sInterval"]
-angles_data_grouped = dict()
+KineDataPath = Get_file_path(r"C:\Users\agrawal-admin\Desktop\TibiaTarsusPlatformODLight-Wayne-2024-10-19\videos\pose-3d")
+AngleDataPath = Get_file_path(r"C:\Users\agrawal-admin\Desktop\TibiaTarsusPlatformODLight-Wayne-2024-10-19\videos\angles")
+
+groups = ["T1-TiTa", "T2-TiTa", "T3-TiTa", "T3-CxTr", "T2-CxTr"]
+
+T1TiTaMOC = [499, 461, 420, 529, 372]
+T1TiTaMOL = [578, 505, 506, 675, 483]
+
+T2TiTaMOC = [483, 495, 357, 515, 319]
+T2TiTaMOL = [552, 586, 489, 617, 349]
+
+T3TiTaMOC = [374, 469, 305, 293, 279]
+T3TiTaMOL = [438, 626, 335, 394, 430]
+
+T2CxTrMOC = [760, 472, 503, 466, 593]
+T2CxTrMOL = [966, 586, 613, 677, 810]
+
+T3CxTrMOC = [627, 676, 476, 447, 642]
+T3CxTrMOL = [713, 870, 623, 548, 769]
+
+KineDataGroup = dict()
+AngleDataGroup = dict()
+for key in groups:
+    KineDataGroup[key] = [k for k in KineDataPath if key in k]
+    AngleDataGroup[key] = [k for k in AngleDataPath if key in k]
+KineDataGroup = pd.DataFrame(KineDataGroup)
+AngleDataGroup = pd.DataFrame(AngleDataGroup)
+t = 2
+
+for kine, ang in zip(KineDataGroup["T2-TiTa"], AngleDataGroup["T2-TiTa"]):
+    print(kine)
+    print(ang)
+
+trial_kine_data = KineDataGroup["T2-TiTa"][t]
+trial_angle_data = AngleDataGroup["T2-TiTa"][t]
+
+Kine_Data = pd.read_csv(trial_kine_data)
+Kine_Data = Calculate_segment_length(Kine_Data, skeletons)
+
+start = T2TiTaMOC[t]
+end = T2TiTaMOC[t] + int(len(Kine_Data["L-fTT_platform-axis"]) / 7)
+# end = T2TiTaMOL[t]
+
+
+fig, axs = plt.subplots(nrows=6, ncols=1, figsize=(5, 10))
+
+normalized = False
+if normalized:
+    xmin = -0.1
+    xmax = 1.1
+    sns.lineplot(normalize_list(Kine_Data["L-fTT_L-platform-tip"][start:end]), label="L-fTT_L-platform-tip", ax=axs[0])
+    sns.lineplot(normalize_list(Kine_Data["L-mTT_platform-axis"][start:end]), label="L-mTT_platform-axis", ax=axs[1])
+    sns.lineplot(normalize_list(Kine_Data["L-hTT_platform-axis"][start:end]), label="L-hTT_platform-axis", ax=axs[2])
+    sns.lineplot(normalize_list(Kine_Data["R-fTT_L-platform-tip"][start:end]), label="R-fTT_L-platform-tip", ax=axs[3])
+    sns.lineplot(normalize_list(Kine_Data["R-mTT_platform-axis"][start:end]), label="R-mTT_platform-axis", ax=axs[4])
+    sns.lineplot(normalize_list(Kine_Data["R-hTT_platform-axis"][start:end]), label="R-hTT_platform-axis", ax=axs[5])
+    axs[0].set_ylim(-0.1, 1.1)
+    axs[1].set_ylim(-0.1, 1.1)
+    axs[2].set_ylim(-0.1, 1.1)
+    axs[3].set_ylim(-0.1, 1.1)
+    axs[4].set_ylim(-0.1, 1.1)
+    axs[5].set_ylim(-0.1, 1.1)
+else:
+    xmin = -0.1
+    xmax = 3
+
+    x_value = Determinlimbcontact(Kine_Data["L-fTT_L-platform-tip"][start:end])
+    axs[0].axvline(x_value, color="black")
+    axs[0].axvline(T2TiTaMOL[t] - T2TiTaMOC[t], color="black", linestyle="dashed")
+    axs[0].text(x_value, 0.5, f'{x_value}', verticalalignment='center', horizontalalignment='right', color="black")
+    sns.lineplot(Kine_Data["L-fTT_L-platform-tip"][start:end], color="blue", ax=axs[0], lw=2)
+    axs[0].set_ylim(xmin, xmax)
+
+    x_value = Determinlimbcontact(Kine_Data["L-mLT_platform-axis"][start:end])
+    axs[1].axvline(x_value, color="black")
+    axs[1].axvline(T2TiTaMOL[t] - T2TiTaMOC[t], color="black", linestyle="dashed")
+    axs[1].text(x_value, 0.5, f'{x_value}', verticalalignment='center', horizontalalignment='right', color="black")
+    sns.lineplot(Kine_Data["L-mLT_platform-axis"][start:end], color="darkorange", ax=axs[1], lw=2)
+    axs[1].set_ylim(xmin, xmax)
+
+    x_value = Determinlimbcontact(Kine_Data["L-hLT_platform-axis"][start:end])
+    axs[2].axvline(x_value, color="black")
+    axs[2].axvline(T2TiTaMOL[t] - T2TiTaMOC[t], color="black", linestyle="dashed")
+    axs[2].text(x_value, 0.5, f'{x_value}', verticalalignment='center', horizontalalignment='right', color="black")
+    sns.lineplot(Kine_Data["L-hLT_platform-axis"][start:end], color="green", ax=axs[2], lw=2)
+    axs[2].set_ylim(xmin, xmax)
+
+    x_value = Determinlimbcontact(Kine_Data["R-fTT_L-platform-tip"][start:end])
+    axs[3].axvline(x_value, color="black")
+    axs[3].axvline(T2TiTaMOL[t] - T2TiTaMOC[t], color="black", linestyle="dashed")
+    axs[3].text(x_value, 0.5, f'{x_value}', verticalalignment='center', horizontalalignment='right', color="black")
+    sns.lineplot(Kine_Data["R-fTT_L-platform-tip"][start:end], color="red", ax=axs[3], lw=2)
+    axs[3].set_ylim(xmin, xmax)
+
+    x_value = Determinlimbcontact(Kine_Data["R-mTT_platform-tip"][start:end])
+    axs[4].axvline(x_value, color="black")
+    axs[4].axvline(T2TiTaMOL[t] - T2TiTaMOC[t], color="black", linestyle="dashed")
+    axs[4].text(x_value, 0.5, f'{x_value}', verticalalignment='center', horizontalalignment='right', color="black")
+    sns.lineplot(Kine_Data["R-mTT_platform-tip"][start:end], color="mediumpurple", ax=axs[4], lw=2)
+    axs[4].set_ylim(xmin, xmax)
+
+    x_value = Determinlimbcontact(Kine_Data["R-hLT_platform-axis"][start:end])
+    axs[5].text(x_value, 0.5, f'{x_value}', verticalalignment='center', horizontalalignment='right', color="black")
+    axs[5].axvline(x_value, color="black")
+    axs[5].axvline(T2TiTaMOL[t] - T2TiTaMOC[t], color="black", linestyle="dashed")
+    sns.lineplot(Kine_Data["R-hLT_platform-axis"][start:end], color="brown", ax=axs[5], lw=2)
+    axs[5].set_ylim(xmin, xmax)
+    fig.supylabel("Distance (mm)")
+    plt.xlabel("Frames")
+
+plt.show()
+
+
+"""
 for g in groups:
     angles_data_grouped[g] = [d for d in angle_data_paths if g in d]
-Flying = pd.read_csv(r"C:\Users\agrawal-admin\Desktop\TibiaTarsusPlatformODLight-Wayne-2024-10-19\videos\angles\2025-01-24-11-47-29.46_FlyingPosture_T2_TTa_5sInterval_Fly_5_Trial_1_.csv")
-NotFlying = pd.read_csv(r"C:\Users\agrawal-admin\Desktop\TibiaTarsusPlatformODLight-Wayne-2024-10-19\videos\angles\2025-01-24-11-49-01.54_FlyingPosture_T2_TTa_5sInterval_Fly_5_Trial_7_.csv")
 
 
+grouped_data_5sinterval = group_files_by_fly(angles_data_grouped["5sInterval"])
+grouped_data_10sinterval = group_files_by_fly(angles_data_grouped["10sInterval"])
+grouped_data_30sinterval = group_files_by_fly(angles_data_grouped["30sInterval"])
+
+grouped_data_5sIntervalR_CT_angle = dict()
+grouped_data_5sIntervalR_FT_angle = dict()
+grouped_data_5sIntervalR_TT_angle = dict()
+
+grouped_data_5sIntervalL_CT_angle = dict()
+grouped_data_5sIntervalL_FT_angle = dict()
+grouped_data_5sIntervalL_TT_angle = dict()
+
+grouped_data_10sIntervalR_CT_angle = dict()
+grouped_data_10sIntervalR_FT_angle = dict()
+grouped_data_10sIntervalR_TT_angle = dict()
+
+grouped_data_10sIntervalL_CT_angle = dict()
+grouped_data_10sIntervalL_FT_angle = dict()
+grouped_data_10sIntervalL_TT_angle = dict()
+
+grouped_data_30sIntervalR_CT_angle = dict()
+grouped_data_30sIntervalR_FT_angle = dict()
+grouped_data_30sIntervalR_TT_angle = dict()
+
+grouped_data_30sIntervalL_CT_angle = dict()
+grouped_data_30sIntervalL_FT_angle = dict()
+grouped_data_30sIntervalL_TT_angle = dict()
+
+for k in grouped_data_5sinterval.keys():
+
+    grouped_data_5sIntervalR_CT_angle[k] = np.full(trial_num, np.nan)
+    grouped_data_5sIntervalR_FT_angle[k] = np.full(trial_num, np.nan)
+    grouped_data_5sIntervalR_TT_angle[k] = np.full(trial_num, np.nan)
+
+    grouped_data_5sIntervalL_CT_angle[k] = np.full(trial_num, np.nan)
+    grouped_data_5sIntervalL_FT_angle[k] = np.full(trial_num, np.nan)
+    grouped_data_5sIntervalL_TT_angle[k] = np.full(trial_num, np.nan)
+
+    for f in range(len(grouped_data_5sinterval[k])):
+        angle_data = pd.read_csv(grouped_data_5sinterval[k][f])
+
+        if DetermineFlying(angle_data["LeftWingAngle"]):
+            grouped_data_5sIntervalR_CT_angle[k][f] = DetermineStablePostureAngle(angle_data, "R_mBC-CT-FT_flexion")
+            grouped_data_5sIntervalR_FT_angle[k][f] = DetermineStablePostureAngle(angle_data, "R_mCT-FT-TT_flexion")
+            grouped_data_5sIntervalR_TT_angle[k][f] = DetermineStablePostureAngle(angle_data, "R_mFT-TT-LT_flexion")
+
+            grouped_data_5sIntervalL_CT_angle[k][f] = DetermineStablePostureAngle(angle_data, "L_mBC-CT-FT_flexion")
+            grouped_data_5sIntervalL_FT_angle[k][f] = DetermineStablePostureAngle(angle_data, "L_mCT-FT-TT_flexion")
+            grouped_data_5sIntervalL_TT_angle[k][f] = DetermineStablePostureAngle(angle_data, "L_mFT-TT-LT_flexion")
+
+
+
+for k in grouped_data_10sinterval.keys():
+
+    grouped_data_10sIntervalR_CT_angle[k] = np.full(trial_num, np.nan)
+    grouped_data_10sIntervalR_FT_angle[k] = np.full(trial_num, np.nan)
+    grouped_data_10sIntervalR_TT_angle[k] = np.full(trial_num, np.nan)
+
+    grouped_data_10sIntervalL_CT_angle[k] = np.full(trial_num, np.nan)
+    grouped_data_10sIntervalL_FT_angle[k] = np.full(trial_num, np.nan)
+    grouped_data_10sIntervalL_TT_angle[k] = np.full(trial_num, np.nan)
+
+    for f in range(len(grouped_data_10sinterval[k])):
+        angle_data = pd.read_csv(grouped_data_10sinterval[k][f])
+
+        if DetermineFlying(angle_data["LeftWingAngle"]):
+
+            grouped_data_10sIntervalR_CT_angle[k][f] = DetermineStablePostureAngle(angle_data, "R_mBC-CT-FT_flexion")
+            grouped_data_10sIntervalR_FT_angle[k][f] = DetermineStablePostureAngle(angle_data, "R_mCT-FT-TT_flexion")
+            grouped_data_10sIntervalR_TT_angle[k][f] = DetermineStablePostureAngle(angle_data, "R_mFT-TT-LT_flexion")
+
+            grouped_data_10sIntervalL_CT_angle[k][f] = DetermineStablePostureAngle(angle_data, "L_mBC-CT-FT_flexion")
+            grouped_data_10sIntervalL_FT_angle[k][f] = DetermineStablePostureAngle(angle_data, "L_mCT-FT-TT_flexion")
+            grouped_data_10sIntervalL_TT_angle[k][f] = DetermineStablePostureAngle(angle_data, "L_mFT-TT-LT_flexion")
+
+for k in grouped_data_30sinterval.keys():
+
+    grouped_data_30sIntervalR_CT_angle[k] = np.full(trial_num, np.nan)
+    grouped_data_30sIntervalR_FT_angle[k] = np.full(trial_num, np.nan)
+    grouped_data_30sIntervalR_TT_angle[k] = np.full(trial_num, np.nan)
+
+    grouped_data_30sIntervalL_CT_angle[k] = np.full(trial_num, np.nan)
+    grouped_data_30sIntervalL_FT_angle[k] = np.full(trial_num, np.nan)
+    grouped_data_30sIntervalL_TT_angle[k] = np.full(trial_num, np.nan)
+
+    for f in range(len(grouped_data_30sinterval[k])):
+        angle_data = pd.read_csv(grouped_data_30sinterval[k][f])
+
+        if DetermineFlying(angle_data["LeftWingAngle"]):
+
+            grouped_data_30sIntervalR_CT_angle[k][f] = DetermineStablePostureAngle(angle_data, "R_mBC-CT-FT_flexion")
+            grouped_data_30sIntervalR_FT_angle[k][f] = DetermineStablePostureAngle(angle_data, "R_mCT-FT-TT_flexion")
+            grouped_data_30sIntervalR_TT_angle[k][f] = DetermineStablePostureAngle(angle_data, "R_mFT-TT-LT_flexion")
+
+            grouped_data_30sIntervalL_CT_angle[k][f] = DetermineStablePostureAngle(angle_data, "L_mBC-CT-FT_flexion")
+            grouped_data_30sIntervalL_FT_angle[k][f] = DetermineStablePostureAngle(angle_data, "L_mCT-FT-TT_flexion")
+            grouped_data_30sIntervalL_TT_angle[k][f] = DetermineStablePostureAngle(angle_data, "L_mFT-TT-LT_flexion")
+
+
+
+for k in grouped_data_30sIntervalR_FT_angle.keys():
+    # plt.plot(grouped_data_30sIntervalR_FT_angle[k], linestyle="solid", lw=3)
+    plt.plot(grouped_data_30sIntervalR_FT_angle[k], linestyle="--", lw=3)
+    plt.ylim(0, 80)
+    plt.show()
+plt.ylabel("FT joint angle", fontsize=25)
+plt.yticks([20, 50, 80], fontsize=25)
+plt.xticks([0, 9, 19], labels=["1", "10", "20"], fontsize=25)
+plt.xlabel("Trial", fontsize=25)
+plt.tight_layout()
+
+
+
+
+grouped_data_5sIntervalR_CT_angle = TransposeFlyData(grouped_data_5sIntervalR_CT_angle)
+grouped_data_5sIntervalR_FT_angle = TransposeFlyData(grouped_data_5sIntervalR_FT_angle)
+grouped_data_5sIntervalR_TT_angle = TransposeFlyData(grouped_data_5sIntervalR_TT_angle)
+grouped_data_10sIntervalR_CT_angle = TransposeFlyData(grouped_data_10sIntervalR_CT_angle)
+grouped_data_10sIntervalR_FT_angle = TransposeFlyData(grouped_data_10sIntervalR_FT_angle)
+grouped_data_10sIntervalR_TT_angle = TransposeFlyData(grouped_data_10sIntervalR_TT_angle)
+grouped_data_30sIntervalR_CT_angle = TransposeFlyData(grouped_data_30sIntervalR_CT_angle)
+grouped_data_30sIntervalR_FT_angle = TransposeFlyData(grouped_data_30sIntervalR_FT_angle)
+grouped_data_30sIntervalR_TT_angle = TransposeFlyData(grouped_data_30sIntervalR_TT_angle)
+
+grouped_data_5sIntervalL_CT_angle = TransposeFlyData(grouped_data_5sIntervalL_CT_angle)
+grouped_data_5sIntervalL_FT_angle = TransposeFlyData(grouped_data_5sIntervalL_FT_angle)
+grouped_data_5sIntervalL_TT_angle = TransposeFlyData(grouped_data_5sIntervalL_TT_angle)
+grouped_data_10sIntervalL_CT_angle = TransposeFlyData(grouped_data_10sIntervalL_CT_angle)
+grouped_data_10sIntervalL_FT_angle = TransposeFlyData(grouped_data_10sIntervalL_FT_angle)
+grouped_data_10sIntervalL_TT_angle = TransposeFlyData(grouped_data_10sIntervalL_TT_angle)
+grouped_data_30sIntervalL_CT_angle = TransposeFlyData(grouped_data_30sIntervalL_CT_angle)
+grouped_data_30sIntervalL_FT_angle = TransposeFlyData(grouped_data_30sIntervalL_FT_angle)
+grouped_data_30sIntervalL_TT_angle = TransposeFlyData(grouped_data_30sIntervalL_TT_angle)
+
+"""
+"""fig, axes = plt.subplots(nrows=3, ncols=1, figsize=(5, 10))
+sns.pointplot(grouped_data_5sIntervalR_FT_angle, linestyles="solid", color="navy", errorbar="se", markers=" ", ax=axes[0])
+sns.pointplot(grouped_data_5sIntervalL_FT_angle, linestyles="dotted", color="blue", errorbar="se", markers=" ", ax=axes[0])
+
+sns.pointplot(grouped_data_10sIntervalR_FT_angle, linestyles="solid", color="orange", errorbar="se", markers=" ", ax=axes[1])
+sns.pointplot(grouped_data_10sIntervalL_FT_angle, linestyles="dotted", color="gold", errorbar="se", markers=" ", ax=axes[1])
+
+sns.pointplot(grouped_data_30sIntervalR_FT_angle, linestyles="solid", color="red", errorbar="se", markers=" ", ax=axes[2])
+sns.pointplot(grouped_data_30sIntervalL_FT_angle, linestyles="dotted", color="coral", errorbar="se", markers=" ", ax=axes[2])
+
+axes[0].set_yticks([20, 40, 60])
+axes[1].set_yticks([20, 40, 60])
+axes[2].set_yticks([20, 40, 60])
+axes[0].set_yticklabels(labels=["20", "40", "60"], fontsize=25)
+axes[1].set_yticklabels(labels=["20", "40", "60"], fontsize=25)
+axes[2].set_yticklabels(labels=["20", "40", "60"], fontsize=25)
+axes[0].set_xticks([0, 9, 19], labels=["1", "10", "20"], fontsize=25)
+axes[1].set_xticks([0, 9, 19], labels=["1", "10", "20"], fontsize=25)
+axes[2].set_xticks([0, 9, 19], labels=["1", "10", "20"], fontsize=25)
+axes[0].set_xlabel("Trial", fontsize=25)
+axes[1].set_xlabel("Trial", fontsize=25)
+axes[2].set_xlabel("Trial", fontsize=25)
+axes[0].set_ylabel("FT angle (mean)", fontsize=25)
+axes[1].set_ylabel("FT angle (mean)", fontsize=25)
+axes[2].set_ylabel("FT angle (mean)", fontsize=25)
+plt.tight_layout()
+plt.show()
+"""
 """
 for f in range(fly_num):
     Combined_kine_data.append([])

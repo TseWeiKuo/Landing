@@ -18,7 +18,9 @@ from scipy.signal import find_peaks, peak_widths
 from scipy.stats import gaussian_kde
 from scipy.ndimage import gaussian_filter1d
 import warnings
+import re
 warnings.filterwarnings(action="ignore", category=RuntimeWarning)
+
 """
 These functions are responsible for preprocessing of angle data and 3D pose data
 """
@@ -114,6 +116,13 @@ def CalculateDistance_Platform_RmCT(threeD_data, keypoint1, keypoint2):
         platform_coxa_distance.append(np.sqrt((p_x - C_x) ** 2 + (p_y - C_y) ** 2 + (p_z - C_z) ** 2))
     # sns.lineplot(x=range(len(threeD_data)), y=platform_coxa_distance)
     return platform_coxa_distance
+def normalize_list(data, method="min-max"):
+    if method == "min-max":
+        min_val = min(data)
+        max_val = max(data)
+        if max_val == min_val:
+            raise ValueError("Cannot perform Min-Max normalization when all values are the same.")
+        return [(x - min_val) / (max_val - min_val) for x in data]
 
 """
 These functions are responsible for detecting various characteristic of the angle and 3D data
@@ -185,7 +194,6 @@ def detect_moment_of_landing(trace_data, wing_distance_threshold, wind_size, dur
         if wing_fold_duration > duration_threshold:
             return i - ((cons_th - 1) * wind_size)
     return 0
-
 def detectFlying(angle_data, bl_range, wing_ang_fold_th, window_size):
     chunk_size = 20
     start_base_line = np.mean(angle_data[:bl_range])
@@ -196,71 +204,15 @@ def detectFlying(angle_data, bl_range, wing_ang_fold_th, window_size):
             if current_v < wing_ang_fold_th:
                 return False
     return True
-def detect_moment_of_contact(data, mode, consecutive_th, window, peak_prominence, m, threshold):
-    global median_moc
-    global median_moc_y
-    chunk_size = 4
-    platform_baseline = np.mean(data[200:])
-    if mode == "Threshold":
-        platform_consec_contact = 0
-        method1 = True
-        method2 = True
-        for i in range(0, len(data), window):
-            current_platform_distance = np.mean(data[i:i + window])
-            # print(platform[0])
-            if m == 0:
-                if current_platform_distance < threshold:
-
-                    return i
-            elif m == 1:
-                if current_platform_distance > median_moc_y:
-                    return i
-            else:
-                if current_platform_distance < threshold:
-                    platform_consec_contact += 1
-                else:
-                    platform_consec_contact = 0
-                if platform_consec_contact >= consecutive_th:
-
-                    return i - ((consecutive_th - 1) * window)
-    elif mode == "Individual threshold":
-        threshold = np.median(data[80:230])
-        for i in range(0, len(data), window):
-            current_platform_distance = np.mean(data[i:i + window])
-            # print(platform[0])
-            if current_platform_distance < threshold:
-                return i
-    elif mode == "Percent":
-        for i in range(0, len(data), window):
-            current_platform_distance = np.mean(data[i:i + window])
-            # print(platform[0])
-            if abs(current_platform_distance - platform_baseline) / platform_baseline < 0.1:
-                return i
-    """
-    elif mode == "Fluctuation":
-        peaks, _ = find_peaks(data, prominence=peak_prominence)
-        valleys, _ = find_peaks(-data, prominence=peak_prominence)
-        peaks = np.asarray(peaks)
-        valleys = np.asarray(valleys)
-        extreme_value_idx = np.asarray(sorted(np.concatenate([peaks, valleys])))
-        consecutive_peaks = 0
-        consecutive_empty = 0
-        start_idx = 0
-        for i in range(threshold_moc, len(data), window):
-            if sum(i <= x <= i + window for x in extreme_value_idx) >= 1:
-                if consecutive_peaks == 0:
-                    start_idx = i
-                consecutive_peaks += 1
-                consecutive_empty = 0
-            else:
-                consecutive_empty += 1
-            if consecutive_empty >= 3:
-                consecutive_peaks = 0
-                start_idx = 0
-            if consecutive_peaks >= consecutive_th:
-                return start_idx
-    """
-
+def detect_moment_of_contact(threeD_data):
+    for index, f in threeD_data.iterrows():
+        TT_joint = [f["R-mTT_x"], f["R-mTT_y"], f["R-mTT_z"]]
+        LT_joint = [f["R-mLT_x"], f["R-mLT_y"], f["R-mLT_z"]]
+        Center = [f["platform-tip_x"], f["platform-tip_y"], f["platform-tip_z"]]
+        Left = [f["L-platform-tip_x"], f["L-platform-tip_y"], f["L-platform-tip_z"]]
+        Right = [f["R-platform-tip_x"], f["R-platform-tip_y"], f["R-platform-tip_z"]]
+        if check_leg_platform_intersection(TT_joint, LT_joint, Center, Left, Right):
+            return index
     return 0
 def WingAngle_DetermineLanding(wing_data, platform_data, fly, trial):
     global Customized_wing_threshold
@@ -425,100 +377,6 @@ def LPAcrossFlies(Data_to_plot):
     sns.despine()
     plt.savefig("LPAcrossFliesStarvedExp", dpi=300, bbox_inches='tight')
     plt.show()
-def PlotData(Fly_Pose_Data, kinematic_data, fly, clipstart, clipend, platform_moc, mol_data):
-    global Trial_num_list
-    global PlotSingleFly
-    global Distance_threshold_for_each_fly
-    global Customized_wing_threshold
-    global median_moc
-    global median_moc_y
-    global prediction_error
-    global fit_line_moc_percent_thresholds
-    global moc_prediction_error
-    i = 0
-    j = 0
-    t = 0
-    platform_traces = []
-
-    fig, axs = plt.subplots(nrows=5, ncols=4, figsize=(20, 16))
-    for trial_angle, trial_kinematic in zip(Fly_Pose_Data, kinematic_data):
-        if i % 5 == 0:
-            j += 1
-            i = 1
-        else:
-            i += 1
-        DataToBeShown = TraceData_Preprocessing(trial_angle, trial_kinematic, clipstart, clipend)
-        second = np.asarray([(i + 450) / FPS for i in range(len(DataToBeShown["platform"]))])
-        moment_of_contact_manual = platform_moc.iloc[int(fly) - 1][f"Trial_{t + 1}"]
-        moment_of_landing = mol_data.iloc[int(fly) - 1][f"Trial_{t + 1}"]
-        ax2 = axs[i - 1, j - 1].twinx()
-        ax2.set_ylabel("Platform distance to R-mCT (mm)")
-
-        if not (isinstance(moment_of_landing, str) or pd.isna(moment_of_landing) or moment_of_landing < 0):
-            moment_of_contact_manual -= clipstart
-            moment_of_landing -= clipstart
-            # moment_of_contact_threshold = detect_moment_of_contact(DataToBeShown["platform"], "Threshold", 0, 4, 0, 0, moc_threshold)
-            moc_prediction_error.append((moment_of_contact_manual - moment_of_contact_threshold)/FPS)
-            axs[i - 1, j - 1].axvline(x=moment_of_contact_manual / FPS, color="black", linestyle='--')
-            axs[i - 1, j - 1].axvline(x=moment_of_contact_threshold / FPS, color="brown", linestyle='--')
-
-
-            right_start_landing = detect_significant_drop(DataToBeShown["RightWingAngle"], 50, 105, 0.3, 15)
-            left_start_landing = detect_significant_drop(DataToBeShown["LeftWingAngle"], 50, 105, 0.3, 15)
-
-            if right_start_landing > 50 and left_start_landing > 50:
-                if max(right_start_landing - moment_of_contact_threshold, left_start_landing - moment_of_contact_threshold) < 450:
-                    prediction_error.append((max(right_start_landing, left_start_landing) - moment_of_landing)/250)
-                    axs[i - 1, j - 1].axvline(x=max(right_start_landing, left_start_landing) / FPS, color="green", linestyle='--')
-            else:
-                landing_1, latency_1 = detect_brief_landing(DataToBeShown["RightWingAngle"], 50, 150, 0.25, 10, 105, 5)
-                landing_2, latency_2 = detect_brief_landing(DataToBeShown["LeftWingAngle"], 50, 150, 0.25, 10, 105, 5)
-                if not (detectFlying(DataToBeShown["RightWingAngle"], 50, 100, 5) or detectFlying(DataToBeShown["LeftWingAngle"], 50, 100, 5)):
-                    if latency_1 != 0 and latency_2 != 0:
-                        if max(latency_1 - moment_of_contact_threshold, latency_2 - moment_of_contact_threshold) < 450:
-                            prediction_error.append((max(latency_2, latency_1) - moment_of_landing)/250)
-                            axs[i - 1, j - 1].axvline(x=max(latency_2, latency_1) / FPS, color="green", linestyle='--')
-        try:
-            x_d, y_d = Find_best_fit_platform(second, DataToBeShown["platform"])
-            if len(x_d) != 0:
-                # sns.lineplot(x=x_d, y=y_d, ax=ax2, color="green", linestyle="solid")
-                pass
-        except RuntimeError:
-            pass
-
-        # axs[i - 1, j - 1].axvline(x=(moment_of_contact_manual)/ FPS, color="black", linestyle='--')
-        sns.lineplot(x=second, y=DataToBeShown["platform"], ax=ax2, color="black", linestyle="solid")
-        # sns.lineplot(x=second, y=find_derivative(DataToBeShown["platform"]), ax=axs[i - 1, j - 1], color="orange", linestyle="solid")
-        sns.lineplot(x=second, y=DataToBeShown["RightWingAngle"], ax=axs[i - 1, j - 1], color="blue", linestyle="solid")
-        sns.lineplot(x=second, y=DataToBeShown["LeftWingAngle"], ax=axs[i - 1, j - 1], color="red", linestyle="solid")
-        ax2.set_yticks([0, 0.05, 0.1, 0.15, 0.2, 0.25])
-        # ax2.set_yticks([0, 0.5, 1])
-        axs[i - 1, j - 1].set_xticks([(i + 450) / FPS for i in range(0, (clipend - clipstart) + 1, int(clipend / 10))])
-        # axs[i - 1, j - 1].set_xticks([0, 25, 50, 75, 100, 125, 150, 175])
-        # axs[i - 1, j - 1].set_xlim(0, 200)
-        axs[i - 1, j - 1].set_xlabel("time (s)")
-        axs[i - 1, j - 1].set_ylabel("Wing angle")
-        axs[i - 1, j - 1].set_yticks([0, 50, 100, 150, 200])
-
-        axs[i - 1, j - 1].set_title(Trial_num_list[t])
-        axs[i - 1, j - 1].set_ylim(0, 200)
-        x_position = axs[i - 1, j - 1].get_xlim()[1] * 0.95  # 95% of the x-axis limit
-        y_position = axs[i - 1, j - 1].get_ylim()[1] * 0.95  # 95% of the y-axis limit
-        if Filter_platform_data(fly, t + 1, DataToBeShown["platform"]):
-            # axs[i - 1, j - 1].text(x_position, y_position, 'Pass', horizontalalignment='right', verticalalignment='top')
-            pass
-        else:
-            # axs[i - 1, j - 1].text(x_position, y_position, 'Fail', horizontalalignment='right', verticalalignment='top')
-            pass
-        ax2.set_ylim(0, 0.3)
-        t += 1
-    print(f"Plotting Fly {fly}'s data")
-    plt.suptitle("Fly " + str(fly), fontsize=20)
-    plt.tight_layout()  # Adjust subplot layout
-    plt.savefig("Control_T2CTF_Fly_" + str(fly) + ".png")  # Save the figure
-    if PlotSingleFly:
-        plt.show()
-    plt.close()
 def CalculatePlatform_distance_average(collected_data):
     np_matrix = np.array(collected_data)
     transposed_matrix = np_matrix.T
@@ -534,7 +392,6 @@ def detectMOC(data, threshold=0.09538):
         if np.average(data[i:i + wind_size]) <= threshold:
             return i
     return 0
-
 def MakePlot(Angle_data, Pose_Data, fly_num, clipstart, clipend, plot_manual):
     global mol_data
     global moc_data
@@ -955,123 +812,394 @@ def Fit_sigmoid(X, Y):
     # Generating y values using the fitted sigmoid function
     y_fit = sigmoid(x_data, L_fit, x0_fit, k_fit)
     return x_data, y_fit
+def group_files_by_fly(file_names):
+    # Regular expression to extract the relevant parts of the file name
+    pattern = re.compile(r"(\d{4}-\d{2}-\d{2})-\d{2}-\d{2}-\d{2}\.\d+.*?_Fly_(\d+)_Trial_\d+_")
+    print(pattern)
+    # Dictionary to map unique combinations to "Fly_N"
+    unique_combinations = {}
+    grouped_files = {}
+
+    current_fly_number = 1  # Counter for Fly_N keys
+
+    for file in file_names:
+        match = pattern.search(file)
+        if match:
+            date = match.group(1)
+            fly_number = match.group(2)
+            unique_id = (date, fly_number)  # Unique identifier based on date and fly number
+
+            # Assign a new Fly_N key if the combination is not seen before
+            if unique_id not in unique_combinations:
+                unique_combinations[unique_id] = f"Fly_{current_fly_number}"
+                current_fly_number += 1
+
+            # Get the Fly_N key
+            fly_key = unique_combinations[unique_id]
+
+            # Add the file to the corresponding Fly_N group
+            if fly_key not in grouped_files:
+                grouped_files[fly_key] = []
+            grouped_files[fly_key].append(file)
+
+    return grouped_files
+def Calculate_distance_between_points(x, y, z, x1, y1, z1):
+    return np.sqrt((x - x1) ** 2 + (y - y1) ** 2 + (z - z1) ** 2)
+def Calculate_segment_length(threeD_data, skeletons):
+    collected_seg_length_data = dict()
+    for seg in skeletons:
+        if f"{seg[0]}_{seg[1]}" not in collected_seg_length_data.keys():
+            collected_seg_length_data[f"{seg[0]}_{seg[1]}"] = []
+        for f in range(len(threeD_data)):
+            collected_seg_length_data[f"{seg[0]}_{seg[1]}"].append(Calculate_distance_between_points(
+                threeD_data[f"{seg[0]}_x"][f], threeD_data[f"{seg[0]}_y"][f], threeD_data[f"{seg[0]}_z"][f],
+                threeD_data[f"{seg[1]}_x"][f], threeD_data[f"{seg[1]}_y"][f], threeD_data[f"{seg[1]}_z"][f]))
+    collected_seg_length_data = pd.DataFrame(collected_seg_length_data)
+    return collected_seg_length_data
+def calculate_angle(x1, y1, z1, x2, y2, z2, x3, y3, z3):
+    # Define points as numpy arrays
+    pt1 = np.array([x1, y1, z1])
+    pt2 = np.array([x2, y2, z2])
+    pt3 = np.array([x3, y3, z3])
+
+    # Define vectors
+    vecA = pt1 - pt2
+    vecB = pt3 - pt2
+
+    # Calculate dot product and magnitudes
+    dot_product = np.dot(vecA, vecB)
+    magnitude_A = np.linalg.norm(vecA)
+    magnitude_B = np.linalg.norm(vecB)
+
+    # Calculate angle in radians
+    angle_rad = np.arccos(dot_product / (magnitude_A * magnitude_B))
+
+    # Convert to degrees if needed
+    angle_deg = np.degrees(angle_rad)
+
+    return angle_deg
+def Calculate_joint_angle(threeD_data, angles):
+    collected_angle_data = dict()
+    for ag in angles:
+        if f"{ag[1]}" not in collected_angle_data.keys():
+            collected_angle_data[f"{ag[1]}"] = []
+        for f in range(len(threeD_data)):
+            angle = calculate_angle(
+                threeD_data[f"{ag[0]}_x"][f], threeD_data[f"{ag[0]}_y"][f], threeD_data[f"{ag[0]}_z"][f],
+                threeD_data[f"{ag[1]}_x"][f], threeD_data[f"{ag[1]}_y"][f], threeD_data[f"{ag[1]}_z"][f],
+                threeD_data[f"{ag[2]}_x"][f], threeD_data[f"{ag[2]}_y"][f], threeD_data[f"{ag[2]}_z"][f])
+            collected_angle_data[f"{ag[1]}"].append(angle)
+    return collected_angle_data
+def TransposeData(df):
+    df = pd.DataFrame(df)
+    df = df.T
+    return df
+def Calculate_derivative(data):
+    if len(data) < 2:
+        raise ValueError("The input list must contain at least two elements to calculate a derivative.")
+
+    # Compute the differences between consecutive elements
+    data = [data[i + 1] - data[i] for i in range(len(data) - 1)]
+    data = [abs(x) for x in data]
+    return data
+def plane_from_points(p1, p2):
+    # Compute the normal vector of the plane using two points
+    v1 = np.array(p2) - np.array(p1)
+    normal = np.cross(v1, [0, 0, 1])  # Assume a vertical normal projection
+    d = -np.dot(normal, p1)
+    return normal, d
+def line_plane_intersection(p1, p2, normal, d):
+    # Line represented as p(t) = p1 + t * (p2 - p1)
+    direction = np.array(p2) - np.array(p1)
+    denom = np.dot(normal, direction)
+
+    if abs(denom) < 1e-6:  # Parallel case
+        return None
+
+    t = -(np.dot(normal, p1) + d) / denom
+    if 0 <= t <= 1:  # Ensure intersection is within the segment
+        return p1 + t * direction
+    return None
+def is_inside_circle(intersection, center, radius):
+    return np.linalg.norm(intersection - center) <= radius
+def check_leg_platform_intersection(leg_p1, leg_p2, center_traces):
+    # Compute platform radius
+    radius = 0.38
+    # Compute the plane equation
+    centroid, platform_direction = best_fit_line_3d(center_traces)
+
+    d = -np.dot(platform_direction, center_traces[-1])
+
+    # Find intersection point
+    intersection = line_plane_intersection(np.array(leg_p1), np.array(leg_p2), platform_direction, d)
+
+    if intersection is not None and is_inside_circle(intersection, np.array(center_traces[-1]), radius):
+        return True
+    return False
+def ReadCoordsAll(threeD_data, fnum):
+    points = ["L-wing", "L-wing-hinge", "R-wing", "R-wing-hinge", "abdomen-tip", "platform-tip", "L-platform-tip",
+              "R-platform-tip", "platform-axis", "R-fBC", "R-fCT", "R-fFT", "R-fTT", "R-fLT", "R-mBC", "R-mCT", "R-mFT",
+              "R-mTT", "R-mLT", "R-hBC", "R-hCT", "R-hFT", "R-hTT", "R-hLT", "L-fBC", "L-fCT", "L-fFT", "L-fTT", "L-fLT",
+              "L-mBC", "L-mCT", "L-mFT", "L-mTT", "L-mLT", "L-hBC", "L-hCT", "L-hFT", "L-hTT", "L-hLT"]
+    coords = dict()
+    for p in points:
+        coords[p] = np.asarray([threeD_data[f"{p}_x"][fnum], threeD_data[f"{p}_y"][fnum], threeD_data[f"{p}_z"][fnum]])
+    return coords
+def plot_motion_vector_with_plane(platform_ctr_pts_traces, coords):
+    keypoint_pairs = [
+        ["L-wing", "L-wing-hinge"], ["R-wing", "R-wing-hinge"], ["abdomen-tip"],
+        ["platform-tip"], ["L-platform-tip"], ["R-platform-tip"], ["platform-axis"],
+        ["R-fBC", "R-fCT", "R-fFT", "R-fTT", "R-fLT"], ["R-mBC", "R-mCT", "R-mFT", "R-mTT", "R-mLT"],
+        ["R-hBC", "R-hCT", "R-hFT", "R-hTT", "R-hLT"], ["L-fBC", "L-fCT", "L-fFT", "L-fTT", "L-fLT"],
+        ["L-mBC", "L-mCT", "L-mFT", "L-mTT", "L-mLT"], ["L-hBC", "L-hCT", "L-hFT", "L-hTT", "L-hLT"]
+    ]
+
+    platform_ctr_pts_traces = np.array(platform_ctr_pts_traces)
+    centroid, direction = best_fit_line_3d(platform_ctr_pts_traces)
+
+    # Generate points along the best-fit line
+    t_vals = np.linspace(-10, 10, 100)
+    line_points = centroid + np.outer(t_vals, direction)
+
+    # Create color gradient based on the order of the points
+    num_points = len(platform_ctr_pts_traces)
+    colors = plt.cm.Greys(np.linspace(0, 1, num_points))
+
+    # Generate a normal plane to the direction vector at the centroid
+    normal_vector = direction
+    # Create two perpendicular vectors using cross products
+    if np.allclose(normal_vector, [1, 0, 0]):  # Handle edge case if aligned with x-axis
+        perp_vector1 = np.cross(normal_vector, [0, 1, 0])
+    else:
+        perp_vector1 = np.cross(normal_vector, [1, 0, 0])
+
+    perp_vector1 /= np.linalg.norm(perp_vector1)  # Normalize
+
+    perp_vector2 = np.cross(normal_vector, perp_vector1)
+    perp_vector2 /= np.linalg.norm(perp_vector2)  # Normalize
+
+    radius = 0.4  # Radius of the circular plane
+
+    # Generate a circular grid
+    u_vals = np.linspace(-radius, radius, 50)
+    v_vals = np.linspace(-radius, radius, 50)
+    U, V = np.meshgrid(u_vals, v_vals)
+
+    # Convert to polar coordinates to filter for a circular region
+    mask = U ** 2 + V ** 2 <= radius ** 2  # Boolean mask for circle
+
+    # Apply mask to keep only circular region
+    U = U[mask]
+    V = V[mask]
+
+    plane_points = platform_ctr_pts_traces[-1] + U[..., None] * perp_vector1 + V[..., None] * perp_vector2
+
+    # 3D Plot
+    fig = plt.figure(figsize=(8, 6))
+    ax = fig.add_subplot(111, projection='3d')
+
+    # Loop through the connections and plot lines
+    Colors = [
+        "#FF0000", "#008000", "#0000FF", "#FFFF00", "#00FFFF", "#FF00FF", "#000000",
+         "#808080", "#A9A9A9", "#D3D3D3", "#FFA500", "#800080", "#A52A2A",
+        "#FFC0CB", "#ADD8E6", "#00FF00", "#4B0082", "#EE82EE", "#FFD700", "#C0C0C0",
+        "#D2B48C", "#FF7F50", "#006400", "#00008B", "#8B0000", "#FF8C00", "#8B008B",
+        "#708090", "#FF6347", "#008080"
+    ]
+    """for g, group in enumerate(keypoint_pairs):
+        for i in range(len(group) - 1):  # Connect points in the group
+            p1 = coords[group[i]]
+            p2 = coords[group[i + 1]]
+
+            # Plot a line between p1 and p2
+            ax.plot([p1[0], p2[0]], [p1[1], p2[1]], [p1[2], p2[2]], marker='o', color=Colors[g])"""
+
+    ax.quiver(*platform_ctr_pts_traces[-1], *perp_vector1, color='r', arrow_length_ratio=0.1)
+    ax.quiver(*platform_ctr_pts_traces[-1], *perp_vector2, color='r', arrow_length_ratio=0.1)
+    # Plot the trajectory with color gradient
+    for i in range(num_points - 1):
+        ax.plot(platform_ctr_pts_traces[i:i + 2, 0], platform_ctr_pts_traces[i:i + 2, 1], platform_ctr_pts_traces[i:i + 2, 2], color=colors[i], linewidth=6)
+
+    # Plot the best-fit line
+    ax.plot(line_points[:, 0], line_points[:, 1], line_points[:, 2], 'r--', label="Best-Fit Line")
+
+    # Highlight the centroid
+    # ax.scatter(centroid[0], centroid[1], centroid[2], color='black', s=100, label="Centroid", edgecolors='k')
+
+    # Plot the normal plane
+    ax.plot_trisurf(plane_points[:, 0], plane_points[:, 1], plane_points[:, 2], color='cyan', alpha=0.5)
 
 
-DataSets = Create_DataSets_MetaData()
-Analysis_start = DataSets["KirExperiment"]["Analysis_Start_time"]
-Analysis_end = DataSets["KirExperiment"]["Analysis_End_time"]
-platform_distance = []
-Data = []
+    # Labels and legend
+    ax.set_xlabel("X")
+    ax.set_ylabel("Y")
+    ax.set_zlabel("Z")
+    ax.set_title("3D Motion with Normal Plane")
+    axis_limit = 2  # Adjust this value based on your data range
+    ax.set_xlim([-axis_limit, axis_limit])
+    ax.set_ylim([-axis_limit, axis_limit])
+    ax.set_zlim([-axis_limit, axis_limit])
+    ax.legend()
 
-RunAnalysis = True
-moc_error = [[], [], [], []]
-p_dist_at_moc = []
-p_baseline = []
-fit_line_pred_at_moc = []
-fit_line_baseline = []
-average_baseline = []
-average_distance_at_moc = []
-moc_collected = dict()
+    azim = np.arctan2(normal_vector[1], normal_vector[0]) * 180 / np.pi
 
+    # Elevation is calculated based on the z-component of the vector
+    plt.gca().set_aspect('equal')
+    ax.view_init(elev=90, azim=0)
+    ax.grid(False)
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.set_zticks([])
 
-FPS = 300
-Fly_num = 5
-if RunAnalysis:
-    Path_data = Extract_data_path(DataSets["KirExperiment"]["Angles_Folder"])
-    kinematic_path = Extract_data_path(DataSets["KirExperiment"]["Pose_3D_Folder"])
-    collected_pose_data = []
-    collected_angle_data = []
-    for i in range(Fly_num):
-        collected_pose_data.append(Extract_3D_pose_data(kinematic_path, i + 1))
-        collected_angle_data.append(Extract_3D_pose_data(Path_data, i + 1))
-    os.chdir(DataSets["KirExperiment"]["DestinationFolder"])
-    # moc_data = pd.read_excel(DataSets["Control_T2_CTF_Experiment"]["Manual_MOC_csv_file"])
-    # mol_data = pd.read_excel(DataSets["Control_T2_CTF_Experiment"]["Manual_MOL_csv_file"])
-    for i in range(Fly_num):
-        try:
-            MakePlot(collected_angle_data[i][f"Fly_{i+1}"], collected_pose_data[i][f"Fly_{i+1}"], i + 1, Analysis_start, Analysis_end, False)
-        except KeyError as k:
-            print(f"Fly {i + 1} encounter {k}")
-            plt.close()
+    ax.xaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))  # Make panes transparent
+    ax.yaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
+    ax.zaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
+    ax.set_axis_off()  # This removes everything including the frame
+    plt.show(block=True)
+def best_fit_line_3d(points):
+    points = np.array(points)
+    centroid = np.mean(points, axis=0)
+    centered_points = points - centroid
+    _, _, Vt = np.linalg.svd(centered_points)
+    direction = Vt[0]  # First principal component
+    return centroid, direction
 
-    moc_collected["Actual_baseline"] = p_baseline
-    moc_collected["Actual_distance"] = p_dist_at_moc
-    moc_collected["Fit_baseline"] = fit_line_baseline
-    moc_collected["Fit_distance"] = fit_line_pred_at_moc
-    moc_collected["Average_baseline"] = average_baseline
-    moc_collected["Average_distance"] = average_distance_at_moc
-    moc_collected = pd.DataFrame(moc_collected)
-    # moc_collected.to_csv("moc_collected.csv", index=False)
-else:
-    moc_collected = pd.read_csv(r"C:\Users\agrawal-admin\Desktop\Agrawal_Lab\moc_collected.csv")
-    moc_error_collected = pd.read_csv(r"C:\Users\agrawal-admin\Desktop\Agrawal_Lab\Moc_error_comparisons.csv")
-    sns.violinplot(moc_error_collected)
-
-    plt.ylabel("Moc prediction error (second)")
-    plt.savefig("MOC error comparisons")
-    """
-    fig, axs = plt.subplots(nrows=3, ncols=3, figsize=(20, 16))
-    sns.scatterplot(x=moc_collected["Actual_baseline"], y=moc_collected["Actual_distance"] - moc_collected["Actual_baseline"], color="blue", ax=axs[0, 0])
-    X, Y = find_linear_best_fit_line(moc_collected["Actual_baseline"], moc_collected["Actual_distance"] - moc_collected["Actual_baseline"])
-    sns.lineplot(x=X, y=Y, color="red", ax=axs[0, 0])
-    axs[0, 0].set_title("Actual vs Actual")
-    axs[0, 0].set_ylim(0, 0.1)
-
-    sns.scatterplot(x=moc_collected["Actual_baseline"], y=moc_collected["Fit_distance"] - moc_collected["Fit_baseline"], color="blue", ax=axs[0, 1])
-    X, Y = find_linear_best_fit_line(moc_collected["Actual_baseline"], moc_collected["Fit_distance"] - moc_collected["Fit_baseline"])
-    sns.lineplot(x=X, y=Y, color="red", ax=axs[0, 1])
-    axs[0, 1].set_title("Actual vs Fit")
-    axs[0, 1].set_ylim(0, 0.1)
-
-    sns.scatterplot(x=moc_collected["Actual_baseline"], y=moc_collected["Average_distance"] - moc_collected["Average_baseline"], color="blue", ax=axs[0, 2])
-    X, Y = find_linear_best_fit_line(moc_collected["Actual_baseline"], moc_collected["Average_distance"] - moc_collected["Average_baseline"])
-    sns.lineplot(x=X, y=Y, color="red", ax=axs[0, 2])
-    axs[0, 2].set_title("Actual vs Average")
-    axs[0, 2].set_ylim(0, 0.1)
-
-
-    sns.scatterplot(x=moc_collected["Fit_baseline"], y=moc_collected["Actual_distance"] - moc_collected["Actual_baseline"], color="blue", ax=axs[1, 0])
-    X, Y = find_linear_best_fit_line(moc_collected["Fit_baseline"], moc_collected["Actual_distance"] - moc_collected["Actual_baseline"])
-    sns.lineplot(x=X, y=Y, color="red", ax=axs[1, 0])
-    axs[1, 0].set_title("Fit vs Actual")
-    axs[1, 0].set_ylim(0, 0.1)
-
-    sns.scatterplot(x=moc_collected["Fit_baseline"], y=moc_collected["Fit_distance"] - moc_collected["Fit_baseline"], color="blue", ax=axs[1, 1])
-    X, Y = find_linear_best_fit_line(moc_collected["Fit_baseline"], moc_collected["Fit_distance"] - moc_collected["Fit_baseline"])
-    sns.lineplot(x=X, y=Y, color="red", ax=axs[1, 1])
-    axs[1, 1].set_title("Fit vs Fit")
-    axs[1, 1].set_ylim(0, 0.1)
-
-    sns.scatterplot(x=moc_collected["Fit_baseline"], y=moc_collected["Average_distance"] - moc_collected["Average_baseline"], color="blue", ax=axs[1, 2])
-    axs[1, 2].set_title("Fit vs Average")
-    axs[1, 2].set_ylim(0, 0.1)
-
-
-    sns.scatterplot(x=moc_collected["Average_baseline"], y=moc_collected["Actual_distance"] - moc_collected["Actual_baseline"], color="blue", ax=axs[2, 0])
-    axs[2, 0].set_title("Average vs Actual")
-    axs[2, 0].set_ylim(0, 0.1)
-    sns.scatterplot(x=moc_collected["Average_baseline"], y=moc_collected["Fit_distance"] - moc_collected["Fit_baseline"], color="blue", ax=axs[2, 1])
-    axs[2, 1].set_title("Average vs Fit")
-    axs[2, 1].set_ylim(0, 0.1)
-    sns.scatterplot(x=moc_collected["Average_baseline"], y=moc_collected["Average_distance"] - moc_collected["Average_baseline"], color="blue", ax=axs[2, 2])
-    axs[2, 2].set_title("Average vs Average")
-    axs[2, 2].set_ylim(0, 0.1)
-    """
-
-    plt.tight_layout()
-    plt.savefig("Baseline vs distance cross compared")
-    plt.show()
-
-# sns.scatterplot(x=p_baseline, y=p_dist_at_moc, color="blue")
-# sns.scatterplot(x=fit_line_baseline, y=fit_line_pred_at_moc, color="red")
-# sns.scatterplot(x=average_baseline, y=average_distance_at_moc, color="green")
+Angles = [["R-mBC", "R-mCT", "R-mFT"],
+          ["R-mCT", "R-mFT", "R-mTT"],
+          ["R-mFT", "R-mTT", "R-mLT"]]
+# skeletons = [["R-mTT", "L-platform-tip"], ["R-mTT", "R-platform-tip"], ["R-mTT", "platform-tip"]]
+skeletons = [["R-mLT", "L-platform-tip"], ["R-mLT", "R-platform-tip"], ["R-mLT", "platform-tip"]]
+skeletons = [["R-mLT", "platform-tip"]]
+DataDirPath = r"C:\Users\agrawal-admin\OneDrive - Virginia Tech\Desktop\Kinematic_data\WT-Control_T2-TiTa_ImprovedNetwork"
+MOCfilePath = r"C:\Users\agrawal-admin\OneDrive - Virginia Tech\Desktop\Kinematic_data\WT-Control_T2-TiTa_ImprovedNetwork\T2-TiTaLPDataMOC.xlsx"
+MOLfilePath = r"C:\Users\agrawal-admin\OneDrive - Virginia Tech\Desktop\Kinematic_data\WT-Control_T2-TiTa_ImprovedNetwork\T2-TiTaLPDataMOL.xlsx"
+Trials = [f"Trial_{i + 1}" for i in range(20)]
+AllFiles = []
+for root, dirs, files in os.walk(DataDirPath):
+    for file in files:
+        if file.endswith(".csv"):
+            input_file_path = os.path.join(root, file)
+            AllFiles.append(input_file_path)
+moc_data = pd.read_excel(MOCfilePath)[Trials]
+grouped_data_path = group_files_by_fly(AllFiles)
 
 
 
-# Starved_Path_data = Extract_data_path(Starved_angles_folder)
-# Starved_AngleData = Extract_3D_pose_data(Starved_Path_data)
-# Starved_kinematic_path = Extract_data_path(Starved_kinematic_folder)
-# Starved_kinematic_pose_data = Extract_3D_pose_data(Starved_kinematic_path)
-# Read_Manual_Data(DataSets["Control_T2_CTF_Experiment"]["Manual_MOC_csv_file"])
+"""mean_moc = []
+for index, r in moc_data[Trials].iterrows():
+    for i, t in enumerate(r):
+        if not isinstance(t, str) and t > -1:
+            print(t, f"Fly {index + 1}", f"Trial {i + 1}")
+            data = pd.read_csv(grouped_data_path[f"Fly_{index + 1}"][i])
+            seg_length = Calculate_segment_length(data, skeletons)
+            # seg_length = TransposeData(seg_length)
+            # column_means = seg_length.mean(axis=0)
+            mean_moc.append(np.mean(seg_length["R-mLT_platform-tip"][int(t) - 2:int(t) + 2]))
+sns.stripplot(mean_moc, size=5, alpha=0.5)
+plt.xlabel(r"R-mLT --> platform tip")
+plt.ylabel(f"Distance at MOC (mm)")
+plt.savefig("distance at moc RmLT.pdf")
+plt.show()"""
+
+"""fig, axs = plt.subplots(nrows=5, ncols=4, figsize=(20, 16))
+i = 0
+j = 0
+t = 0
+for d in grouped_data_path["Fly_1"]:
+    t += 1
+    data = pd.read_csv(d)[200:800]
+    data = data.reset_index()
+
+    seg_length = Calculate_segment_length(data, skeletons)
+    # seg_length = TransposeData(seg_length)
+
+    # column_means = seg_length.mean(axis=0)
+    # column_means_derivative = Calculate_derivative(column_means)
+
+    angles = Calculate_joint_angle(data, Angles)
+
+    if i % 5 == 0:
+        j += 1
+        i = 1
+    else:
+        i += 1
+    seconds = [x/200 for x in range(200, 800)]
+    # print(seconds)
+    sns.lineplot(x=seconds, y=seg_length["R-mTT_platform-tip"], legend=False, ax=axs[i - 1, j - 1])
+    # print(moc)
+    moc = moc_data.iloc[0][t - 1]
+    if not isinstance(moc, str) and moc > -1:
+        axs[i - 1, j - 1].axvline(moc/200, color="black")
+    axs[i - 1, j - 1].set_ylim(-0.1, 3)
+    axs[i - 1, j - 1].set_title(f"Trial {t}")
+    axs[i - 1, j - 1].set_ylabel("Distance (mm)")
+    axs[i - 1, j - 1].set_xlabel("Seconds (mm)")
+    print(f"Processing Trial {t}")
+    # ax2 = axs[i - 1, j - 1].twinx()
+    # ax2.set_ylim(0, 200)
+    # sns.lineplot(column_means_derivative, legend=False, ax=ax2, color="orange")
+    # sns.lineplot(angles["R-mCT"], legend=False, ax=ax2, color="green")
+    # sns.lineplot(angles["R-mTT"], legend=False, ax=ax2, color="red")
+
+plt.tight_layout()
+plt.savefig("R-mTT platform distance.pdf")
+plt.show()"""
+
+
+
+
+moc_error = []
+for index, r in moc_data[Trials].iloc[:2].iterrows():
+    for i, t in enumerate(r):
+        if not isinstance(t, str) and t > -1:
+            print(f"Fly {index + 1}", f"Trial {i + 1}")
+            data = pd.read_csv(grouped_data_path[f"Fly_{index + 1}"][i])
+            start = 200
+            end = 800
+
+            center_points = np.asarray(
+                [data["platform-tip_x"].tolist(), data["platform-tip_y"].tolist(), data["platform-tip_z"].tolist()])
+            R_mTT_points = np.asarray([data["R-mTT_x"].tolist(), data["R-mTT_y"].tolist(), data["R-mTT_z"].tolist()])
+            R_mLT_points = np.asarray([data["R-mLT_x"].tolist(), data["R-mLT_y"].tolist(), data["R-mLT_z"].tolist()])
+
+            center_points = np.transpose(center_points)
+            R_mTT_points = np.transpose(R_mTT_points)
+            R_mLT_points = np.transpose(R_mLT_points)
+
+            for i in range(start, end):
+                if check_leg_platform_intersection(R_mTT_points[i], R_mLT_points[i], center_points[i - start:i]):
+                    name_width = 8
+                    num_width = 3
+                    name = "Prediction:"
+                    name1 = "Manual:"
+                    name2 = "Error:"
+                    print(f"{name:<{name_width}} {str(i):>{num_width}} {name1:<{name_width}} {str(t):>{num_width}} {name2:<{name_width}} {str(i - t):>{num_width}}")
+                    moc_error.append(i - t)
+                    if abs(i - t) > 20:
+                        coords = ReadCoordsAll(data, i)
+                        plot_motion_vector_with_plane(center_points[i - start:i], coords)
+                    break
+sns.stripplot(moc_error)
+plt.show()
+
+"""start = 200
+end = 800
+# Example usage
+data = pd.read_csv(grouped_data_path["Fly_1"][0])
+# coords = ReadCoordsAll(data, 400)
+
+center_points = np.asarray([data["platform-tip_x"].tolist(), data["platform-tip_y"].tolist(), data["platform-tip_z"].tolist()])
+R_mTT_points = np.asarray([data["R-mTT_x"].tolist(), data["R-mTT_y"].tolist(), data["R-mTT_z"].tolist()])
+R_mLT_points = np.asarray([data["R-mLT_x"].tolist(), data["R-mLT_y"].tolist(), data["R-mLT_z"].tolist()])
+
+center_points = np.transpose(center_points)
+R_mTT_points = np.transpose(R_mTT_points)
+R_mLT_points = np.transpose(R_mLT_points)
+
+for i in range(start, end):
+    if check_leg_platform_intersection(R_mTT_points[i], R_mLT_points[i], center_points[i - start:i]):
+        print(i)
+        break"""
+# plot_motion_vector_with_plane(center_points[:400], coords)
 
 

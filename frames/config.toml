@@ -1,0 +1,56 @@
+project = "Landing_3D"
+model_folder = 'C:\Users\agrawal-admin\Desktop\Landing_3D-Wayne-2024-01-25\network'
+compute_angles = false
+nesting = 1
+video_extension = 'mp4'
+
+
+
+[filter]
+enabled = true
+type = ["viterbi"]
+score_threshold = 0.9
+n_back = 1
+medfilt = 13
+offset_threshold = 15
+spline = true
+multiprocessing = false
+
+[filter3d]
+enabled = false
+
+[calibration]
+board_type = "charuco"
+board_size = [6, 6]
+board_marker_bits = 4
+board_marker_dict_number = 50
+board_marker_length = 0.375
+board_square_side_length = 0.5
+animal_calibration = false
+
+[labeling]
+scheme = [["L-wing", "L-wing-hinge"], ["R-wing", "R-wing-hinge"], ["platform"],
+    ["L-fBC", "L-fCT", "L-fFT", "L-fTT", "L-fLT"], ["L-mBC", "L-mCT", "L-mFT", "L-mTT", "L-mLT"], ["L-hBC", "L-hCT", "L-hFT", "L-hTT", "L-hLT"],
+    ["R-fBC", "R-fCT", "R-fFT", "R-fTT", "R-fLT"], ["R-mBC", "R-mCT", "R-mFT", "R-mTT", "R-mLT"], ["R-hBC", "R-hCT", "R-hFT", "R-hTT", "R-hLT"]]
+
+
+[triangulation]
+triangulate = true
+cam_regex = "Cam([1-9])"
+axes = [ [ "x", "L-mBC", "R-mBC",], [ "y", "L-mBC", "L-fBC",],]
+reference_point = "L-mBC"
+ransac = false
+optim = true
+constraints = [["L-fBC", "L-fCT"], ["L-mBC", "L-mCT"], ["L-hBC", "L-hCT"], ["R-fBC", "R-fCT"], ["R-mBC", "R-mCT"], ["R-hBC", "R-hCT"]]
+constraints_weak = [["L-fTT", "L-fLT"], ["L-mTT", "L-mLT"], ["L-hTT", "L-hLT"], ["R-fTT", "R-fLT"], ["R-mTT", "R-mLT"], ["R-hTT", "R-hLT"]]
+scale_smooth = 1
+scale_length = 2
+scale_length_weak = 0.1
+reproj_error_threshold = 5
+score_threshold = 0.9
+n_deriv_smooth = 3
+
+[angles]
+LeftWingAngle = ["L-wing", "L-wing-hinge", "R-wing-hinge"]
+RightWingAngle = ["R-wing", "R-wing-hinge", "L-wing-hinge"]
+PlatformAngle = ["platform", "L-mCT", "R-mCT"]

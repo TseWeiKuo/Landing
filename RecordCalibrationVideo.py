@@ -139,6 +139,7 @@ T = 0
 FPS = 30
 Duration = 250
 ExposureTime = 12000
+buffer = 3000
 Cropped = False
 noise_reduction_value = 1
 sharpness = 2
@@ -175,7 +176,7 @@ if Cropped:
     camera1.LineInverter = False
     camera1.LineSource = "ExposureActive"
     camera1.Gain = camera1.Gain.Max
-    camera1.MaxNumBuffer = 100
+    camera1.MaxNumBuffer = buffer
     camera1.LineSelector = "Line3"
     camera1.LineMode = "Input"
     camera1.TriggerSelector = "FrameStart"
@@ -200,7 +201,7 @@ if Cropped:
     camera2.LineInverter = False
     camera2.LineSource = "ExposureActive"
     camera2.Gain = camera2.Gain.Max
-    camera2.MaxNumBuffer = 100
+    camera2.MaxNumBuffer = buffer
     camera2.LineSelector = "Line3"
     camera2.LineMode = "Input"
     camera2.TriggerSelector = "FrameStart"
@@ -225,7 +226,7 @@ if Cropped:
     camera3.LineInverter = False
     camera3.LineSource = "ExposureActive"
     camera3.Gain = camera3.Gain.Max
-    camera3.MaxNumBuffer = 100
+    camera3.MaxNumBuffer = buffer
     camera3.LineSelector = "Line3"
     camera3.LineMode = "Input"
     camera3.TriggerSelector = "FrameStart"
@@ -250,7 +251,7 @@ if Cropped:
     camera4.LineInverter = False
     camera4.LineSource = "ExposureActive"
     camera4.Gain = camera4.Gain.Max
-    camera4.MaxNumBuffer = 100
+    camera4.MaxNumBuffer = buffer
     camera4.LineSelector = "Line3"
     camera4.LineMode = "Input"
     camera4.TriggerSelector = "FrameStart"
@@ -275,7 +276,7 @@ if Cropped:
     camera5.LineInverter = False
     camera5.LineSource = "ExposureActive"
     camera5.Gain = camera5.Gain.Max
-    camera5.MaxNumBuffer = 100
+    camera5.MaxNumBuffer = buffer
     camera5.LineSelector = "Line3"
     camera5.LineMode = "Input"
     camera5.TriggerSelector = "FrameStart"
@@ -300,7 +301,7 @@ if Cropped:
     camera6.LineInverter = False
     camera6.LineSource = "ExposureActive"
     camera6.Gain = camera6.Gain.Max
-    camera6.MaxNumBuffer = 100
+    camera6.MaxNumBuffer = buffer
     camera6.LineSelector = "Line3"
     camera6.LineMode = "Input"
     camera6.TriggerSelector = "FrameStart"
@@ -322,7 +323,7 @@ else:
     camera1.LineInverter = False
     camera1.LineSource = "ExposureActive"
     camera1.Gain = camera1.Gain.Max
-    camera1.MaxNumBuffer = 100
+    camera1.MaxNumBuffer = buffer
     camera1.LineSelector = "Line3"
     camera1.LineMode = "Input"
     camera1.TriggerSelector = "FrameStart"
@@ -344,7 +345,7 @@ else:
     camera2.LineInverter = False
     camera2.LineSource = "ExposureActive"
     camera2.Gain = camera2.Gain.Max
-    camera2.MaxNumBuffer = 100
+    camera2.MaxNumBuffer = buffer
     camera2.LineSelector = "Line3"
     camera2.LineMode = "Input"
     camera2.TriggerSelector = "FrameStart"
@@ -366,7 +367,7 @@ else:
     camera3.LineInverter = False
     camera3.LineSource = "ExposureActive"
     camera3.Gain = camera3.Gain.Max
-    camera3.MaxNumBuffer = 100
+    camera3.MaxNumBuffer = buffer
     camera3.LineSelector = "Line3"
     camera3.LineMode = "Input"
     camera3.TriggerSelector = "FrameStart"
@@ -388,7 +389,7 @@ else:
     camera4.LineInverter = False
     camera4.LineSource = "ExposureActive"
     camera4.Gain = camera4.Gain.Max
-    camera4.MaxNumBuffer = 100
+    camera4.MaxNumBuffer = buffer
     camera4.LineSelector = "Line3"
     camera4.LineMode = "Input"
     camera4.TriggerSelector = "FrameStart"
@@ -410,7 +411,7 @@ else:
     camera5.LineInverter = False
     camera5.LineSource = "ExposureActive"
     camera5.Gain = camera5.Gain.Max
-    camera5.MaxNumBuffer = 100
+    camera5.MaxNumBuffer = buffer
     camera5.LineSelector = "Line3"
     camera5.LineMode = "Input"
     camera5.TriggerSelector = "FrameStart"
@@ -432,7 +433,7 @@ else:
     camera6.LineInverter = False
     camera6.LineSource = "ExposureActive"
     camera6.Gain = camera6.Gain.Max
-    camera6.MaxNumBuffer = 100
+    camera6.MaxNumBuffer = buffer
     camera6.LineSelector = "Line3"
     camera6.LineMode = "Input"
     camera6.TriggerSelector = "FrameStart"
@@ -461,7 +462,7 @@ else:
 # DaqInputThread = threading.Thread(target=ListeningCam)
 # DaqInputThread.start()
 # Launch the subprocess
-Send_signal_process = Popen(['python', 'subprocess_daq_trigger.py', str(FPS), str(20)])
+Send_signal_process = Popen(['python', 'subprocess_daq_trigger.py', str(FPS), str(20), str(1)])
 frames_to_grab = FPS * Duration
 filename = ""
 

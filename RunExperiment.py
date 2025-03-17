@@ -280,10 +280,10 @@ def CloseSubproess(SubProcessInstance):
 Data_Folder_Path = r"C:\Users\agrawal-admin\OneDrive - Virginia Tech\Desktop\DataFolder"
 
 # Specify the name of the experiment
-Experiment = "FlyingPosture"
+Experiment = "HCS+_UASKir2.1eGFP"
 
 # Specify the name of the group of the experiment
-Group_name = "T2_TTa_5sInterval"
+Group_name = "G107-HP2_T2-TiTa"
 
 # Initialize the date of the experiment
 Date = datetime.datetime.now().date()
@@ -300,11 +300,11 @@ Frames_grabbed_time_stamp = []
 Frames_grabbed_trial_time_stamp = []
 
 # Set the camera acquisition setting
-FPS = 200  # Frame rate
-ExposureTime = 60  # Exposure time
+FPS = 250  # Frame rate
+ExposureTime = 70  # Exposure time
 noise_reduction_value = 1  # Noise reduction
 Buffer = 3000  # Recording buffer
-sharpness = 2.5  # Sharpness
+sharpness = 3  # Sharpness
 print(f"ExposureTime: {ExposureTime} us")
 
 # Initialize the camera based on acquisition setting
@@ -337,7 +337,7 @@ Target_V = 2  # Motor stop position
 Initial_V = 1  # Motor start position
 Trial_num = 20  # Number of trials
 Platform_stop_duration = 1  # Motor stop time
-inter_stim_wait_time = [5] * Trial_num  # Inter trial wait time 10s
+inter_stim_wait_time = [10] * Trial_num  # Inter trial wait time 10s
 MotorExtendTime = 3  # Maximum motor extending time
 MotorRetractTime = 3  # Maximum motor retracting time
 Videos_recording_time = []  # Resulting recording time of each trial

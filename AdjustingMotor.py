@@ -99,7 +99,7 @@ def ViewFly():
                 TargetCoord3 = [FrontViewX - 3, FrontViewY]
                 TargetCoord4 = [FrontViewX - 4, FrontViewY]
                 Image4 = grabResult4.Array
-                # Image4 = DisplayGrid(Image4, 300, 120, 200, 380, TargetCoord)
+                Image4 = DisplayGrid(Image4, 300, 120, 200, 380, TargetCoord)
                 Image4 = DisplayGrid(Image4, 300, 120, 200, 380, TargetCoord1)
                 Image4 = DisplayGrid(Image4, 300, 120, 200, 380, TargetCoord2)
                 Image4 = DisplayGrid(Image4, 300, 120, 200, 380, TargetCoord3)
@@ -158,13 +158,13 @@ def ViewFly():
     camera6.Close()
 
 FPS = 40
-ExposureTime = 60
+ExposureTime = 80
 print(f"ExposureTime: {ExposureTime} us")
 Cropped = False
 SideViewX = 12
 SideViewY = 10
 FrontViewX = 5
-FrontViewY = 10
+FrontViewY = 12
 Continuous_recording = 1
 
 """
@@ -450,7 +450,9 @@ else:
     camera6.TriggerSource = "Line3"
     camera6.TriggerActivation = "RisingEdge"
     camera6.TriggerDelay = 0
+
 TriggerM = True
+
 if not TriggerM:
     camera1.TriggerMode = "Off"
     camera2.TriggerMode = "Off"

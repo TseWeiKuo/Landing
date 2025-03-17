@@ -4,6 +4,7 @@ from nidaqmx.constants import (AcquisitionType, CountDirection, Edge, READ_ALL_A
                                TriggerType, WAIT_INFINITELY, TerminalConfiguration)
 import numpy as np
 import sys
+import matplotlib.pyplot as plt
 
 """
 Rotate an array by n unit
@@ -31,6 +32,8 @@ n_samp = int(trigger_duration * dac_rate)
 sig = np.zeros(n_samp)
 # Initialize signal for IR light trigger pulse
 sig_R = np.zeros(n_samp)
+# Initialize signal for IR light trigger pulse
+sig_R_f = np.zeros(n_samp)
 
 """
 Camera trigger pulse generation
@@ -51,18 +54,33 @@ Ring light trigger pulse generation
 # The interval_size_R = number of AO data points per frame
 interval_size_R = int(dac_rate * (1 / fps))
 # Setting the duty cycle
-print(f"Light strobe duration: {((1000000/fps)/250) + 20} us")
-samples_high_R = 4
+samples_high_R = 8
 start_R = samples_high_R
 while start_R < n_samp:
     sig_R[start_R:start_R + samples_high_R] = TriggerVoltage
     start_R += interval_size_R
 
+"""
+Ring light trigger pulse generation
+"""
+# The interval_size_R = number of AO data points per frame
+interval_size_R_f = int(dac_rate * (1 / fps))
+# Setting the duty cycle
+samples_high_R_f = 1
+start_R_f = samples_high_R_f
+while start_R_f < n_samp:
+    sig_R_f[start_R_f:start_R_f + samples_high_R_f] = TriggerVoltage
+    start_R_f += interval_size_R_f
+
 # rotate the trigger pulse such that the camera and light pulse align
 sig = rotate_array(sig, samples_high - 1)
 sig_R = rotate_array(sig_R, samples_high_R - 1)
+sig_R_f = rotate_array(sig_R_f, samples_high_R_f - 1)
 sig = np.asarray(sig)
 sig_R = np.asarray(sig_R)
+sig_R_f = np.asarray(sig_R_f)
+
+
 
 # mode = 2 when the AO is sent trial by trial
 if Continuous_recording == 2:
@@ -74,11 +92,11 @@ if Continuous_recording == 2:
             # Add AO channels
             task.ao_channels.add_ao_voltage_chan("Dev2/ao1")
             task.ao_channels.add_ao_voltage_chan("Dev2/ao0")
-
+            task.ao_channels.add_ao_voltage_chan("Dev2/ao2")
             # Configure the task
             task.timing.cfg_samp_clk_timing(dac_rate, sample_mode=nidaqmx.constants.AcquisitionType.CONTINUOUS)
             # Prepare the data for AO signal
-            data = np.vstack([sig, sig_R])
+            data = np.vstack([sig, sig_R, sig_R_f])
             t = 0
 
             # Showing subprocess is ready for experiment
@@ -119,12 +137,13 @@ elif Continuous_recording == 1:
             # Add AO channels
             task.ao_channels.add_ao_voltage_chan("Dev2/ao1")
             task.ao_channels.add_ao_voltage_chan("Dev2/ao0")
+            task.ao_channels.add_ao_voltage_chan("Dev2/ao2")
 
             # Configure task
             task.timing.cfg_samp_clk_timing(dac_rate, sample_mode=nidaqmx.constants.AcquisitionType.CONTINUOUS)
 
             # Prepare AO data
-            data = np.vstack([sig, sig_R])
+            data = np.vstack([sig, sig_R, sig_R_f])
 
             # Write data to multiple channels
             task.write(data, auto_start=True)

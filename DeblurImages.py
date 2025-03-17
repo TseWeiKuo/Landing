@@ -10,7 +10,7 @@ def trim_video(input_file, output_file, start_time, end_time):
 
 
 
-source_folder = r"C:\Users\agrawal-admin\OneDrive - Virginia Tech\Desktop\DataFolder\FlyingPosture"
+source_folder = r"C:\Users\agrawal-admin\OneDrive - Virginia Tech\Desktop\DataFolder\LPAcrossLegsJoints\T2-TiTa\2025-01-30"
 dest_folder = r"C:\Users\agrawal-admin\Desktop\TibiaTarsusPlatformODLight-Wayne-2024-10-19\videos\pose-2d"
 
 

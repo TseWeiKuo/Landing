@@ -197,14 +197,16 @@ def MLLCluster(Filter_Data, file_name):
     sns.axes_style("ticks")
 
     combined_df = pd.concat(Filter_Data)
-
-    for i, group_data in enumerate(Filter_Data, start=1):
+    # ax = sns.violinplot(x="Group_Name", y="MLandingLatency", data=combined_df, palette=Color_blind_palette)
+    ax = sns.stripplot(x="Group_Name", y="MLandingLatency", data=combined_df, jitter=0.2, size=20, alpha=0.5, marker="o", palette=Color_blind_palette)
+    """for i, group_data in enumerate(Filter_Data, start=1):
         if samejoint:
             ax = sns.stripplot(x="Group_Name", y="MLandingLatency", data=group_data, jitter=0.2, size=20, alpha=0.75, marker=markers[i - 1], color=Color_blind_palette[0])
         else:
-            ax = sns.stripplot(x="Group_Name", y="MLandingLatency", data=group_data, jitter=0.2, size=20, alpha=0.75, marker=markers[i - 1], color=Color_blind_palette[i-1])
-        ax.spines['left'].set_linewidth(3)
-        ax.spines['bottom'].set_linewidth(3)
+            ax = sns.stripplot(x="Group_Name", y="MLandingLatency", data=group_data, jitter=0.2, size=20, alpha=0.75, marker=markers[i - 1], color=Color_blind_palette[i-1])"""
+
+    ax.spines['left'].set_linewidth(3)
+    ax.spines['bottom'].set_linewidth(3)
     group_stat = combined_df.groupby('Group_Name')["MLandingLatency"].agg(['mean', 'std', 'count']).reset_index()
     group_stat['ci'] = 1.96 * group_stat['std'] / np.sqrt(group_stat['count'])
 
@@ -229,31 +231,38 @@ def TLLCluster(Original_Data, file_name):
     fig = plt.figure(1, figsize=(len(Original_Data) * 4, 10))
     sns.axes_style("ticks")
     combined_df = pd.concat(Original_Data)
-    unique_group_names = combined_df["Group_Name"].unique()
-    unique_group_names_reversed = unique_group_names[::-1]
-    print(Color_blind_palette)
 
-    for i, group_data in enumerate(Original_Data, start=1):
+    # ax = sns.violinplot(x="Group_Name", y="TrialLandingLatency", data=combined_df, palette=Color_blind_palette)
+    ax = sns.stripplot(x="Group_Name", y="TrialLandingLatency", data=combined_df, jitter=0.2, size=20, alpha=0.4, marker="o", palette=Color_blind_palette)
+    """for i, group_data in enumerate(Original_Data, start=1):
         if samejoint:
             ax = sns.stripplot(x="Group_Name", y="TrialLandingLatency", data=group_data, jitter=0.2, size=20, alpha=0.75, marker=markers[i - 1], color=Color_blind_palette[0])
         else:
-            ax = sns.violinplot(x="Group_Name", y="TrialLandingLatency", data=group_data, color=Color_blind_palette[i-1],
-                                split=True, hue=0, hue_order=[1, 0], dodge=True, legend=False)
-            ax = sns.stripplot(x="Group_Name", y="TrialLandingLatency", data=group_data, jitter=0.2, size=30, alpha=0.4,
-                               hue=0, hue_order=[2, 1, 0, -1, -2, -3, -4], dodge=True, legend=False,  marker=markers[i - 1],
-                               color=lightened_palette[i-1])
+            #ax = sns.violinplot(x="Group_Name", y="TrialLandingLatency", data=group_data, color=Color_blind_palette[i-1],
+            #                    split=True, hue=0, hue_order=[1, 0], dodge=True, legend=False)
+            #ax = sns.stripplot(x="Group_Name", y="TrialLandingLatency", data=group_data, jitter=0.2, size=30, alpha=0.4,
+            #                   hue=0, hue_order=[2, 1, 0, -1, -2, -3, -4], dodge=True, legend=False,  marker=markers[i - 1],
+            #                   color=lightened_palette[i-1])
+            ax = sns.stripplot(x="Group_Name", y="TrialLandingLatency", data=group_data, jitter=0.2, size=30, alpha=0.4, dodge=True, legend=False,
+                               marker=markers[i - 1],
+                               color=lightened_palette[i - 1])"""
 
     ax.spines['left'].set_linewidth(3)
     ax.spines['bottom'].set_linewidth(3)
     group_stat = combined_df.groupby('Group_Name')["TrialLandingLatency"].agg(['mean', 'std', 'count']).reset_index()
+    print(group_stat)
     group_stat['ci'] = 1.96 * group_stat['std'] / np.sqrt(group_stat['count'])
 
-    sns.pointplot(x='Group_Name', y='mean', data=group_stat, color='black', linestyles=" ", markers="s", errorbar=None, scale=2)
-    plt.errorbar(x=group_stat['Group_Name'], y=group_stat['mean'], yerr=group_stat['ci'], fmt="none", color='black', capsize=10)
+    sns.pointplot(x='Group_Name', y='mean', data=group_stat, color='black', linestyles=" ", markers="s", errorbar=None, scale=2, zorder=10)
+    plt.errorbar(x=group_stat['Group_Name'], y=group_stat['mean'], yerr=group_stat['ci'], fmt="none", color='black', capsize=10, zorder=10)
     plt.ylabel("Trial Landing latency (s)", fontsize=25)
     plt.xlabel("Group", fontsize=25)
-    plt.ylim(-0.3, 1.5)
-    plt.yticks([0, 0.5, 1])
+    if FilterHighLatency:
+        plt.ylim(-0.3, 1.1)
+        plt.yticks([0, 0.5, 1])
+    else:
+        plt.ylim(-0.3, 3)
+        plt.yticks([0, 1.5, 3])
     plt.tick_params(axis="y", labelsize=25)
     plt.tick_params(axis="x", labelsize=25, rotation=45)
     plt.tick_params(width=3, length=10)
@@ -342,7 +351,7 @@ def LPAcrossFlies(Data_to_plot, file_name):
     if samejoint:
         for i, d in enumerate(Data_to_plot):
             if not vio:
-                g = sns.stripplot(x="Group_Name", y="LandingProb", data=d, alpha=0.75, jitter=0.2, dodge=False, size=20, marker=markers[i], color=Color_blind_palette[0])
+                g = sns.stripplot(x="Group_Name", y="LandingProb", data=d, alpha=0.4, jitter=0.2, dodge=False, size=20, marker=markers[i], color=Color_blind_palette[0])
             else:
                 g = sns.violinplot(x="Group_Name", y="LandingProb", data=d, hue="Group_Name")
                 for j, violin in enumerate(g.collections):
@@ -350,7 +359,7 @@ def LPAcrossFlies(Data_to_plot, file_name):
     else:
         if not vio:
             for i, d in enumerate(Data_to_plot):
-                g = sns.stripplot(x="Group_Name", y="LandingProb", data=d, alpha=0.75, jitter=0.1, dodge=False, size=30, marker=markers[i], color=Color_blind_palette[i])
+                g = sns.stripplot(x="Group_Name", y="LandingProb", data=d, alpha=0.4, jitter=0.1, dodge=False, size=30, marker=markers[i], color=Color_blind_palette[i], zorder=10)
                 # g = sns.violinplot(x="Group_Name", y="LandingProb", data=d, color=Color_blind_palette[i])
             # g = sns.stripplot(x="Group_Name", y="LandingProb", data=combined_df, alpha=0.75, jitter=0.2, dodge=False, size=20, hue="Group_Name", palette=Color_blind_palette)
         else:
@@ -362,8 +371,8 @@ def LPAcrossFlies(Data_to_plot, file_name):
     group_stat = combined_df.groupby('Group_Name')['LandingProb'].agg(['mean', 'std', 'count']).reset_index()
     group_stat['ci'] = 1.96 * group_stat['std'] / np.sqrt(group_stat['count'])
 
-    sns.pointplot(x='Group_Name', y='mean', data=group_stat, color='black', linestyles=" ", markers="s", errorbar=None, scale=2)
-    plt.errorbar(x=group_stat['Group_Name'], y=group_stat['mean'], yerr=group_stat['ci'], fmt="none", color='black', capsize=10)
+    sns.pointplot(x='Group_Name', y='mean', data=group_stat, color='black', linestyles=" ", markers="s", errorbar=None, scale=2, zorder=10)
+    plt.errorbar(x=group_stat['Group_Name'], y=group_stat['mean'], yerr=group_stat['ci'], fmt="none", color='black', capsize=10, zorder=10)
     # legend_elements = [plt.Line2D([0], [0], marker=markers[i], color='w', label=group_name[i], markerfacecolor=Color_blind_palette[i], markersize=10) for i in range(len(Data_to_plot))]
 
     # plt.legend(handles=legend_elements, loc='upper right', fontsize=20)
@@ -427,11 +436,12 @@ def ReadAndFilterData(GroupName, Flies_to_pick, Landing_Data_path):
     return Landing_Data
 def CalculateLPAndmLLAcrossFlies(GroupName, Landing_Data, fps):
     global FilterHighLatency
+    global trial_offset
     LP_mLL_Data = dict()
     LP_mLL_Data["LandingProb"] = []
     LP_mLL_Data["MLandingLatency"] = []
     LP_mLL_Data["Fly#"] = []
-    Trials = ["Trial_" + str(i + 1) for i in range(Trial_num)]
+    Trials = ["Trial_" + str(i + 1 + trial_offset) for i in range(Trial_num - trial_offset)]
     Landing_Data = Landing_Data[Trials]
     for index, row in Landing_Data.iterrows():
         if FilterHighLatency:
@@ -441,8 +451,8 @@ def CalculateLPAndmLLAcrossFlies(GroupName, Landing_Data, fps):
         else:
             Landing_latency = [l / fps for l in row if not isinstance(l, str) and l > 0]
             Nan_data = [n for n in row if pd.isna(n) or isinstance(n, str)]
-            Flying = [f for f in row if f == 0]
-        if len(Nan_data) + len(Flying) + len(Landing_latency) != Trial_num:
+            Flying = [f for f in row if not (isinstance(f, str) or pd.isna(f)) and (f == -1)]
+        if len(Nan_data) + len(Flying) + len(Landing_latency) != Trial_num - trial_offset:
             print(f"Error while filtering data")
             print(f"Index: {index}")
             print(f"# of Nan: {len(Nan_data)}\t{Nan_data}")
@@ -497,16 +507,33 @@ def CessationAcrossFlies(GroupName, Flies_to_pick, Cessation_Data_path):
     plt.show()
 def GetTrial_Landing_Data(LandingData, group_name, fps):
     landing_data = []
+    global trial_offset
+    global FilterHighLatency
+    Trials = ["Trial_" + str(i + 1 + trial_offset) for i in range(Trial_num - trial_offset)]
+    LandingData = LandingData[Trials]
+
     for index, row in LandingData.iterrows():
-        for data in row.values[1:]:
-            if not (isinstance(data, str) or pd.isna(data) or float(data) == -1 or data > 1 * fps):
-                landing_data.append(data/fps)
+        t = 0
+        # print(row)
+        for data in row.values:
+            if FilterHighLatency:
+                if not (isinstance(data, str) or pd.isna(data) or float(data) == -1 or data > 1 * fps):
+                    # print(group_name, index, t + trial_offset)
+                    landing_data.append(data/fps)
+                    t += 1
+            else:
+                if not (isinstance(data, str) or pd.isna(data) or float(data) == -1):
+                    # print(group_name, index, t + trial_offset)
+                    landing_data.append(data/fps)
+                    t += 1
+        # print(t)
     landing_data = pd.DataFrame(
         {
             "TrialLandingLatency": landing_data,
             "Group_Name": [group_name] * len(landing_data)
         }
     )
+    # print(group_name, len(landing_data))
     return landing_data
 def CalculateNFProbability(GroupName, Landing_Data):
     global FilterHighLatency
@@ -549,21 +576,73 @@ FilterHighLatency = True
 samejoint = False
 vio = False
 ReadData = True
-
-T2_TTa_10sInterval = pd.read_excel(r"C:\Users\agrawal-admin\OneDrive - Virginia Tech\Desktop\DataFolder\InbetweenTrial\T2_TTa_10sInterval\LandingProbabilityData_10s_interval.xlsx")
-NF_prob_10sIn = CalculateNFProbability("10s Interval", T2_TTa_10sInterval)
-
-
-T2_TTa_10sInterval_No_Curtain = pd.read_excel(r"C:\Users\agrawal-admin\OneDrive - Virginia Tech\Desktop\DataFolder\InbetweenTrial\T2_TTa_10sIntervalNoCurtains\LandingProbabilityData_10s_interval_no_curtain.xlsx")
-NF_prob_10sIn_NoCur = CalculateNFProbability("10s Interval No Cur", T2_TTa_10sInterval_No_Curtain)
-
-
-T2_TTa_15sInterval = pd.read_excel(r"C:\Users\agrawal-admin\OneDrive - Virginia Tech\Desktop\DataFolder\InbetweenTrial\T2_TTa_15sInterval\LandingProbabilityData_15s_Interval.xlsx")
-NF_prob_15sIn = CalculateNFProbability("15s Interval", T2_TTa_15sInterval)
-
-
-T2_TTa_20sInterval = pd.read_excel(r"C:\Users\agrawal-admin\OneDrive - Virginia Tech\Desktop\DataFolder\InbetweenTrial\T2_TTa_20sInterval\LandingProbabilityData_20s_Interval.xlsx")
-NF_prob_20sIn = CalculateNFProbability("20s Interval", T2_TTa_20sInterval)
+trial_offset = 3
+T1TTa_path = r"C:\Users\agrawal-admin\OneDrive - Virginia Tech\Desktop\DataFolder\LPAcrossLegsJoints\T1-TiTa\T1-TiTaLP.xlsx"
+T1TTa_200FPS = ReadAndFilterData(r"T1-TiTa", [1, 12], T1TTa_path)
+T1TTa_250FPS = ReadAndFilterData(r"T1-TiTa", [13, 15], T1TTa_path)
+T1TTa_LP_200FPS = CalculateLPAndmLLAcrossFlies(r"T1-TiTa", T1TTa_200FPS, 200)
+T1TTa_LL_200FPS = GetTrial_Landing_Data(T1TTa_200FPS, "T1-TiTa", 200)
+T1TTa_LP_250FPS = CalculateLPAndmLLAcrossFlies(r"T1-TiTa", T1TTa_250FPS, 250)
+T1TTa_LL_250FPS = GetTrial_Landing_Data(T1TTa_250FPS, "T1-TiTa", 250)
+T1TTa_LP = pd.concat([T1TTa_LP_200FPS, T1TTa_LP_250FPS])
+T1TTa_LL = pd.concat([T1TTa_LL_200FPS, T1TTa_LL_250FPS])
 
 
-FlyingProbability([NF_prob_10sIn, NF_prob_15sIn, NF_prob_20sIn, NF_prob_10sIn_NoCur], "NotFlyingProbability")
+T2TTa_path = r"C:\Users\agrawal-admin\OneDrive - Virginia Tech\Desktop\DataFolder\LPAcrossLegsJoints\T2-TiTa\T2-TiTaLP.xlsx"
+T2TTa_Filtered = ReadAndFilterData(r"T2-TiTa", [1, 15], T2TTa_path)
+T2TTa_LP = CalculateLPAndmLLAcrossFlies(r"T2-TiTa", T2TTa_Filtered, 200)
+T2TTa_LL = GetTrial_Landing_Data(T2TTa_Filtered, "T2-TiTa", 200)
+
+
+T3TTa_path = r"C:\Users\agrawal-admin\OneDrive - Virginia Tech\Desktop\DataFolder\LPAcrossLegsJoints\T3-TiTa\T3-TiTaLP.xlsx"
+T3TTa_200FPS = ReadAndFilterData(r"T3-TiTa", [1, 15], T3TTa_path)
+T3TTa_250FPS = ReadAndFilterData(r"T3-TiTa", [16, 20], T3TTa_path)
+T3TTa_LP_200FPS = CalculateLPAndmLLAcrossFlies(r"T3-TiTa", T3TTa_200FPS, 200)
+T3TTa_LL_200FPS = GetTrial_Landing_Data(T3TTa_200FPS, "T3-TiTa", 200)
+T3TTa_LP_250FPS = CalculateLPAndmLLAcrossFlies(r"T3-TiTa", T3TTa_250FPS, 250)
+T3TTa_LL_250FPS = GetTrial_Landing_Data(T3TTa_250FPS, "T3-TiTa", 250)
+T3TTa_LP = pd.concat([T3TTa_LP_200FPS, T3TTa_LP_250FPS])
+T3TTa_LL = pd.concat([T3TTa_LL_200FPS, T3TTa_LL_250FPS])
+
+T1CTF_Tarsus_path = r"C:\Users\agrawal-admin\OneDrive - Virginia Tech\Desktop\DataFolder\LPAcrossLegsJoints\T1-CxTr\T1-TiTa-Data_TarsusContact.xlsx"
+T1CTF_Tarsus = ReadAndFilterData(r"T1-CxTr-TarsusContact", [1, 15], T1CTF_Tarsus_path)
+T1CTF_Tarsus_LP = CalculateLPAndmLLAcrossFlies(r"T1-CxTr-TarsusContact", T1CTF_Tarsus, 250)
+T1CTF_Tarsus_LL = GetTrial_Landing_Data(T1CTF_Tarsus, r"T1-CxTr-TarsusContact", 250)
+
+T1CTF_CxTr_path = r"C:\Users\agrawal-admin\OneDrive - Virginia Tech\Desktop\DataFolder\LPAcrossLegsJoints\T1-CxTr\T1-TiTa-Data_CoxaContact.xlsx"
+T1CTF_CxTr = ReadAndFilterData(r"T1-CxTr-CoxaContact", [1, 15], T1CTF_CxTr_path)
+T1CTF_CxTr_LP = CalculateLPAndmLLAcrossFlies(r"T1-CxTr-CoxaContact", T1CTF_CxTr, 250)
+T1CTF_CxTr_LL = GetTrial_Landing_Data(T1CTF_CxTr, r"T1-CxTr-CoxaContact", 250)
+
+T2CTF_path = r"C:\Users\agrawal-admin\OneDrive - Virginia Tech\Desktop\DataFolder\LPAcrossLegsJoints\T2-CxTr\T2-CxTrLP.xlsx"
+T2CTF_Filtered = ReadAndFilterData(r"T2-CxTr", [1, 18], T2CTF_path)
+T2CTF_LP = CalculateLPAndmLLAcrossFlies(r"T2-CxTr", T2CTF_Filtered, 250)
+T2CTF_LL = GetTrial_Landing_Data(T2CTF_Filtered, r"T2-CxTr", 250)
+
+T3CTF_path = r"C:\Users\agrawal-admin\OneDrive - Virginia Tech\Desktop\DataFolder\LPAcrossLegsJoints\T3-CxTr\T3-CxTrLP.xlsx"
+T3CTF_Filtered = ReadAndFilterData(r"T3-CxTr", [1, 17], T3CTF_path)
+T3CTF_LP = CalculateLPAndmLLAcrossFlies(r"T3-CxTr", T3CTF_Filtered, 250)
+T3CTF_LL = GetTrial_Landing_Data(T3CTF_Filtered, r"T3-CxTr", 250)
+
+
+T2_TTa_G106_path = r"C:\Users\agrawal-admin\OneDrive - Virginia Tech\Desktop\DataFolder\HCS+_UASKir2.1eGFP\G106-HP1_T2-TiTa\LandingData_G106.xlsx"
+T2_TTa_G106 = ReadAndFilterData(r"T2-TiTa G106", [1, 9], T2_TTa_G106_path)
+T2_TTa_G106_LP = CalculateLPAndmLLAcrossFlies(r"T2-TiTa G106", T2_TTa_G106, 250)
+T2_TTa_G106_LL = GetTrial_Landing_Data(T2_TTa_G106, r"T2-TiTa G106", 250)
+
+T2_TTa_G107_path = r"C:\Users\agrawal-admin\OneDrive - Virginia Tech\Desktop\DataFolder\HCS+_UASKir2.1eGFP\G107-HP2_T2-TiTa\LandingData_G107.xlsx"
+T2_TTa_G107 = ReadAndFilterData(r"T2-TiTa G107", [1, 14], T2_TTa_G107_path)
+T2_TTa_G107_LP = CalculateLPAndmLLAcrossFlies(r"T2-TiTa G107", T2_TTa_G107, 250)
+T2_TTa_G107_LL = GetTrial_Landing_Data(T2_TTa_G107, r"T2-TiTa G107", 250)
+
+LPAcrossFlies([T2TTa_LP, T2_TTa_G106_LP, T2_TTa_G107_LP], "Mutant Fly LP")
+TLLCluster([T2TTa_LL, T2_TTa_G106_LL, T2_TTa_G107_LL], "Mutant Fly LL")
+
+print(perform_t_test(T2TTa_LP["LandingProb"], T2_TTa_G106_LP["LandingProb"]))
+print(perform_t_test(T2TTa_LP["LandingProb"], T2_TTa_G107_LP["LandingProb"]))
+print(perform_t_test(T2_TTa_G106_LP["LandingProb"], T2_TTa_G107_LP["LandingProb"]))
+
+
+print(perform_t_test(T2TTa_LL["TrialLandingLatency"], T2_TTa_G106_LL["TrialLandingLatency"]))
+print(perform_t_test(T2TTa_LL["TrialLandingLatency"], T2_TTa_G107_LL["TrialLandingLatency"]))
+print(perform_t_test(T2_TTa_G106_LL["TrialLandingLatency"], T2_TTa_G107_LL["TrialLandingLatency"]))
