@@ -1,17 +1,14 @@
-from moviepy.video.io.VideoFileClip import VideoFileClip
-from moviepy.video.io.ffmpeg_tools import ffmpeg_extract_subclip
+
 import os
 import shutil
 import cv2
 import numpy as np
 
-def trim_video(input_file, output_file, start_time, end_time):
-    ffmpeg_extract_subclip(input_file, start_time, end_time, targetname=output_file)
 
 
 
-source_folder = r"C:\Users\agrawal-admin\OneDrive - Virginia Tech\Desktop\DataFolder\LPAcrossLegsJoints\T2-TiTa\2025-01-30"
-dest_folder = r"C:\Users\agrawal-admin\Desktop\TibiaTarsusPlatformODLight-Wayne-2024-10-19\videos\pose-2d"
+source_folder = r"C:\Users\agrawal-admin\Desktop\DeeplabcutAnalyzedData\Network-03-14\G106-HP1_T2-TiTa_DLC_output"
+dest_folder = r"C:\Users\agrawal-admin\Desktop\DeeplabcutAnalyzedData\Network-03-14\G106-HP1-T2-TiTa_H5"
 
 
 """
@@ -42,10 +39,11 @@ for root, dirs, files in os.walk(source_folder):
             output_file_path = os.path.join(dest_folder, file)
             print(output_file_path)
             new_filename = output_file_path[:output_file_path.find("Cam") + 4] + ".h5"
+            print(new_filename)
             new_destination_path = os.path.join(dest_folder, new_filename)
             print(new_destination_path)
             # Copy the file with the new name
-            shutil.copy(input_file_path, new_destination_path)
+            # shutil.copy(input_file_path, new_destination_path)
             # Trim the video and save to the destination folder
             # trim_video(input_file_path, output_file_path, 1, 5)
 

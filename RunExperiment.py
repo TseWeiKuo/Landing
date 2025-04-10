@@ -9,6 +9,8 @@ import concurrent.futures
 import datetime
 import pandas as pd
 import json
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 """
 Send a string command to subprocess
@@ -277,13 +279,13 @@ def CloseSubproess(SubProcessInstance):
     SubProcessInstance.wait()
 
 # Initialize the designated data folder for storing video data and experiment metadata
-Data_Folder_Path = r"C:\Users\agrawal-admin\OneDrive - Virginia Tech\Desktop\DataFolder"
+Data_Folder_Path = r"C:\Users\agrawal-admin\Desktop\DataFolder"
 
 # Specify the name of the experiment
 Experiment = "HCS+_UASKir2.1eGFP"
 
 # Specify the name of the group of the experiment
-Group_name = "G107-HP2_T2-TiTa"
+Group_name = "CSS-0039_T2-CxTr"
 
 # Initialize the date of the experiment
 Date = datetime.datetime.now().date()
@@ -301,9 +303,9 @@ Frames_grabbed_trial_time_stamp = []
 
 # Set the camera acquisition setting
 FPS = 250  # Frame rate
-ExposureTime = 70  # Exposure time
+ExposureTime = 75  # Exposure time
 noise_reduction_value = 1  # Noise reduction
-Buffer = 3000  # Recording buffer
+Buffer = 4000  # Recording buffer
 sharpness = 3  # Sharpness
 print(f"ExposureTime: {ExposureTime} us")
 
@@ -330,10 +332,10 @@ camera5 = InitializeCamera(devices[4], ExposureTime=ExposureTime, sharpness=shar
 camera6 = InitializeCamera(devices[5], ExposureTime=ExposureTime, sharpness=sharpness, noise_reduction_value=noise_reduction_value, Buffer=Buffer)
 
 # Change the cwd to the where the main script RunExperiment.py is, to run the subprocess
-os.chdir(r"C:\Users\agrawal-admin\OneDrive - Virginia Tech\Desktop\Agrawal_Lab")
+os.chdir(r"C:\Users\agrawal-admin\Desktop\Landing")
 
 # Set motor parameters
-Target_V = 2  # Motor stop position
+Target_V = 1.9  # Motor stop position
 Initial_V = 1  # Motor start position
 Trial_num = 20  # Number of trials
 Platform_stop_duration = 1  # Motor stop time

@@ -3,11 +3,13 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+from natsort import natsorted
 import h5py
 from sklearn.tree import DecisionTreeClassifier
 from dateutil.parser import parse
 from openpyxl import Workbook
 from openpyxl.styles import PatternFill
+from openpyxl import load_workbook
 from datetime import datetime
 from scipy.optimize import curve_fit
 from sklearn.linear_model import LinearRegression
@@ -19,6 +21,8 @@ from scipy.stats import gaussian_kde
 from scipy.ndimage import gaussian_filter1d
 import warnings
 import re
+
+
 warnings.filterwarnings(action="ignore", category=RuntimeWarning)
 
 """
@@ -33,21 +37,6 @@ def exponential_moving_average(data, alpha):
     return ema
 def find_derivative(y):
     return np.gradient(y, 1)
-def two_phase_decay_func(x, a1, b1, a2, b2, c):
-    return a1 * np.exp(-b1 * x) + a2 * np.exp(-b2 * x) + c
-def Find_best_fit_platform(x_data, y_data):
-    x_data = np.asarray(x_data)
-    y_data = np.asarray(y_data)
-    valid_indices = ~np.isnan(y_data)
-    x_valid = x_data[valid_indices]
-    y_valid = y_data[valid_indices]
-    if len(y_valid) != 0:
-        params, covariance = curve_fit(two_phase_decay_func, x_data, y_valid, maxfev=10000)
-        a1, b1, a2, b2, c = params
-        y_pred = two_phase_decay_func(x_valid, a1, b1, a2, b2, c)
-        return x_valid, y_pred
-    else:
-        return [], []
 def determine_smooth_amplify_curve(data, sig, amp):
     if amp:
         data = np.asarray(data)
@@ -123,7 +112,6 @@ def normalize_list(data, method="min-max"):
         if max_val == min_val:
             raise ValueError("Cannot perform Min-Max normalization when all values are the same.")
         return [(x - min_val) / (max_val - min_val) for x in data]
-
 """
 These functions are responsible for detecting various characteristic of the angle and 3D data
 """
@@ -168,32 +156,25 @@ def detect_significant_drop(angle_data, bl_range, wing_ang_fold_th, wing_ang_dro
 
 
     return 0
-def detect_Not_Flying(angle_data, bl_range, wing_ang_fold_th, wing_ang_drop_percent, window_size, baseline_diff_percent):
+def detect_Not_Flying(angle_data, bl_range, wing_ang_fold_th=0, wing_ang_drop_percent=0, window_size=1, baseline_diff_percent=0):
     start_base_line = np.mean(angle_data[:bl_range])
     end_base_line = np.mean(angle_data[-bl_range:])
-    # print(start_base_line, end_base_line)
-    if ((start_base_line - end_base_line) / start_base_line) < baseline_diff_percent and start_base_line < wing_ang_fold_th:
+    if start_base_line < 2:
         return True
     else:
-        stop_idx = detect_significant_drop(angle_data, bl_range, wing_ang_fold_th, wing_ang_drop_percent, window_size)
-        # print(stop_idx)
-        if stop_idx < int(0.1 * len(angle_data)) and stop_idx != 0:
-            return True
-        else:
-            return False
+        return False
 def detect_moment_of_landing(trace_data, wing_distance_threshold, wind_size, duration_threshold):
     wing_fold_duration = 0
     cons_th = 4
-    if np.average(trace_data[:100]) < 2:
-        return 0
+
     for i in range(0, len(trace_data), wind_size):
         if np.average(trace_data[i:i+wind_size]) < wing_distance_threshold:
             wing_fold_duration += 1
         else:
             wing_fold_duration = 0
         if wing_fold_duration > duration_threshold:
-            return i - ((cons_th - 1) * wind_size)
-    return 0
+            return i - ((cons_th - 1) * wind_size), True
+    return 0, False
 def detectFlying(angle_data, bl_range, wing_ang_fold_th, window_size):
     chunk_size = 20
     start_base_line = np.mean(angle_data[:bl_range])
@@ -204,67 +185,21 @@ def detectFlying(angle_data, bl_range, wing_ang_fold_th, window_size):
             if current_v < wing_ang_fold_th:
                 return False
     return True
-def detect_moment_of_contact(threeD_data):
-    for index, f in threeD_data.iterrows():
-        TT_joint = [f["R-mTT_x"], f["R-mTT_y"], f["R-mTT_z"]]
-        LT_joint = [f["R-mLT_x"], f["R-mLT_y"], f["R-mLT_z"]]
-        Center = [f["platform-tip_x"], f["platform-tip_y"], f["platform-tip_z"]]
-        Left = [f["L-platform-tip_x"], f["L-platform-tip_y"], f["L-platform-tip_z"]]
-        Right = [f["R-platform-tip_x"], f["R-platform-tip_y"], f["R-platform-tip_z"]]
-        if check_leg_platform_intersection(TT_joint, LT_joint, Center, Left, Right):
-            return index
-    return 0
-def WingAngle_DetermineLanding(wing_data, platform_data, fly, trial):
-    global Customized_wing_threshold
-    global Customized_Flying_threshold
-    global Customized_notFly_threshold
-    chunk_size = 4
-    chunk_num = 0
+def detect_moment_of_landing_WingAngle(angle_data, wing_angle_threshold, wind_size, duration_threshold):
+    wing_fold_duration = 0
+    cons_th = 3
 
-    nan_count = wing_data.isna().sum()
-    percentage_nan = (nan_count / len(wing_data)) * 100
-    moment_of_contact = 0
-    stop_dropping = 0
-    # Determine validity of the data
-    print(f"Fly: {fly}---Trial{trial}")
-    if percentage_nan > 50:
-        # print(np.nan)
-        return np.nan, 0
-    else:
-        stop_dropping = detect_significant_drop(wing_data, 50, 105, 0.3, 15)
-        moment_of_contact = detect_moment_of_contact(platform_data, "Threshold", 0, 4, 0, 0)
-        if detect_Not_Flying(wing_data, 50, 105, 0.3, 10, 0.15):
-
-            # print(2, 0)
-            return 2, 0
+    for i in range(0, len(angle_data), wind_size):
+        if np.average(angle_data[i:i+wind_size]) < wing_angle_threshold:
+            wing_fold_duration += 1
         else:
-            if stop_dropping > 50:
-                latency = stop_dropping - moment_of_contact
-                print(f"Stop dropping: {stop_dropping}")
-                print(f"MOC: {moment_of_contact}")
-                if latency > 0:
-                    if latency > 450:
-                        return 0, 0
-                    else:
-                        return 1, latency
-                else:
-                    return 2, 0
-            else:
-                if detectFlying(wing_data, 50, 100, 5):
-                    # print(0, 0)
-                    return 0, 0
-                else:
-                    landing, latency = detect_brief_landing(wing_data, 50, 150, 0.25, 10, 105, 5)
-                    # print(landing, latency)
-                    if landing:
-                        return 1, latency - moment_of_contact
-
-    # print("Uncategorized")
-    return 0, 0
+            wing_fold_duration = 0
+        if wing_fold_duration > duration_threshold:
+            return i - ((cons_th - 1) * wind_size), True
+    return 0, False
 """
 These functions are responsible for testing and plotting the result from detection functions.
 """
-
 def ReadAndFilterData(GroupName, Flies_to_pick, Landing_Data_path):
     global Trial_num
     Landing_Data = pd.read_excel(Landing_Data_path)
@@ -392,25 +327,15 @@ def detectMOC(data, threshold=0.09538):
         if np.average(data[i:i + wind_size]) <= threshold:
             return i
     return 0
-def MakePlot(Angle_data, Pose_Data, fly_num, clipstart, clipend, plot_manual):
-    global mol_data
-    global moc_data
-    global p_dist_at_moc
-    global p_baseline
-    global fit_line_pred_at_moc
-    global fit_line_baseline
-    global average_baseline
-    global average_distance_at_moc
-    global moc_error
-    global slopes
-    global intercepts
-    global platform_distance
+def MakePlot(DataPaths, fly_num):
     i = 0
     j = 0
     t = 0
+    start = 0
+    end = 1250
     fig, axs = plt.subplots(nrows=5, ncols=4, figsize=(20, 16))
-    for trial_angle, trial_kinematic in zip(Angle_data, Pose_Data):
-        filtered = False
+    for dp in DataPaths:
+        Data = pd.read_csv(dp)
         if i % 5 == 0:
             j += 1
             i = 1
@@ -418,58 +343,56 @@ def MakePlot(Angle_data, Pose_Data, fly_num, clipstart, clipend, plot_manual):
             i += 1
         # Plot data
         ax2 = axs[i - 1, j - 1].twinx()
-        ax2.set_ylim(-2, 10)
-        seconds = [f / FPS for f in range(clipend - clipstart)]
-        wing_distance = CalculateDistance_Platform_RmCT(trial_kinematic[clipstart:clipend], "L-wing", "R-wing")
-        sns.lineplot(x=seconds, y=trial_angle["RightWingAngle"][clipstart:clipend], ax=axs[i - 1, j - 1], color="red")
-        sns.lineplot(x=seconds, y=trial_angle["LeftWingAngle"][clipstart:clipend], ax=axs[i - 1, j - 1], color="blue")
-        sns.lineplot(x=seconds, y=wing_distance, ax=ax2, color="green")
+        ax2.set_ylim(0, 180)
 
-        axs[i - 1, j - 1].set_xlabel("Second")
+        trial_type, MOL = CategorizeTrial(Data, fly_num, t + 1)
+
+        WingAbTipAngle = Calculate_joint_angle(Data, [["R-wing", "R-wing-hinge", "abdomen-tip"], ["L-wing", "L-wing-hinge", "abdomen-tip"]])
+        WingTipDistance = Calculate_segment_length(Data, [["L-wing", "R-wing"]])
+        R_mol, RL = detect_moment_of_landing_WingAngle(WingAbTipAngle["R-wing-hinge"], 50, 4, 2)
+        L_mol, LL = detect_moment_of_landing_WingAngle(WingAbTipAngle["L-wing-hinge"], 50, 4, 2)
+        # mol, L = detect_moment_of_landing(WingTipDistance["L-wing_R-wing"], 2, 4, 3)
+        seconds = [f for f in range(len(WingTipDistance["L-wing_R-wing"][start:end]))]
+        # sns.lineplot(x=seconds, y=WingTipDistance["L-wing_R-wing"][start:end], ax=axs[i - 1, j - 1], color="black")
+        # sns.lineplot(x=seconds, y=trial_angle["LeftWingAngle"][clipstart:clipend], ax=axs[i - 1, j - 1], color="blue")
+        # sns.lineplot(x=seconds, y=wing_distance, ax=ax2, color="green")
+
+        if trial_type == 0:
+            sns.lineplot(x=seconds, y=WingAbTipAngle["R-wing-hinge"][start:end], ax=ax2, color="blue")
+            sns.lineplot(x=seconds, y=WingAbTipAngle["L-wing-hinge"][start:end], ax=ax2, color="navy")
+        elif trial_type == 1:
+            MOC, contact_point = DetermineTiTaMOC(Data, fly_num, t + 1)
+            if contact_point == "NoContact" or contact_point == "L":
+                sns.lineplot(x=seconds, y=WingAbTipAngle["R-wing-hinge"][start:end], ax=ax2, color="red")
+                sns.lineplot(x=seconds, y=WingAbTipAngle["L-wing-hinge"][start:end], ax=ax2, color="maroon")
+            else:
+                sns.lineplot(x=seconds, y=WingAbTipAngle["R-wing-hinge"][start:end], ax=ax2, color="yellow")
+                sns.lineplot(x=seconds, y=WingAbTipAngle["L-wing-hinge"][start:end], ax=ax2, color="gold")
+                axs[i - 1, j - 1].axvline(R_mol - start, color="black")
+                axs[i - 1, j - 1].axvline(L_mol - start, color="grey")
+                axs[i - 1, j - 1].axvline(MOC - start, color="red")
+        elif trial_type == -1:
+            MOC, contact_point = DetermineTiTaMOC(Data, fly_num, t + 1)
+            if contact_point == "NoContact" or contact_point == "L":
+                sns.lineplot(x=seconds, y=WingAbTipAngle["R-wing-hinge"][start:end], ax=ax2, color="red")
+                sns.lineplot(x=seconds, y=WingAbTipAngle["L-wing-hinge"][start:end], ax=ax2, color="maroon")
+            else:
+                sns.lineplot(x=seconds, y=WingAbTipAngle["R-wing-hinge"][start:end], ax=ax2, color="darkorange")
+                sns.lineplot(x=seconds, y=WingAbTipAngle["L-wing-hinge"][start:end], ax=ax2, color="orange")
+
+        axs[i - 1, j - 1].set_xlabel("Frames")
         # axs[i - 1, j - 1].set_ylabel("Platform distance (mm)")
-        # axs[i - 1, j - 1].set_yticks([-0.1, 0, 0.1, 0.2, 0.3])
-        axs[i - 1, j - 1].set_ylabel("Angle")
-        axs[i - 1, j - 1].set_yticks([0, 50, 100, 150, 200])
+        axs[i - 1, j - 1].set_yticks([0, 2, 4, 6, 8])
+        axs[i - 1, j - 1].set_ylim(-0.1, 8.1)
+        axs[i - 1, j - 1].set_ylabel("Distance (mm)")
+        # axs[i - 1, j - 1].set_yticks([0, 50, 100, 150, 200])
         axs[i - 1, j - 1].set_title(f"Trial {t + 1}")
         t += 1
     print(f"Plotting {fly_num}'s data")
     plt.suptitle(str(fly_num), fontsize=20)
     plt.tight_layout()  # Adjust subplot layout
-    plt.savefig("KirExp_WT_CTF" + str(fly_num) + ".png")  # Save the figure
+    plt.savefig("KirExp_Ti-Ta" + str(fly_num) + ".png")  # Save the figure
     plt.close()
-def Platform_data_preprocessing(Fly_kinematic_data, clip_start, clip_end):
-    Platform_collected_data = dict()
-    Platform_collected_data["Unprocessed"] = [[] for i in range(20)]
-    Platform_collected_data["BestFitLine"] = [[] for i in range(20)]
-    Platform_collected_data["Residual"] = [[] for i in range(20)]
-    Platform_collected_data["Filtered"] = [[] for i in range(20)]
-    Platform_collected_data["FilteredAverage"] = None
-    Platform_collected_data["UnfilteredAverage"] = None
-    Filtered_platform_data = []
-    Unfiltered_platform_data = []
-
-    for t, trial_kinematic in enumerate(Fly_kinematic_data):
-        platform_distance = CalculateDistance_Platform_RmCT(trial_kinematic[clip_start:clip_end], "platform", "R-mCT")
-        platform_distance = determine_smooth_amplify_curve(platform_distance, 3, True)
-        Platform_collected_data["Unprocessed"][t] = platform_distance
-        try:
-            params, covariance = curve_fit(two_phase_decay_func, range(len(platform_distance)), platform_distance, maxfev=10000)
-            a1, b1, a2, b2, c = params
-            y_pred = two_phase_decay_func(range(len(platform_distance)), a1, b1, a2, b2, c)
-            residual = [abs(p) ** 0.5 for p in np.asarray(platform_distance) - y_pred]
-            Platform_collected_data["BestFitLine"][t] = y_pred
-            Platform_collected_data["Residual"][t] = residual
-        except (ValueError, RuntimeError) as e:
-            pass
-        if len([q for q in Platform_collected_data["Residual"][t][:300] if q > 0.13]) > 30:
-            Platform_collected_data["Filtered"][t] = True
-        else:
-            Platform_collected_data["Filtered"][t] = False
-            Filtered_platform_data.append(platform_distance)
-        Unfiltered_platform_data.append(platform_distance)
-    Platform_collected_data["FilteredAverage"] = CalculatePlatform_distance_average(Filtered_platform_data)
-    Platform_collected_data["UnfilteredAverage"] = CalculatePlatform_distance_average(Unfiltered_platform_data)
-    return Platform_collected_data
 def PlotWingAngleDistribution(AngleData, kinematic_pose_data):
     global Analysis_start
     global Analysis_end
@@ -531,99 +454,38 @@ def PlotWingAngleDistribution(AngleData, kinematic_pose_data):
     # print(f"Plotting fly {key} data")
     plt.savefig("Trace_Superimposed.png")  # Save the figure
     plt.close()
+# def FTAngleChangeThroughTrials(DataPaths):
 
 """
 These functions are responsible for extracting and writing the data from and to CSV file.
 """
 # Extract the data path of the csv files and organize them in the order by fly number
-def Extract_data_path(angles_folder):
-    Data_by_date = dict()
-    Angles_data_directory = []
-    parent_list = sorted(os.listdir(angles_folder), key=len)
-
-    # Sort the angles csv files by date
-    for file in parent_list:
-        if file.endswith('.csv'):
-            angle_csv_path = os.path.join(angles_folder, file)
-            Angles_data_directory.append(angle_csv_path)
-            # Split the string by underscores and hyphens to extract the date components
-            components = file.split('-')
-            d = components[2].split("_")
-
-            date = components[0] + components[1] + d[0]
-            if str(date) not in Data_by_date.keys():
-                Data_by_date[str(date)] = []
-            Data_by_date[str(date)].append(angle_csv_path)
-    for date_key, value in Data_by_date.items():
-        sort_by_fly_num = dict()
-        for fly in Data_by_date[date_key]:
-            fly_num_and_trial_parsed = fly[fly.find("_Fly"):].split("_")
-            if str(fly_num_and_trial_parsed[2]) not in sort_by_fly_num.keys():
-                sort_by_fly_num[str(fly_num_and_trial_parsed[2])] = []
-            sort_by_fly_num[str(fly_num_and_trial_parsed[2])].append(fly)
-        Data_by_date[date_key] = sort_by_fly_num
-
-    # Sort the path by total fly num
-    data_path_by_fly = dict()
-    f = 0
-    for date_key, value in Data_by_date.items():
-        for key_f, trials_data_path in Data_by_date[date_key].items():
-            # print(trials_data_path)
-            f += 1
-            Single_Fly_Data_Path = []
-            for trial in trials_data_path:
-                Single_Fly_Data_Path.append(trial)
-            data_path_by_fly[f"Fly_{f}"] = Single_Fly_Data_Path
-    return data_path_by_fly
-def Extract_3D_pose_data(Data_by_fly, fly_num=0):
-    Pose_Data = dict()
-    if fly_num != 0:
-        for key, value in Data_by_fly.items():
-            fnum = key.split('_')
-            if int(fnum[-1]) == fly_num:
-                print(f"Extracting Fly {key}'s pose data")
-                Pose_Data[key] = Read_Single_fly_data(value)
-    else:
-        for key, value in Data_by_fly.items():
-            print(f"Extracting Fly {key}'s pose data")
-            Pose_Data[key] = Read_Single_fly_data(value)
-    return Pose_Data
-def Read_Single_fly_data(Trials_Data):
-    Fly_data = []
-    for trial_path in Trials_Data:
-        Fly_data.append(pd.read_csv(trial_path))
-    return Fly_data
-def Analyze_3D_pose_data(posedata):
+def Analyze_3D_pose_data(FlyDataPath, Fly_num):
     Landing_Data = []
     LandingLatency_Data = []
-    for fly_num, indi_fly_pose in posedata.items():
-        Single_Fly_Landing_Prob_Data = []
-        Single_Fly_Landing_Late_Data = []
-        t = 0
-        # print("*" * 10)
-        for trial_pose in indi_fly_pose:
-            t += 1
-            Right_Wing_Landing, right_latency = WingAngle_DetermineLanding(trial_pose["RightWingAngle"], trial_pose["platform"], fly_num, t)
-            Left_Wing_Landing, left_latency = WingAngle_DetermineLanding(trial_pose["LeftWingAngle"], trial_pose["platform"], fly_num, t)
-            # print("Fly " + fly_num + f" Trial{t}--Right Wing: {Right_Wing_Landing} Left Wing {Left_Wing_Landing}")
-            if Right_Wing_Landing == 1 and Left_Wing_Landing == 1:
-                Single_Fly_Landing_Prob_Data.append(1)
-                Single_Fly_Landing_Late_Data.append(max([right_latency, left_latency]))
-            elif Right_Wing_Landing == 0 and Left_Wing_Landing == 0:
-                Single_Fly_Landing_Prob_Data.append(-1)
-                Single_Fly_Landing_Late_Data.append(0)
-            elif Right_Wing_Landing == 2 or Left_Wing_Landing == 2:
-                Single_Fly_Landing_Prob_Data.append(0)
-                Single_Fly_Landing_Late_Data.append(0)
-            elif (Right_Wing_Landing == 1 and Left_Wing_Landing == 0) or (Right_Wing_Landing == 0 and Left_Wing_Landing == 1):
-                Single_Fly_Landing_Prob_Data.append(-1)
-                Single_Fly_Landing_Late_Data.append(0)
-            else:
-                Single_Fly_Landing_Prob_Data.append(np.nan)
-                Single_Fly_Landing_Late_Data.append(0)
-        Landing_Data.append(Single_Fly_Landing_Prob_Data)
-        LandingLatency_Data.append(Single_Fly_Landing_Late_Data)
-    return Landing_Data, LandingLatency_Data
+    for f, k in enumerate(list(FlyDataPath.keys())[:Fly_num]):
+        Fly_Landing_Data = []
+        Fly_LandingLatency_Data = []
+        for t, trial_data_path in enumerate(FlyDataPath[k]):
+            pose_data = pd.read_csv(trial_data_path)
+            trial_type, MOL = CategorizeTrial(pose_data, f + 1, t + 1)
+            if trial_type == 0:
+                Fly_LandingLatency_Data.append("NF")
+            elif trial_type == 1:
+                MOC, contact_point = DetermineTiTaMOC(pose_data, f + 1, t + 1)
+                if contact_point == "NoContact" or contact_point == "L":
+                    Fly_LandingLatency_Data.append(np.nan)
+                else:
+                    Fly_LandingLatency_Data.append(MOL - MOC)
+                    # Fly_LandingLatency_Data.append(MOL)
+            elif trial_type == -1:
+                MOC, contact_point = DetermineTiTaMOC(pose_data, f + 1, t + 1)
+                if contact_point == "NoContact" or contact_point == "L":
+                    Fly_LandingLatency_Data.append(np.nan)
+                else:
+                    Fly_LandingLatency_Data.append(-1)
+        LandingLatency_Data.append(Fly_LandingLatency_Data)
+    return LandingLatency_Data
 def Write_to_csv(LandingProbData, LandingLatencyData, output_path, compare_path):
     Manual_data = pd.read_excel(compare_path)
     T = ["Trial_" + str(i) for i in range(1, 21)]
@@ -681,141 +543,53 @@ def Write_to_csv(LandingProbData, LandingLatencyData, output_path, compare_path)
     # Save the Excel file
     excel_writer.save()
     print("Excel file has been created with modifications.")
-def Create_DataSets_MetaData():
-    DataSetsMetaData = dict()
-    DataSetsMetaData["StarvedExperiment"] = dict()
-    DataSetsMetaData["StarvedExperiment"]["Angles_Folder"] = r"C:\Users\agrawal-admin\Desktop\Anipose Predicted Data\Testing_Network_for_wing_angle-05-08-2024\Starved_fly_exp_analysis_result\angles"
-    DataSetsMetaData["StarvedExperiment"]["Pose_3D_Folder"] = r"C:\Users\agrawal-admin\Desktop\Anipose Predicted Data\Testing_Network_for_wing_angle-05-08-2024\Starved_fly_exp_analysis_result\pose-3d"
-    DataSetsMetaData["StarvedExperiment"]["Prediction_output_csv_file"] = r"C:\Users\agrawal-admin\Desktop\Agrawal_Lab\KinematicsAnalysis_Starved.xlsx"
-    DataSetsMetaData["StarvedExperiment"]["Manual_LL_csv_file"] = r"C:\Users\agrawal-admin\Desktop\Agrawal_Lab\Starved_CTF.xlsx"
-    DataSetsMetaData["StarvedExperiment"]["Analysis_Start_time"] = 450
-    DataSetsMetaData["StarvedExperiment"]["Analysis_End_time"] = 1050
-    DataSetsMetaData["StarvedExperiment"]["Actual_Video_time"] = 0
-    DataSetsMetaData["StarvedExperiment"]["FPS"] = 250
+def OutptuPrediction(Predicted_Data, outputpath):
+    df_transformed = pd.DataFrame(Predicted_Data, columns=[f"Trial_{i + 1}" for i in range(20)])
+    df_transformed.insert(0, "Fly#", range(1, len(df_transformed) + 1))
 
-    DataSetsMetaData["Control_T2_CTF_Experiment"] = dict()
-    DataSetsMetaData["Control_T2_CTF_Experiment"]["Angles_Folder"] = r"C:\Users\agrawal-admin\Desktop\Anipose Predicted Data\Testing_Network_for_wing_angle-05-08-2024\Control_T2_CTF-2024-05-10\angles"
-    DataSetsMetaData["Control_T2_CTF_Experiment"]["Pose_3D_Folder"] = r"C:\Users\agrawal-admin\Desktop\Landing_3D-Wayne-2024-01-25\videos\pose-3d"
-    DataSetsMetaData["Control_T2_CTF_Experiment"]["Prediction_output_csv_file"] = r"C:\Users\agrawal-admin\Desktop\Agrawal_Lab\KinematicsAnalysis.xlsx"
-    DataSetsMetaData["Control_T2_CTF_Experiment"]["Manual_LL_csv_file"] = r"C:\Users\agrawal-admin\Desktop\Agrawal_Lab\CorrectedLabeled_data.xlsx"
-    DataSetsMetaData["Control_T2_CTF_Experiment"]["Manual_MOC_csv_file"] = r"C:\Users\agrawal-admin\Desktop\Platform_moc.xlsx"
-    DataSetsMetaData["Control_T2_CTF_Experiment"]["Manual_MOL_csv_file"] = r"C:\Users\agrawal-admin\Desktop\T2_CTF_All_Corrected.xlsx"
-    DataSetsMetaData["Control_T2_CTF_Experiment"]["Analysis_Start_time"] = 540
-    DataSetsMetaData["Control_T2_CTF_Experiment"]["Analysis_End_time"] = 1250
-    DataSetsMetaData["Control_T2_CTF_Experiment"]["Actual_Video_time"] = 250
-    DataSetsMetaData["Control_T2_CTF_Experiment"]["FPS"] = 300
+    # Replace NaN values with "N/A" for display
+    df_transformed.fillna("N/A", inplace=True)
 
-    DataSetsMetaData["KirExperiment"] = dict()
-    DataSetsMetaData["KirExperiment"]["Angles_Folder"] = r"C:\Users\agrawal-admin\Desktop\Kristen Data\KirControl-TTa\Angle Data"
-    DataSetsMetaData["KirExperiment"]["Pose_3D_Folder"] = r"C:\Users\agrawal-admin\Desktop\Kristen Data\KirControl-TTa\3D Data"
-    DataSetsMetaData["KirExperiment"]["DestinationFolder"] = r"C:\Users\agrawal-admin\Desktop\Kristen Data\KirControl-TTa\Graphs"
-    DataSetsMetaData["KirExperiment"]["Analysis_Start_time"] = 300
-    DataSetsMetaData["KirExperiment"]["Analysis_End_time"] = 900
-    DataSetsMetaData["KirExperiment"]["Actual_Video_time"] = 250
-    DataSetsMetaData["KirExperiment"]["FPS"] = 300
-    return DataSetsMetaData
+    # Save to an Excel file
+    output_file = f"{outputpath}.xlsx"
+    df_transformed.to_excel(output_file, index=False)
+
+    # Load the workbook for formatting
+    wb = load_workbook(output_file)
+    ws = wb.active
+
+    # Define color fills
+    color_fills = {
+        "N/A": PatternFill(start_color="FF6666", end_color="FF6666", fill_type="solid"),  # Red for N/A
+        "NF": PatternFill(start_color="6DB6FF", end_color="6DB6FF", fill_type="solid"),  # Blue for NF
+        "-1": PatternFill(start_color="FF9933", end_color="FF9933", fill_type="solid"),  # Orange for -1
+        "number": PatternFill(start_color="FFFF00", end_color="FFFF00", fill_type="solid")  # Yellow for other numbers
+    }
+
+    # Apply color coding (skip header row)
+    for row in ws.iter_rows(min_row=2, min_col=2):  # Start from column 2 to skip "Fly#"
+        for cell in row:
+            if isinstance(cell.value, str) and cell.value == "N/A":
+                cell.fill = color_fills["N/A"]
+            elif isinstance(cell.value, str) and cell.value == "NF":
+                cell.fill = color_fills["NF"]
+            elif isinstance(cell.value, (int, float)) and cell.value == -1:
+                cell.fill = color_fills["-1"]
+            elif isinstance(cell.value, (int, float)):  # Any other number
+                cell.fill = color_fills["number"]
+
+    # Save the formatted workbook
+    wb.save(output_file)
+
+    print(f"File saved as {output_file}")
 def Read_Manual_Data(file_path):
     Trial_num = 20
     Trial_num_list = ["Trial_" + str(i + 1) for i in range(Trial_num)]
     Manual_data = pd.read_excel(file_path)[Trial_num_list]
     return Manual_data
-def Calculate_Median_MOC(kinematic_data, angle_data, manual_platform_moc, lower_bound_percentile, upper_bound_percentile):
-    global Analysis_start
-    global Analysis_end
-    i = 0
-    j = 0
-    filtered_moc_platform_distances = []
-    moc_time_points = []
-    for key in kinematic_data.keys():
-        t = 0
-        for k, p in (zip(kinematic_data[key], angle_data[key])):
-            Data = TraceData_Preprocessing(p, k, Analysis_start, Analysis_end)
-            moment_of_contact = manual_platform_moc.iloc[int(key) - 1][f"Trial_{t + 1}"]
-            if not (isinstance(moment_of_contact, str) or pd.isna(moment_of_contact) or moment_of_contact < 0):
-                moment_of_contact = int(moment_of_contact) - Analysis_start
-                moc_time_points.append(moment_of_contact)
-            t += 1
-    lower_bound = np.percentile(moc_time_points, lower_bound_percentile)
-    upper_bound = np.percentile(moc_time_points, upper_bound_percentile)
-    filtered_moc_time_point = []
-
-    for key in kinematic_data.keys():
-        t = 0
-        for k, p in (zip(kinematic_data[key], angle_data[key])):
-            Data = TraceData_Preprocessing(p, k, Analysis_start, Analysis_end)
-            moment_of_contact = manual_platform_moc.iloc[int(key) - 1][f"Trial_{t + 1}"]
-            if not (isinstance(moment_of_contact, str) or pd.isna(moment_of_contact) or moment_of_contact < 0):
-                moment_of_contact = int(moment_of_contact) - Analysis_start
-                if lower_bound <= moment_of_contact <= upper_bound:
-                    filtered_moc_time_point.append(moment_of_contact)
-                    filtered_moc_platform_distances.append(np.mean(Data["platform"][moment_of_contact - 5:moment_of_contact + 5]))
-            t += 1
-    platform_idx_min = min(filtered_moc_time_point)
-    platform_idx_max = max(filtered_moc_time_point)
-    median_moc = np.median(filtered_moc_platform_distances)
-    return median_moc, platform_idx_min, platform_idx_max
-def find_linear_best_fit_line(X, Y):
-    x = np.array(X).reshape(-1, 1)
-    y = np.array(Y)
-    model = LinearRegression()
-    try:
-        model.fit(x, y)
-        slope = model.coef_[0]
-        intercept = model.intercept_
-        line = (slope * x + intercept).flatten()
-        x_flat = x.flatten()
-        print(f"Slope {slope}, Intercept: {intercept}")
-        return x_flat, line
-    except ValueError as v:
-        print(f"Encountered: {v}")
-        pass
-def determine_floating_threshold(baseline, slope, intercept):
-    return slope * baseline + intercept
-def add_column_to_csv(filename, new_column_name, new_column_data):
-    # Check if the file exists and is not empty
-    try:
-        with open(filename, 'r') as f:
-            if f.read().strip():
-                df = pd.read_csv(filename)
-            else:
-                df = pd.DataFrame()
-    except FileNotFoundError:
-        df = pd.DataFrame()
-    # Add the new column to the DataFrame
-    new_length = len(new_column_data)
-    if new_length > len(df):
-        df = df.reindex(range(new_length))
-    df[new_column_name] = pd.Series(new_column_data)
-
-    # Write the updated DataFrame back to the CSV file
-    df.to_csv(filename, index=False)
-def sigmoid(x, L, x0, k):
-    return L / (1 + np.exp(-k * (x - x0)))
-def Fit_sigmoid(X, Y):
-    x_data = np.array(X)
-    y_data = np.array(Y)
-    # Initial guess for the parameters
-    if x_data.shape[0] != y_data.shape[0]:
-        raise ValueError("x_data and y_data must have the same length")
-    L_initial = max(y_data)
-    x0_initial = np.median(x_data)
-    k_initial = 1.0
-
-    initial_guess = [L_initial, x0_initial, k_initial]
-
-    # Curve fitting
-    params, _ = curve_fit(sigmoid, x_data, y_data, p0=initial_guess)
-
-    # Extracting the parameters
-    L_fit, x0_fit, k_fit = params
-
-    # Generating y values using the fitted sigmoid function
-    y_fit = sigmoid(x_data, L_fit, x0_fit, k_fit)
-    return x_data, y_fit
 def group_files_by_fly(file_names):
     # Regular expression to extract the relevant parts of the file name
     pattern = re.compile(r"(\d{4}-\d{2}-\d{2})-\d{2}-\d{2}-\d{2}\.\d+.*?_Fly_(\d+)_Trial_\d+_")
-    print(pattern)
     # Dictionary to map unique combinations to "Fly_N"
     unique_combinations = {}
     grouped_files = {}
@@ -902,12 +676,6 @@ def Calculate_derivative(data):
     data = [data[i + 1] - data[i] for i in range(len(data) - 1)]
     data = [abs(x) for x in data]
     return data
-def plane_from_points(p1, p2):
-    # Compute the normal vector of the plane using two points
-    v1 = np.array(p2) - np.array(p1)
-    normal = np.cross(v1, [0, 0, 1])  # Assume a vertical normal projection
-    d = -np.dot(normal, p1)
-    return normal, d
 def line_plane_intersection(p1, p2, normal, d):
     # Line represented as p(t) = p1 + t * (p2 - p1)
     direction = np.array(p2) - np.array(p1)
@@ -917,25 +685,27 @@ def line_plane_intersection(p1, p2, normal, d):
         return None
 
     t = -(np.dot(normal, p1) + d) / denom
+
     if 0 <= t <= 1:  # Ensure intersection is within the segment
-        return p1 + t * direction
-    return None
+        return p1 + t * direction, t
+    return None, None
 def is_inside_circle(intersection, center, radius):
     return np.linalg.norm(intersection - center) <= radius
-def check_leg_platform_intersection(leg_p1, leg_p2, center_traces):
+def check_leg_platform_intersection(leg_p1, leg_p2, center_traces, center_point, platform_offset):
     # Compute platform radius
-    radius = 0.38
+    radius = 0.33
     # Compute the plane equation
     centroid, platform_direction = best_fit_line_3d(center_traces)
 
-    d = -np.dot(platform_direction, center_traces[-1])
+    platform_plane_origin = center_point + platform_offset * platform_direction  # Shift the plane up
+    d = -np.dot(platform_direction, platform_plane_origin)
 
     # Find intersection point
-    intersection = line_plane_intersection(np.array(leg_p1), np.array(leg_p2), platform_direction, d)
+    intersection, intersect_proportion = line_plane_intersection(np.array(leg_p1), np.array(leg_p2), platform_direction, d)
 
-    if intersection is not None and is_inside_circle(intersection, np.array(center_traces[-1]), radius):
-        return True
-    return False
+    if intersection is not None and is_inside_circle(intersection, np.array(platform_plane_origin), radius):
+        return True, intersect_proportion
+    return False, None
 def ReadCoordsAll(threeD_data, fnum):
     points = ["L-wing", "L-wing-hinge", "R-wing", "R-wing-hinge", "abdomen-tip", "platform-tip", "L-platform-tip",
               "R-platform-tip", "platform-axis", "R-fBC", "R-fCT", "R-fFT", "R-fTT", "R-fLT", "R-mBC", "R-mCT", "R-mFT",
@@ -945,7 +715,7 @@ def ReadCoordsAll(threeD_data, fnum):
     for p in points:
         coords[p] = np.asarray([threeD_data[f"{p}_x"][fnum], threeD_data[f"{p}_y"][fnum], threeD_data[f"{p}_z"][fnum]])
     return coords
-def plot_motion_vector_with_plane(platform_ctr_pts_traces, coords):
+def plot_motion_vector_with_plane(platform_ctr_pts_traces, current_center, coords, platform_offset):
     keypoint_pairs = [
         ["L-wing", "L-wing-hinge"], ["R-wing", "R-wing-hinge"], ["abdomen-tip"],
         ["platform-tip"], ["L-platform-tip"], ["R-platform-tip"], ["platform-axis"],
@@ -956,7 +726,6 @@ def plot_motion_vector_with_plane(platform_ctr_pts_traces, coords):
 
     platform_ctr_pts_traces = np.array(platform_ctr_pts_traces)
     centroid, direction = best_fit_line_3d(platform_ctr_pts_traces)
-
     # Generate points along the best-fit line
     t_vals = np.linspace(-10, 10, 100)
     line_points = centroid + np.outer(t_vals, direction)
@@ -978,7 +747,7 @@ def plot_motion_vector_with_plane(platform_ctr_pts_traces, coords):
     perp_vector2 = np.cross(normal_vector, perp_vector1)
     perp_vector2 /= np.linalg.norm(perp_vector2)  # Normalize
 
-    radius = 0.4  # Radius of the circular plane
+    radius = 0.32 # Radius of the circular plane
 
     # Generate a circular grid
     u_vals = np.linspace(-radius, radius, 50)
@@ -992,7 +761,9 @@ def plot_motion_vector_with_plane(platform_ctr_pts_traces, coords):
     U = U[mask]
     V = V[mask]
 
-    plane_points = platform_ctr_pts_traces[-1] + U[..., None] * perp_vector1 + V[..., None] * perp_vector2
+    platform_plane_origin = current_center + platform_offset * direction  # Shift the plane up
+
+    plane_points = platform_plane_origin + U[..., None] * perp_vector1 + V[..., None] * perp_vector2
 
     # 3D Plot
     fig = plt.figure(figsize=(8, 6))
@@ -1006,13 +777,13 @@ def plot_motion_vector_with_plane(platform_ctr_pts_traces, coords):
         "#D2B48C", "#FF7F50", "#006400", "#00008B", "#8B0000", "#FF8C00", "#8B008B",
         "#708090", "#FF6347", "#008080"
     ]
-    """for g, group in enumerate(keypoint_pairs):
+    for g, group in enumerate(keypoint_pairs):
         for i in range(len(group) - 1):  # Connect points in the group
             p1 = coords[group[i]]
             p2 = coords[group[i + 1]]
 
             # Plot a line between p1 and p2
-            ax.plot([p1[0], p2[0]], [p1[1], p2[1]], [p1[2], p2[2]], marker='o', color=Colors[g])"""
+            ax.plot([p1[0], p2[0]], [p1[1], p2[1]], [p1[2], p2[2]], marker='o', color=Colors[g])
 
     ax.quiver(*platform_ctr_pts_traces[-1], *perp_vector1, color='r', arrow_length_ratio=0.1)
     ax.quiver(*platform_ctr_pts_traces[-1], *perp_vector2, color='r', arrow_length_ratio=0.1)
@@ -1063,93 +834,249 @@ def best_fit_line_3d(points):
     _, _, Vt = np.linalg.svd(centered_points)
     direction = Vt[0]  # First principal component
     return centroid, direction
+def Get3D_path(source_folder):
+    AllFiles = []
+    for root, dirs, files in os.walk(source_folder):
+        for file in files:
+            if file.endswith(".csv"):
+                input_file_path = os.path.join(root, file)
+                AllFiles.append(input_file_path)
 
-Angles = [["R-mBC", "R-mCT", "R-mFT"],
-          ["R-mCT", "R-mFT", "R-mTT"],
-          ["R-mFT", "R-mTT", "R-mLT"]]
+    AllFiles = natsorted(AllFiles)
+    grouped_data_path = group_files_by_fly(AllFiles)
+    return grouped_data_path
+def DetermineTiTaMOC(data, fly, trial):
+    makeplot = False
+    h = 0.05
+    trace_start = 200
+    start = 250
+    end = 1000
+
+    center_points = np.asarray([data["platform-tip_x"].tolist(), data["platform-tip_y"].tolist(), data["platform-tip_z"].tolist()])
+    R_mTT_points = np.asarray([data["R-mTT_x"].tolist(), data["R-mTT_y"].tolist(), data["R-mTT_z"].tolist()])
+    R_mLT_points = np.asarray([data["R-mLT_x"].tolist(), data["R-mLT_y"].tolist(), data["R-mLT_z"].tolist()])
+
+    L_mTT_points = np.asarray([data["L-mTT_x"].tolist(), data["L-mTT_y"].tolist(), data["L-mTT_z"].tolist()])
+    L_mLT_points = np.asarray([data["L-mLT_x"].tolist(), data["L-mLT_y"].tolist(), data["L-mLT_z"].tolist()])
+
+    center_points = np.transpose(center_points)
+    R_mTT_points = np.transpose(R_mTT_points)
+    R_mLT_points = np.transpose(R_mLT_points)
+
+    L_mTT_points = np.transpose(L_mTT_points)
+    L_mLT_points = np.transpose(L_mLT_points)
+    print(f"Fly {fly} Trial {trial}")
+    contact_count_L = 0
+    contact_count_R = 0
+    Contact_threshold = 1
+    for frame in range(start, end):
+        Intersect_R, position_R = check_leg_platform_intersection(R_mTT_points[frame], R_mLT_points[frame], center_points[250:350], center_points[frame], h)
+        Intersect_L, position_L = check_leg_platform_intersection(L_mTT_points[frame], L_mLT_points[frame], center_points[250:350], center_points[frame], h)
+
+        if makeplot:
+            if frame == 557:
+                coords = ReadCoordsAll(data, frame)
+                print(Intersect_L, position_L)
+                print(frame, "L")
+                # plot_motion_vector_with_plane(center_points[250:350], center_points[frame], coords, h)
+
+        if Intersect_L:
+            contact_count_L += 1
+        else:
+            contact_count_L = 0
+
+        if contact_count_L >= Contact_threshold:
+            coords = ReadCoordsAll(data, frame)
+            print(Intersect_L, position_L)
+            print(frame, "L")
+            # plot_motion_vector_with_plane(center_points[250:350], center_points[frame], coords, h)
+            return frame, "L"
+
+        if Intersect_R:
+            contact_count_R += 1
+        else:
+            contact_count_R = 0
+
+        if contact_count_R >= Contact_threshold:
+            coords = ReadCoordsAll(data, frame)
+            print(Intersect_R, position_R)
+            print(frame, "R")
+            # plot_motion_vector_with_plane(center_points[250:350], center_points[frame], coords, h)
+            return frame, "R"
+    print(0, "NoContact")
+    return 0, "NoContact"
+def CategorizeTrial(data, fly, trial):
+    WingTipDistance = Calculate_segment_length(data, [["L-wing", "R-wing"]])
+
+    NF = detect_Not_Flying(WingTipDistance, 250)
+    if NF:
+        # Categorized as Not Flying
+        return 0, None
+    else:
+        # Determine if the wing folds
+        WingAbTipAngle = Calculate_joint_angle(data, [["R-wing", "R-wing-hinge", "abdomen-tip"], ["L-wing", "L-wing-hinge", "abdomen-tip"]])
+        R_mol, RL = detect_moment_of_landing_WingAngle(WingAbTipAngle["R-wing-hinge"], 50, 4, 2)
+        L_mol, LL = detect_moment_of_landing_WingAngle(WingAbTipAngle["L-wing-hinge"], 50, 4, 2)
+        # mol, L = detect_moment_of_landing(WingTipDistance["L-wing_R-wing"], 2, 4, 3)
+        if RL or LL:
+            # Categorized as successful landing, may still require further examination for N/A data
+            return 1, min([R_mol, L_mol])
+        else:
+            # Categorized as continuous flying, required further examination for N/A data
+            return -1, None
+def PlotMOC_platform_distance_distribution(datapath, MOCfile):
+    MOCData = Read_Manual_Data(MOCfile)
+    Segment = [["R-mLT", "L-platform-tip"], ["R-mLT", "R-platform-tip"], ["R-mLT", "platform-tip"],
+               ["R-mTT", "L-platform-tip"], ["R-mTT", "R-platform-tip"], ["R-mTT", "platform-tip"]]
+    Collected_segment_data = dict()
+    for sg in Segment:
+        Collected_segment_data[f"{sg[0]}_{sg[1]}"] = []
+    Collected_segment_data["Min"] = []
+    for index, r in MOCData.iterrows():
+        for i, t in enumerate(r):
+            if not isinstance(t, str) and t > -1:
+                print(index, i)
+                pose_data = pd.read_csv(datapath[f"Fly_{index + 1}"][i])
+                segment_data = Calculate_segment_length(pose_data, Segment)
+                mins = []
+                for sg in Segment:
+                    Collected_segment_data[f"{sg[0]}_{sg[1]}"].append(segment_data[f"{sg[0]}_{sg[1]}"][t])
+                    mins.append(segment_data[f"{sg[0]}_{sg[1]}"][t])
+                Collected_segment_data["Min"].append(min(mins))
+    Collected_segment_data = pd.DataFrame(Collected_segment_data)
+    sns.stripplot(Collected_segment_data)
+    plt.show()
+
+Angles = [["R-mCT", "R-mFT", "R-mTT"], ["L-mCT", "L-mFT", "L-mTT"]]
+# Angles = ["R-mFT", "R-mTT", "R-mLT"]
 # skeletons = [["R-mTT", "L-platform-tip"], ["R-mTT", "R-platform-tip"], ["R-mTT", "platform-tip"]]
 skeletons = [["R-mLT", "L-platform-tip"], ["R-mLT", "R-platform-tip"], ["R-mLT", "platform-tip"]]
 skeletons = [["R-mLT", "platform-tip"]]
-DataDirPath = r"C:\Users\agrawal-admin\OneDrive - Virginia Tech\Desktop\Kinematic_data\WT-Control_T2-TiTa_ImprovedNetwork"
-MOCfilePath = r"C:\Users\agrawal-admin\OneDrive - Virginia Tech\Desktop\Kinematic_data\WT-Control_T2-TiTa_ImprovedNetwork\T2-TiTaLPDataMOC.xlsx"
-MOLfilePath = r"C:\Users\agrawal-admin\OneDrive - Virginia Tech\Desktop\Kinematic_data\WT-Control_T2-TiTa_ImprovedNetwork\T2-TiTaLPDataMOL.xlsx"
+DataDirPath = r"C:\Users\agrawal-admin\Desktop\TibiaTarsusPlatformODLight-Wayne-2024-10-19\Network-03-14\HCS+_UASKir2.1eGFP\G106-HP1_T2-TiTa"
+MOCfilePath = r"C:\Users\agrawal-admin\Desktop\DataFolder\HCS+_UASKir2.1eGFP\G106-HP1_T2-TiTa\2025-03-10\MOCG106.xlsx"
+LatencyFilePath = r"C:\Users\agrawal-admin\Desktop\DataFolder\LPAcrossLegsJoints\T2-TiTa\T2-TiTaLP.xlsx"
+PredictedLLPath = r"C:\Users\agrawal-admin\Desktop\Landing\LLPrediction_WT.xlsx"
 Trials = [f"Trial_{i + 1}" for i in range(20)]
-AllFiles = []
-for root, dirs, files in os.walk(DataDirPath):
-    for file in files:
-        if file.endswith(".csv"):
-            input_file_path = os.path.join(root, file)
-            AllFiles.append(input_file_path)
-moc_data = pd.read_excel(MOCfilePath)[Trials]
-grouped_data_path = group_files_by_fly(AllFiles)
 
 
+Fly_num = 16
+moc_data = pd.read_excel(MOCfilePath)[Trials].iloc[:Fly_num]
+LL_data = pd.read_excel(LatencyFilePath)[Trials].iloc[:Fly_num]
+predicted_data = pd.read_excel(PredictedLLPath)[Trials].iloc[:Fly_num]
+grouped_data_path = Get3D_path(DataDirPath)
+print(grouped_data_path)
+Target_fly = 7
+Target_trial = 2
+DetermineTiTaMOC(pd.read_csv(grouped_data_path[f"Fly_{Target_fly}"][Target_trial - 1]), Target_fly, Target_trial)
 
-"""mean_moc = []
-for index, r in moc_data[Trials].iterrows():
+print(grouped_data_path[f"Fly_{Target_fly}"][Target_trial - 1])
+
+# Predicted_Data = Analyze_3D_pose_data(grouped_data_path, Fly_num)
+
+# OutptuPrediction(Predicted_Data, "LLPrediction_G106")
+# for f, k in enumerate(list(grouped_data_path.keys())):
+    # MakePlot(grouped_data_path[k], f + 1)
+# PlotMOC_platform_distance_distribution(grouped_data_path, MOCfilePath)
+error = []
+
+
+print(moc_data)
+collected_joint_angle_L = []
+collected_joint_angle_R = []
+for index, r in LL_data[Trials].iloc[:Fly_num].iterrows():
+    fly_joint_angle_L = []
+    fly_joint_angle_R = []
     for i, t in enumerate(r):
-        if not isinstance(t, str) and t > -1:
-            print(t, f"Fly {index + 1}", f"Trial {i + 1}")
-            data = pd.read_csv(grouped_data_path[f"Fly_{index + 1}"][i])
-            seg_length = Calculate_segment_length(data, skeletons)
-            # seg_length = TransposeData(seg_length)
-            # column_means = seg_length.mean(axis=0)
-            mean_moc.append(np.mean(seg_length["R-mLT_platform-tip"][int(t) - 2:int(t) + 2]))
-sns.stripplot(mean_moc, size=5, alpha=0.5)
-plt.xlabel(r"R-mLT --> platform tip")
-plt.ylabel(f"Distance at MOC (mm)")
-plt.savefig("distance at moc RmLT.pdf")
-plt.show()"""
+        if not isinstance(t, str) and t > -1 and not isinstance(predicted_data.iloc[index][i], str) and t > -1:
+            print(f"Fly {index + 1}", f"Trial {i + 1}")
+            error.append((t - predicted_data.iloc[index][i] )/ 200)
+            # data = pd.read_csv(grouped_data_path[f"Fly_{index + 1}"][i])
+            # joints_angle = Calculate_joint_angle(data, Angles)
+            # fly_joint_angle_L.append(np.mean(joints_angle["L-mFT"][:250]))
+            # fly_joint_angle_R.append(np.mean(joints_angle["R-mFT"][:250]))
+        else:
+            fly_joint_angle_L.append(np.nan)
+            fly_joint_angle_R.append(np.nan)
+    collected_joint_angle_L.append(fly_joint_angle_L)
+    collected_joint_angle_R.append(fly_joint_angle_R)
 
-"""fig, axs = plt.subplots(nrows=5, ncols=4, figsize=(20, 16))
-i = 0
-j = 0
-t = 0
-for d in grouped_data_path["Fly_1"]:
-    t += 1
-    data = pd.read_csv(d)[200:800]
-    data = data.reset_index()
+sns.stripplot(error)
+plt.ylabel("Seconds (s)")
+plt.xlabel("Trial manual latency - prediction")
+plt.show()
 
-    seg_length = Calculate_segment_length(data, skeletons)
-    # seg_length = TransposeData(seg_length)
-
-    # column_means = seg_length.mean(axis=0)
-    # column_means_derivative = Calculate_derivative(column_means)
-
-    angles = Calculate_joint_angle(data, Angles)
-
-    if i % 5 == 0:
-        j += 1
-        i = 1
-    else:
-        i += 1
-    seconds = [x/200 for x in range(200, 800)]
-    # print(seconds)
-    sns.lineplot(x=seconds, y=seg_length["R-mTT_platform-tip"], legend=False, ax=axs[i - 1, j - 1])
-    # print(moc)
-    moc = moc_data.iloc[0][t - 1]
-    if not isinstance(moc, str) and moc > -1:
-        axs[i - 1, j - 1].axvline(moc/200, color="black")
-    axs[i - 1, j - 1].set_ylim(-0.1, 3)
-    axs[i - 1, j - 1].set_title(f"Trial {t}")
-    axs[i - 1, j - 1].set_ylabel("Distance (mm)")
-    axs[i - 1, j - 1].set_xlabel("Seconds (mm)")
-    print(f"Processing Trial {t}")
-    # ax2 = axs[i - 1, j - 1].twinx()
-    # ax2.set_ylim(0, 200)
-    # sns.lineplot(column_means_derivative, legend=False, ax=ax2, color="orange")
-    # sns.lineplot(angles["R-mCT"], legend=False, ax=ax2, color="green")
-    # sns.lineplot(angles["R-mTT"], legend=False, ax=ax2, color="red")
-
+fig, ax = plt.subplots()
+sns.lineplot(collected_joint_angle_R, legend=False)
+ax.set_xlabel("Trial", fontsize=25)
+ax.set_ylabel("R FT joint angle", fontsize=25)
+plt.xticks([1, 10, 20], fontsize=25)
+plt.yticks([0, 45, 90], fontsize=25)
+for spine in ax.spines.values():
+    spine.set_linewidth(2)
+plt.savefig("FT angle R")
 plt.tight_layout()
-plt.savefig("R-mTT platform distance.pdf")
-plt.show()"""
+# plt.show()
+
+
+fig, ax = plt.subplots()
+sns.lineplot(collected_joint_angle_L, legend=False)
+ax.set_xlabel("Trial", fontsize=25)
+ax.set_ylabel("L FT joint angle", fontsize=25)
+plt.xticks([1, 10, 20], fontsize=25)
+plt.yticks([0, 45, 90], fontsize=25)
+for spine in ax.spines.values():
+    spine.set_linewidth(2)
+plt.savefig("FT angle L")
+plt.tight_layout()
+# plt.show()
+
+
+"""
+
+collected_joint_angle_L = pd.DataFrame(collected_joint_angle_L)
+collected_joint_angle_R = pd.DataFrame(collected_joint_angle_R)
+
+
+mean_values_R = collected_joint_angle_R.mean(axis=0, skipna=True)  # Compute mean for each trial (column)
+sem_values_R = collected_joint_angle_R.sem(axis=0, skipna=True)  # Compute SEM for each trial (column)
+
+mean_values_L = collected_joint_angle_L.mean(axis=0, skipna=True)  # Compute mean for each trial (column)
+sem_values_L = collected_joint_angle_L.sem(axis=0, skipna=True)
+
+fig, ax = plt.subplots()
+
+sns.lineplot(x=mean_values_R.index + 1, y=mean_values_R,
+             errorbar=("ci", 0),  # Disables default CI
+             ax=ax, label="Mean", color="Navy")
+
+sns.lineplot(x=mean_values_L.index + 1, y=mean_values_L,
+             errorbar=("ci", 0),  # Disables default CI
+             ax=ax, label="Mean", color="skyblue")
+
+# Add error bars manually
+ax.errorbar(mean_values_R.index + 1, mean_values_R, yerr=sem_values_R, fmt='o', color="Navy", capsize=5)
+ax.errorbar(mean_values_L.index + 1, mean_values_L, yerr=sem_values_R, fmt='o', color="skyblue", capsize=5)
+
+# sns.lineplot(collected_joint_angle_R, legend=False)
+ax.set_xlabel("Trial", fontsize=25)
+ax.set_ylabel("FT joint angle", fontsize=25)
+plt.xticks([1, 10, 20], fontsize=25)
+plt.yticks([0, 45, 90], fontsize=25)
+plt.tick_params(axis="both", width=3, length=10)
+for spine in ax.spines.values():
+    spine.set_linewidth(2)
+plt.savefig("FT angle mean")
+plt.tight_layout()
+plt.show()
 
 
 
-
+h = 0.05
 moc_error = []
-for index, r in moc_data[Trials].iloc[:2].iterrows():
+Contact_relative_position = []
+Latency = []
+Angles_at_MOC = []
+for index, r in LL_data[Trials].iloc[:Fly_num].iterrows():
     for i, t in enumerate(r):
         if not isinstance(t, str) and t > -1:
             print(f"Fly {index + 1}", f"Trial {i + 1}")
@@ -1166,40 +1093,52 @@ for index, r in moc_data[Trials].iloc[:2].iterrows():
             R_mTT_points = np.transpose(R_mTT_points)
             R_mLT_points = np.transpose(R_mLT_points)
 
-            for i in range(start, end):
-                if check_leg_platform_intersection(R_mTT_points[i], R_mLT_points[i], center_points[i - start:i]):
+            for frame in range(start, end):
+                Intersect, position = check_leg_platform_intersection(R_mTT_points[frame], R_mLT_points[frame], center_points[250:350], center_points[frame], h)
+                if Intersect:
                     name_width = 8
                     num_width = 3
                     name = "Prediction:"
                     name1 = "Manual:"
                     name2 = "Error:"
-                    print(f"{name:<{name_width}} {str(i):>{num_width}} {name1:<{name_width}} {str(t):>{num_width}} {name2:<{name_width}} {str(i - t):>{num_width}}")
-                    moc_error.append(i - t)
-                    if abs(i - t) > 20:
-                        coords = ReadCoordsAll(data, i)
-                        plot_motion_vector_with_plane(center_points[i - start:i], coords)
+                    # print(f"{name:<{name_width}} {str(frame):>{num_width}} {name1:<{name_width}} {str(t):>{num_width}} {name2:<{name_width}} {str(frame - t):>{num_width}}")
+                    if (LL_data.loc[index][i] / 250) < 1:
+                        moc_error.append(frame - t)
+                        Contact_relative_position.append(position)
+                        Latency.append(LL_data.loc[index][i] / 250)
+                    #Angles_at_MOC.append(calculate_angle(data[f"{Angles[0]}_x"][frame], data[f"{Angles[0]}_y"][frame], data[f"{Angles[0]}_z"][frame],
+                    #                                     data[f"{Angles[1]}_x"][frame], data[f"{Angles[1]}_y"][frame], data[f"{Angles[1]}_z"][frame],
+                     #                                    data[f"{Angles[2]}_x"][frame], data[f"{Angles[2]}_y"][frame], data[f"{Angles[2]}_z"][frame]))
+                    if abs(frame - t) >= 20:
+                        print("Large error occured")
+                        coords = ReadCoordsAll(data, frame)
+                        # plot_motion_vector_with_plane(center_points[250:350], center_points[frame], coords, h)
                     break
-sns.stripplot(moc_error)
+
+df = {
+    "ContactPoints": Contact_relative_position,
+    "Latency": Latency
+}
+
+df = pd.DataFrame(df)
+fig, ax = plt.subplots()
+
+sns.scatterplot(x="ContactPoints", y="Latency", data=df, markers="o", s=100, alpha=0.8, legend=False)
+
+ax.set_xlabel("Ti-Ta relative contact point", fontsize=25)
+ax.set_ylabel("Latency (s)", fontsize=25)
+plt.xticks([0, 1], fontsize=25)
+plt.yticks([0, 1], fontsize=25)
+for spine in ax.spines.values():
+    spine.set_linewidth(2)
+plt.tick_params(axis="both", width=3, length=10)
+plt.title("G106", fontsize=25)
+plt.ylim([-0.1, 1.1])
+plt.xlim([-0.1, 1.1])
+plt.tight_layout()
 plt.show()
 
-"""start = 200
-end = 800
-# Example usage
-data = pd.read_csv(grouped_data_path["Fly_1"][0])
-# coords = ReadCoordsAll(data, 400)
+"""
 
-center_points = np.asarray([data["platform-tip_x"].tolist(), data["platform-tip_y"].tolist(), data["platform-tip_z"].tolist()])
-R_mTT_points = np.asarray([data["R-mTT_x"].tolist(), data["R-mTT_y"].tolist(), data["R-mTT_z"].tolist()])
-R_mLT_points = np.asarray([data["R-mLT_x"].tolist(), data["R-mLT_y"].tolist(), data["R-mLT_z"].tolist()])
-
-center_points = np.transpose(center_points)
-R_mTT_points = np.transpose(R_mTT_points)
-R_mLT_points = np.transpose(R_mLT_points)
-
-for i in range(start, end):
-    if check_leg_platform_intersection(R_mTT_points[i], R_mLT_points[i], center_points[i - start:i]):
-        print(i)
-        break"""
-# plot_motion_vector_with_plane(center_points[:400], coords)
 
 

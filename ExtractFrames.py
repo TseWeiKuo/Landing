@@ -54,11 +54,11 @@ def ExtractFrames(Video_files_path, ExtractedF_Dir, extract_frame_range, step):
                 output_file_path = os.path.join(Frames_output_directory, f"img{extracted_frame_ind[i]:04d}.png")
                 cv2.imwrite(output_file_path, Videos[extracted_frame_ind[i] + f * Total_frames_num])
         cam += 1
-Vid_Dir = os.path.join(r"C:\Users\agrawal-admin\OneDrive - Virginia Tech\Desktop\Agrawal_Lab\vids")
-ExtractedFPath = os.path.join(r"C:\Users\agrawal-admin\OneDrive - Virginia Tech\Desktop\Agrawal_Lab\frames")
+Vid_Dir = os.path.join(r"C:\Users\agrawal-admin\Desktop\Landing\vids")
+ExtractedFPath = os.path.join(r"C:\Users\agrawal-admin\Desktop\Landing\frames")
 Total_frames_num = 1400
-extract_frame_range = [300, 800]
-step = 4
+extract_frame_range = [400, 900]
+step = 5
 remaining_files = []
 FolderName = ""
 Vid_By_Cam = dict()
@@ -75,5 +75,5 @@ for file in os.listdir(Vid_Dir):
 
 
 # ExtractFrames(Vid_By_Cam, ExtractedFPath, extract_frame_range, step)
-FilterFrames(ExtractedFPath)
+# FilterFrames(ExtractedFPath)
 

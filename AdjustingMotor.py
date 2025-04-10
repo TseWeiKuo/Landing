@@ -8,7 +8,8 @@ import pypylon.pylon as py
 import numpy as np
 import cv2
 import subprocess
-
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 def onVoltageChange(self, voltage):
     # print("\nVoltage: " + str(voltage))
@@ -62,7 +63,6 @@ def trigger_command(subprocess_instance, command):
                 print("Subprocess error:", err)
     except IOError as e:
         print(f"Error writing to subprocess: {e}")
-
 def ViewFly():
     global camera1
     global camera2
@@ -100,10 +100,10 @@ def ViewFly():
                 TargetCoord4 = [FrontViewX - 4, FrontViewY]
                 Image4 = grabResult4.Array
                 Image4 = DisplayGrid(Image4, 300, 120, 200, 380, TargetCoord)
-                Image4 = DisplayGrid(Image4, 300, 120, 200, 380, TargetCoord1)
-                Image4 = DisplayGrid(Image4, 300, 120, 200, 380, TargetCoord2)
-                Image4 = DisplayGrid(Image4, 300, 120, 200, 380, TargetCoord3)
-                Image4 = DisplayGrid(Image4, 300, 120, 200, 380, TargetCoord4)
+                # Image4 = DisplayGrid(Image4, 300, 120, 200, 380, TargetCoord1)
+                # Image4 = DisplayGrid(Image4, 300, 120, 200, 380, TargetCoord2)
+                # Image4 = DisplayGrid(Image4, 300, 120, 200, 380, TargetCoord3)
+                # Image4 = DisplayGrid(Image4, 300, 120, 200, 380, TargetCoord4)
 
                 Draw_boundary(Image4)
 
@@ -114,10 +114,10 @@ def ViewFly():
                 TargetCoord4 = [SideViewX - 2, SideViewY]
                 Image6 = grabResult6.Array
                 Image6 = DisplayGrid(Image6, 180, 140, 440, 260, TargetCoord)
-                Image6 = DisplayGrid(Image6, 180, 140, 440, 260, TargetCoord1)
-                Image6 = DisplayGrid(Image6, 180, 140, 440, 260, TargetCoord2)
-                Image6 = DisplayGrid(Image6, 180, 140, 440, 260, TargetCoord3)
-                Image6 = DisplayGrid(Image6, 180, 140, 440, 260, TargetCoord4)
+                # Image6 = DisplayGrid(Image6, 180, 140, 440, 260, TargetCoord1)
+                # Image6 = DisplayGrid(Image6, 180, 140, 440, 260, TargetCoord2)
+                # Image6 = DisplayGrid(Image6, 180, 140, 440, 260, TargetCoord3)
+                # Image6 = DisplayGrid(Image6, 180, 140, 440, 260, TargetCoord4)
                 Draw_boundary(Image6)
 
                 Combined_images_1 = cv2.hconcat([Image6, Image4])
@@ -156,317 +156,98 @@ def ViewFly():
     camera4.Close()
     camera5.Close()
     camera6.Close()
+"""
+Initialize the camera acquisition setting
+"""
+def InitializeCamera(Device, ExposureTime, sharpness, noise_reduction_value, Buffer):
+    Cropped = False
+    print("Camera: " + str(Device.GetSerialNumber()))
+    Camera = py.InstantCamera(py.TlFactory.GetInstance().CreateDevice(Device))
+    if Cropped:
+        Camera.Open()
+        Camera.Width.SetValue(640)
+        Camera.Height.SetValue(550)
+        Camera.OffsetX = 128
+        Camera.OffsetY = 43
+        Camera.PgiMode.Value = "On"
+        Camera.NoiseReduction.Value = noise_reduction_value
+        Camera.SensorReadoutMode.Value = "Fast"
+        Camera.SharpnessEnhancement.Value = sharpness
+        Camera.ExposureTime = ExposureTime
+        Camera.LineSelector = "Line4"
+        Camera.LineMode = "Output"
+        Camera.LineInverter = False
+        Camera.LineSource = "FrameTriggerWait"
+        Camera.Gain = Camera.Gain.Max
+        Camera.MaxNumBuffer = 100
+        Camera.LineSelector = "Line3"
+        Camera.LineMode = "Input"
+        Camera.TriggerSelector = "FrameStart"
+        Camera.TriggerSource = "Line3"
+        Camera.TriggerActivation = "RisingEdge"
+        Camera.TriggerDelay = 0
+        Camera.TriggerMode = "On"
+    else:
+        Camera.Open()
+        Camera.Width.SetValue(Camera.Width.GetMax())
+        Camera.Height.SetValue(Camera.Height.GetMax())
+        Camera.PgiMode.Value = "On"
+        Camera.NoiseReduction.Value = noise_reduction_value
+        Camera.SharpnessEnhancement.Value = sharpness
+        Camera.SensorReadoutMode.Value = "Fast"
+        Camera.ExposureTime = ExposureTime
+        Camera.LineSelector = "Line4"
+        Camera.LineMode = "Output"
+        Camera.LineInverter = False
+        Camera.LineSource = "ExposureActive"
+        Camera.Gain = Camera.Gain.Max
+        Camera.MaxNumBuffer = Buffer
+        Camera.LineSelector = "Line3"
+        Camera.LineMode = "Input"
+        Camera.TriggerSelector = "FrameStart"
+        Camera.TriggerSource = "Line3"
+        Camera.TriggerActivation = "RisingEdge"
+        Camera.TriggerDelay = 0
+        Camera.TriggerMode = "On"
+    return Camera
 
-FPS = 40
-ExposureTime = 80
-print(f"ExposureTime: {ExposureTime} us")
 Cropped = False
-SideViewX = 12
+SideViewX = 14
 SideViewY = 10
 FrontViewX = 5
 FrontViewY = 12
 Continuous_recording = 1
 
-"""
-Set up and configure camera
-"""
+# Set the camera acquisition setting
+FPS = 40
+ExposureTime = 80
+noise_reduction_value = 1  # Noise reduction
+Buffer = 100  # Recording buffer
+sharpness = 3  # Sharpness
+print(f"ExposureTime: {ExposureTime} us")
+
+# Initialize the camera based on acquisition setting
 tlFactory = py.TlFactory.GetInstance()
 devices = tlFactory.EnumerateDevices()
-print("Camera 1: " + str(devices[0].GetSerialNumber()))
-print("Camera 2: " + str(devices[1].GetSerialNumber()))
-print("Camera 3: " + str(devices[2].GetSerialNumber()))
-print("Camera 4: " + str(devices[3].GetSerialNumber()))
-print("Camera 5: " + str(devices[4].GetSerialNumber()))
-print("Camera 6: " + str(devices[5].GetSerialNumber()))
-noise_reduction_value = 1.2
-sharpness = 3
 
-if Cropped:
-    camera1 = py.InstantCamera(py.TlFactory.GetInstance().CreateDevice(devices[0]))
-    camera1.Open()
-    camera1.Width.SetValue(640)
-    camera1.Height.SetValue(550)
-    camera1.OffsetX = 160
-    camera1.OffsetY = 6
-    camera1.PgiMode.Value = "On"
-    camera1.NoiseReduction.Value = noise_reduction_value
-    camera1.SharpnessEnhancement.Value = sharpness
-    camera1.ExposureTime = ExposureTime
-    camera1.LineSelector = "Line4"
-    camera1.LineMode = "Output"
-    camera1.LineInverter = False
-    camera1.LineSource = "ExposureActive"
-    camera1.Gain = camera1.Gain.Max
-    camera1.MaxNumBuffer = 100
-    camera1.LineSelector = "Line3"
-    camera1.LineMode = "Input"
-    camera1.TriggerSelector = "FrameStart"
-    camera1.TriggerSource = "Line3"
-    camera1.TriggerActivation = "RisingEdge"
-    camera1.TriggerDelay = 0
+# Camera 1 initialization
+camera1 = InitializeCamera(devices[0], ExposureTime=ExposureTime, sharpness=sharpness, noise_reduction_value=noise_reduction_value, Buffer=Buffer)
 
+# Camera 2 initialization
+camera2 = InitializeCamera(devices[1], ExposureTime=ExposureTime, sharpness=sharpness, noise_reduction_value=noise_reduction_value, Buffer=Buffer)
 
-    camera2 = py.InstantCamera(py.TlFactory.GetInstance().CreateDevice(devices[1]))
-    camera2.Open()
-    camera2.Width.SetValue(640)
-    camera2.Height.SetValue(550)
-    camera2.OffsetX = 96
-    camera2.OffsetY = 60
-    camera2.PgiMode.Value = "On"
-    camera2.NoiseReduction.Value = noise_reduction_value
-    camera2.SharpnessEnhancement.Value = sharpness
-    camera2.ExposureTime = ExposureTime
-    camera2.LineSelector = "Line4"
-    camera2.LineMode = "Output"
-    camera2.LineInverter = False
-    camera2.LineSource = "ExposureActive"
-    camera2.Gain = camera2.Gain.Max
-    camera2.MaxNumBuffer = 100
-    camera2.LineSelector = "Line3"
-    camera2.LineMode = "Input"
-    camera2.TriggerSelector = "FrameStart"
-    camera2.TriggerSource = "Line3"
-    camera2.TriggerActivation = "RisingEdge"
-    camera2.TriggerDelay = 0
+# Camera 3 initialization
+camera3 = InitializeCamera(devices[2], ExposureTime=ExposureTime, sharpness=sharpness, noise_reduction_value=noise_reduction_value, Buffer=Buffer)
 
+# Camera 4 initialization
+camera4 = InitializeCamera(devices[3], ExposureTime=ExposureTime, sharpness=sharpness, noise_reduction_value=noise_reduction_value, Buffer=Buffer)
 
-    camera3 = py.InstantCamera(py.TlFactory.GetInstance().CreateDevice(devices[2]))
-    camera3.Open()
-    camera3.Width.SetValue(640)
-    camera3.Height.SetValue(550)
-    camera3.OffsetX = 64
-    camera3.OffsetY = 45
-    camera3.PgiMode.Value = "On"
-    camera3.NoiseReduction.Value = noise_reduction_value
-    camera3.SharpnessEnhancement.Value = sharpness
-    camera3.ExposureTime = ExposureTime
-    camera3.LineSelector = "Line4"
-    camera3.LineMode = "Output"
-    camera3.LineInverter = False
-    camera3.LineSource = "ExposureActive"
-    camera3.Gain = camera3.Gain.Max
-    camera3.MaxNumBuffer = 100
-    camera3.LineSelector = "Line3"
-    camera3.LineMode = "Input"
-    camera3.TriggerSelector = "FrameStart"
-    camera3.TriggerSource = "Line3"
-    camera3.TriggerActivation = "RisingEdge"
-    camera3.TriggerDelay = 0
+# Camera 5 initialization
+camera5 = InitializeCamera(devices[4], ExposureTime=ExposureTime, sharpness=sharpness, noise_reduction_value=noise_reduction_value, Buffer=Buffer)
 
+# Camera 6 initialization
+camera6 = InitializeCamera(devices[5], ExposureTime=ExposureTime, sharpness=sharpness, noise_reduction_value=noise_reduction_value, Buffer=Buffer)
 
-    camera4 = py.InstantCamera(py.TlFactory.GetInstance().CreateDevice(devices[3]))
-    camera4.Open()
-    camera4.Width.SetValue(640)
-    camera4.Height.SetValue(550)
-    camera4.OffsetX = 128
-    camera4.OffsetY = 43
-    camera4.PgiMode.Value = "On"
-    camera4.NoiseReduction.Value = noise_reduction_value
-    camera4.SharpnessEnhancement.Value = sharpness
-    camera4.ExposureTime = ExposureTime
-    camera4.LineSelector = "Line4"
-    camera4.LineMode = "Output"
-    camera4.LineInverter = False
-    camera4.LineSource = "ExposureActive"
-    camera4.Gain = camera4.Gain.Max
-    camera4.MaxNumBuffer = 100
-    camera4.LineSelector = "Line3"
-    camera4.LineMode = "Input"
-    camera4.TriggerSelector = "FrameStart"
-    camera4.TriggerSource = "Line3"
-    camera4.TriggerActivation = "RisingEdge"
-    camera4.TriggerDelay = 0
-
-
-    camera5 = py.InstantCamera(py.TlFactory.GetInstance().CreateDevice(devices[4]))
-    camera5.Open()
-    camera5.Width.SetValue(640)
-    camera5.Height.SetValue(550)
-    camera5.OffsetX = 80
-    camera5.OffsetY = 60
-    camera5.PgiMode.Value = "On"
-    camera5.NoiseReduction.Value = noise_reduction_value
-    camera5.SharpnessEnhancement.Value = sharpness
-    camera5.ExposureTime = ExposureTime
-    camera5.LineSelector = "Line4"
-    camera5.LineMode = "Output"
-    camera5.LineInverter = False
-    camera5.LineSource = "ExposureActive"
-    camera5.Gain = camera5.Gain.Max
-    camera5.MaxNumBuffer = 100
-    camera5.LineSelector = "Line3"
-    camera5.LineMode = "Input"
-    camera5.TriggerSelector = "FrameStart"
-    camera5.TriggerSource = "Line3"
-    camera5.TriggerActivation = "RisingEdge"
-    camera5.TriggerDelay = 0
-
-
-    camera6 = py.InstantCamera(py.TlFactory.GetInstance().CreateDevice(devices[5]))
-    camera6.Open()
-    camera6.Width.SetValue(640)
-    camera6.Height.SetValue(550)
-    camera6.OffsetX = 128
-    camera6.OffsetY = 43
-    camera6.PgiMode.Value = "On"
-    camera6.NoiseReduction.Value = noise_reduction_value
-    camera6.SharpnessEnhancement.Value = sharpness
-    camera6.ExposureTime = ExposureTime
-    camera6.LineSelector = "Line4"
-    camera6.LineMode = "Output"
-    camera6.LineInverter = False
-    camera6.LineSource = "ExposureActive"
-    camera6.Gain = camera6.Gain.Max
-    camera6.MaxNumBuffer = 100
-    camera6.LineSelector = "Line3"
-    camera6.LineMode = "Input"
-    camera6.TriggerSelector = "FrameStart"
-    camera6.TriggerSource = "Line3"
-    camera6.TriggerActivation = "RisingEdge"
-    camera6.TriggerDelay = 0
-else:
-    camera1 = py.InstantCamera(py.TlFactory.GetInstance().CreateDevice(devices[0]))
-    camera1.Open()
-    camera1.Width.SetValue(camera1.Width.GetMax())
-    camera1.Height.SetValue(camera1.Height.GetMax())
-    camera1.PgiMode.Value = "On"
-    camera1.NoiseReduction.Value = noise_reduction_value
-    camera1.SharpnessEnhancement.Value = sharpness
-    camera1.ExposureTime = ExposureTime
-    camera1.LineSelector = "Line4"
-    camera1.LineMode = "Output"
-    camera1.LineInverter = False
-    camera1.LineSource = "ExposureActive"
-    camera1.Gain = camera1.Gain.Max
-    camera1.MaxNumBuffer = 100
-    camera1.LineSelector = "Line3"
-    camera1.LineMode = "Input"
-    camera1.TriggerSelector = "FrameStart"
-    camera1.TriggerSource = "Line3"
-    camera1.TriggerActivation = "RisingEdge"
-    camera1.TriggerDelay = 0
-
-    camera2 = py.InstantCamera(py.TlFactory.GetInstance().CreateDevice(devices[1]))
-    camera2.Open()
-    camera2.Width.SetValue(camera2.Width.GetMax())
-    camera2.Height.SetValue(camera2.Height.GetMax())
-    camera2.PgiMode.Value = "On"
-    camera2.NoiseReduction.Value = noise_reduction_value
-    camera2.SharpnessEnhancement.Value = sharpness
-    camera2.ExposureTime = ExposureTime
-    camera2.LineSelector = "Line4"
-    camera2.LineMode = "Output"
-    camera2.LineInverter = False
-    camera2.LineSource = "ExposureActive"
-    camera2.Gain = camera2.Gain.Max
-    camera2.MaxNumBuffer = 100
-    camera2.LineSelector = "Line3"
-    camera2.LineMode = "Input"
-    camera2.TriggerSelector = "FrameStart"
-    camera2.TriggerSource = "Line3"
-    camera2.TriggerActivation = "RisingEdge"
-    camera2.TriggerDelay = 0
-
-    camera3 = py.InstantCamera(py.TlFactory.GetInstance().CreateDevice(devices[2]))
-    camera3.Open()
-    camera3.Width.SetValue(camera3.Width.GetMax())
-    camera3.Height.SetValue(camera3.Height.GetMax())
-    camera3.PgiMode.Value = "On"
-    camera3.NoiseReduction.Value = noise_reduction_value
-    camera3.SharpnessEnhancement.Value = sharpness
-    camera3.ExposureTime = ExposureTime
-    camera3.LineSelector = "Line4"
-    camera3.LineMode = "Output"
-    camera3.LineInverter = False
-    camera3.LineSource = "ExposureActive"
-    camera3.Gain = camera3.Gain.Max
-    camera3.MaxNumBuffer = 100
-    camera3.LineSelector = "Line3"
-    camera3.LineMode = "Input"
-    camera3.TriggerSelector = "FrameStart"
-    camera3.TriggerSource = "Line3"
-    camera3.TriggerActivation = "RisingEdge"
-    camera3.TriggerDelay = 0
-
-    camera4 = py.InstantCamera(py.TlFactory.GetInstance().CreateDevice(devices[3]))
-    camera4.Open()
-    camera4.Width.SetValue(camera4.Width.GetMax())
-    camera4.Height.SetValue(camera4.Height.GetMax())
-    camera4.PgiMode.Value = "On"
-    camera4.NoiseReduction.Value = noise_reduction_value
-    camera4.SharpnessEnhancement.Value = sharpness
-    camera4.ExposureTime = ExposureTime
-    camera4.LineSelector = "Line4"
-    camera4.LineMode = "Output"
-    camera4.LineInverter = False
-    camera4.LineSource = "ExposureActive"
-    camera4.Gain = camera4.Gain.Max
-    camera4.MaxNumBuffer = 100
-    camera4.LineSelector = "Line3"
-    camera4.LineMode = "Input"
-    camera4.TriggerSelector = "FrameStart"
-    camera4.TriggerSource = "Line3"
-    camera4.TriggerActivation = "RisingEdge"
-    camera4.TriggerDelay = 0
-
-    camera5 = py.InstantCamera(py.TlFactory.GetInstance().CreateDevice(devices[4]))
-    camera5.Open()
-    camera5.Width.SetValue(camera5.Width.GetMax())
-    camera5.Height.SetValue(camera5.Height.GetMax())
-    camera5.PgiMode.Value = "On"
-    camera5.NoiseReduction.Value = noise_reduction_value
-    camera5.SharpnessEnhancement.Value = sharpness
-    camera5.ExposureTime = ExposureTime
-    camera5.LineSelector = "Line4"
-    camera5.LineMode = "Output"
-    camera5.LineInverter = False
-    camera5.LineSource = "ExposureActive"
-    camera5.Gain = camera5.Gain.Max
-    camera5.MaxNumBuffer = 100
-    camera5.LineSelector = "Line3"
-    camera5.LineMode = "Input"
-    camera5.TriggerSelector = "FrameStart"
-    camera5.TriggerSource = "Line3"
-    camera5.TriggerActivation = "RisingEdge"
-    camera5.TriggerDelay = 0
-
-    camera6 = py.InstantCamera(py.TlFactory.GetInstance().CreateDevice(devices[5]))
-    camera6.Open()
-    camera6.Width.SetValue(camera6.Width.GetMax())
-    camera6.Height.SetValue(camera6.Height.GetMax())
-    camera6.PgiMode.Value = "On"
-    camera6.NoiseReduction.Value = noise_reduction_value
-    camera6.SharpnessEnhancement.Value = sharpness
-    camera6.ExposureTime = ExposureTime
-    camera6.LineSelector = "Line4"
-    camera6.LineMode = "Output"
-    camera6.LineInverter = False
-    camera6.LineSource = "ExposureActive"
-    camera6.Gain = camera6.Gain.Max
-    camera6.MaxNumBuffer = 100
-    camera6.LineSelector = "Line3"
-    camera6.LineMode = "Input"
-    camera6.TriggerSelector = "FrameStart"
-    camera6.TriggerSource = "Line3"
-    camera6.TriggerActivation = "RisingEdge"
-    camera6.TriggerDelay = 0
-
-TriggerM = True
-
-if not TriggerM:
-    camera1.TriggerMode = "Off"
-    camera2.TriggerMode = "Off"
-    camera3.TriggerMode = "Off"
-    camera4.TriggerMode = "Off"
-    camera5.TriggerMode = "Off"
-    camera6.TriggerMode = "Off"
-else:
-    camera1.TriggerMode = "On"
-    camera2.TriggerMode = "On"
-    camera3.TriggerMode = "On"
-    camera4.TriggerMode = "On"
-    camera5.TriggerMode = "On"
-    camera6.TriggerMode = "On"
 Send_signal_process = Popen(['python', 'subprocess_daq_trigger.py', str(FPS), str(20), str(Continuous_recording)], stdin=subprocess.PIPE, text=True)
 stopCam = False
 ViewThread = threading.Thread(target=ViewFly)
