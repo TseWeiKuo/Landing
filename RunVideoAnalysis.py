@@ -1,11 +1,11 @@
 import deeplabcut
 import time
-import tensorflow as tf
 import subprocess
 import os
 import shutil
 import re
 from natsort import natsorted
+import tensorflow as tf
 
 def getVideoPaths(video_folder, filetype):
     video_paths = []
@@ -21,17 +21,18 @@ def getVideoPaths(video_folder, filetype):
 
 
 
-Anipose_path = r"C:\Users\agrawal-admin\Desktop\TibiaTarsusPlatformODLight-Wayne-2024-10-19\Network-03-14"
-DLC_analyzed_data_folder = r"C:\Users\agrawal-admin\DLCData\Network-03-14"
+Anipose_path = r"C:\Users\agrawal-admin\Desktop\TibiaTarsusPlatformODLight-Wayne-2024-10-19\Network-07-04"
+DLC_analyzed_data_folder = r"C:\Users\agrawal-admin\DLCData\Network-07-04"
 DLC_config_path = r"C:\Users\agrawal-admin\Desktop\TibiaTarsusPlatformODLight-Wayne-2024-10-19\network\config.yaml"
-Data_folder = r"C:\Users\agrawal-admin\Desktop\DataFolder\HCS+_UASKir2.1eGFP\CSS-0048_T2-TiTa"
+Data_folder = r"C:\Users\agrawal-admin\Desktop\DataFolder\Optogenetics\L006xL011-Max"
 video_paths = getVideoPaths(Data_folder, ".mp4")
 
 # comps = base_dir.split('\\')
 
-unique_fly_combinations = {}
+
 patter = re.compile(r'(?P<date>\d{4}-\d{2}-\d{2})\\Fly_(?P<fly_num>\d+)\\(?P<TimeStamp>\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}\.\d+)_(?P<experiment>[\w]+)_(?P<group_name>[\w-]+)_(?P<joint_name>[\w-]+)_Fly_\d+_Trial_\d+')
 # patter = re.compile(r'(?P<date>\d{4}-\d{2}-\d{2})\\Fly_(?P<fly_num>\d+)\\(?P<TimeStamp>\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}\.\d+)_(?P<experiment>[^_]+(?:_[^_]+)*)_(?P<group_name>[^_]+_[^_]+)_(?P<joint_name>[\w-]+)_Fly_\d+_Trial_\d+')
+unique_fly_combinations = {}
 destinations = {}
 grouped_files = {}
 Anipose_Data_Folders = {}
@@ -113,8 +114,8 @@ for file_path in video_paths:
         os.makedirs(Anipose_fly_folder, exist_ok=True)
 
 
-
-print(tf.config.list_physical_devices("GPU"))
+os.environ["CUDA_VISIBLE_DEVICES"]="0"
+print(tf.config.list_physical_devices('GPU'))
 start_time = time.perf_counter()
 try:
     for k in destinations.keys():
@@ -136,6 +137,7 @@ for k in destinations.keys():
                 output_file_path = os.path.join(Anipose_Data_Folders[k], file)
                 new_filename = output_file_path[:output_file_path.find("Cam") + 4] + ".h5"
                 new_destination_path = os.path.join(Anipose_Data_Folders[k], new_filename)
+                print(new_destination_path)
                 # print(len(new_destination_path))
 
                 if os.path.isfile(new_destination_path):
@@ -149,4 +151,4 @@ for k in destinations.keys():
 # Run 'anipose filter' command in the specified directory
 subprocess.run(["anipose", "filter"], cwd=Anipose_path)
 
-print(f"Total analysis time {time.perf_counter() - start_time}")
+# print(f"Total analysis time {time.perf_counter() - start_time}")

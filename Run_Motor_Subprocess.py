@@ -25,7 +25,7 @@ def PID_Control():
     output = pid(last_voltage)
 
     if Record_trace:
-        Voltage_trace_trial_time_stamp.append(time.perf_counter() + Parent_reference_time_stamp)
+        Voltage_trace_trial_time_stamp.append(time.perf_counter())
         Voltage_trial_trace.append(voltageInput0.getVoltage())
     # print(f"Target voltage: {Current_target_position} Current voltage: {voltageInput0.getVoltage()} Current output: {dcMotor0.getVelocity()}")
     if output >= max_duty_cycle:

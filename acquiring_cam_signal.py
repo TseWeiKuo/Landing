@@ -95,7 +95,7 @@ try:
 
             # Record the start time stamp when recording AI data
             start = time.perf_counter()
-            start_recording_time_stamps.append(time.perf_counter() + reference_time_stamp)
+            start_recording_time_stamps.append(time.perf_counter())
 
             # Record the AI data for 10 second
             while time.perf_counter() - start < 10:

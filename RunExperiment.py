@@ -8,6 +8,7 @@ import os
 import concurrent.futures
 import datetime
 import pandas as pd
+import random
 import json
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
@@ -282,16 +283,19 @@ def CloseSubproess(SubProcessInstance):
 Data_Folder_Path = r"C:\Users\agrawal-admin\Desktop\DataFolder"
 
 # Specify the name of the experiment
-Experiment = "HCS+_UASKir2.1eGFP"
+Experiment = "Optogenetics"
 
 # Specify the name of the group of the experiment
-Group_name = "CSS-0039_T2-CxTr"
+Group_name = "GTACRx49541-Max"
 
 # Initialize the date of the experiment
 Date = datetime.datetime.now().date()
 
 # Initialize folder to store fly video
 Fly_Folder = ""
+
+# Use light?
+Use_Light = True
 
 # Initialize the needed data folder and metadata
 Experiment_meta_data_file, Cameras_Signal_metadata_file, Fly_num = \
@@ -306,7 +310,7 @@ FPS = 250  # Frame rate
 ExposureTime = 75  # Exposure time
 noise_reduction_value = 1  # Noise reduction
 Buffer = 4000  # Recording buffer
-sharpness = 3  # Sharpness
+sharpness = 3.5  # Sharpness
 print(f"ExposureTime: {ExposureTime} us")
 
 # Initialize the camera based on acquisition setting
@@ -335,15 +339,22 @@ camera6 = InitializeCamera(devices[5], ExposureTime=ExposureTime, sharpness=shar
 os.chdir(r"C:\Users\agrawal-admin\Desktop\Landing")
 
 # Set motor parameters
-Target_V = 1.9  # Motor stop position
+Target_V = 2  # Motor stop position
 Initial_V = 1  # Motor start position
-Trial_num = 20  # Number of trials
+Trial_num = 30 # Number of trials
 Platform_stop_duration = 1  # Motor stop time
 inter_stim_wait_time = [10] * Trial_num  # Inter trial wait time 10s
 MotorExtendTime = 3  # Maximum motor extending time
 MotorRetractTime = 3  # Maximum motor retracting time
 Videos_recording_time = []  # Resulting recording time of each trial
 Continuous_recording = 2  # Recording mode, 2 = experiment, 1 = calibration
+
+# Randomize light on generation
+NL_trials = []
+if Use_Light:
+    NL_trials = sorted(random.sample(range(1, Trial_num), 15))
+    # NL_trials = []
+
 
 # Count the number of frames to record for each trial
 frames_to_grab = CountFrames(Platform_stop_duration=Platform_stop_duration, Motor_Extend_time=MotorExtendTime, Motor_Retract_time=MotorRetractTime, Frames_Per_Second=FPS)
@@ -352,7 +363,7 @@ frames_to_grab = CountFrames(Platform_stop_duration=Platform_stop_duration, Moto
 Acquiring_signal_process = Popen(['python', 'acquiring_cam_signal.py', str(Trial_num), str(time.perf_counter()), str(Cameras_Signal_metadata_file)], stdin=subprocess.PIPE, text=True)
 
 # Start the subprocess to send AO signal to camera
-Send_signal_process = Popen(['python', 'subprocess_daq_trigger.py', str(FPS), str(Trial_num), str(Continuous_recording)], stdin=subprocess.PIPE, text=True)
+Send_signal_process = Popen(['python', 'subprocess_daq_trigger.py', str(FPS), str(Trial_num), str(Continuous_recording), json.dumps(NL_trials)], stdin=subprocess.PIPE, text=True)
 
 # Create json data for motor parameters
 metadata = {"Target_V": Target_V, "Initial_V": Initial_V, "Trial_Num": Trial_num, "Platform_stop_time": [1] * Trial_num}
@@ -406,7 +417,7 @@ try:
         send_command(Acquiring_signal_process, "StartAcquiring")
 
         # Wait half second for AO and AI subprocess to be ready
-        time.sleep(0.5)
+        # time.sleep(0.5)
 
         # Run the motor
         send_command(Run_Motor, "RunMotor")
@@ -424,7 +435,8 @@ try:
                 grabResult4 = camera4.RetrieveResult(wait_time, py.TimeoutHandling_ThrowException)
                 grabResult5 = camera5.RetrieveResult(wait_time, py.TimeoutHandling_ThrowException)
                 grabResult6 = camera6.RetrieveResult(wait_time, py.TimeoutHandling_ThrowException)
-
+                # if (images_grabbed + 1) % FPS == 0:
+                    # print(int((images_grabbed + 1) / FPS))
                 # If grab succeed
                 if grabResult1.GrabSucceeded() and grabResult2.GrabSucceeded() and grabResult3.GrabSucceeded()\
                         and grabResult4.GrabSucceeded() and grabResult5.GrabSucceeded() and grabResult6.GrabSucceeded():
@@ -497,6 +509,15 @@ try:
         # Wait for half of inter trial wait time
         time.sleep(inter_stim_wait_time[T - 1] / 2)
 
+        # Modify name with according to light
+        Light = ""
+        if Use_Light:
+            if T in NL_trials:
+                Light = "NL_"
+            else:
+                Light = "LO_"
+
+
         # Get the current time stamp of recorded video
         tm = str(datetime.datetime.now().time())
         tm = tm.replace(":", "-")[:-4]
@@ -505,7 +526,7 @@ try:
         Date_and_time_of_exp = str(datetime.datetime.now().date()) + "-" + tm
 
         # Set the file name based on date, time, group name and fly number
-        filename = Date_and_time_of_exp + "_" + Experiment + "_" + Group_name + "_" + Fly_num + "_Trial_" + str(T)
+        filename = Date_and_time_of_exp + "_" + Experiment + "_" + Group_name + "_" + Light + Fly_num + "_Trial_" + str(T)
         # print(len(camera1_videos_seg))
         # Prepare recorded data for saving
         cam_imgs = [['_Cam1', camera1_videos_seg], ['_Cam2', camera2_videos_seg], ['_Cam3', camera3_videos_seg],
@@ -586,4 +607,6 @@ add_column_to_csv(Experiment_meta_data_file, "Trial_Num", [Trial_num])
 add_column_to_csv(Experiment_meta_data_file, "Platform_stop_time", metadata["Platform_stop_time"])
 add_column_to_csv(Experiment_meta_data_file, "Inter_trial_wait_time", inter_stim_wait_time)
 add_column_to_csv(Experiment_meta_data_file, "Trial_recording_time", Videos_recording_time)
+if Use_Light:
+    add_column_to_csv(Experiment_meta_data_file, "NoLightTrials", NL_trials)
 

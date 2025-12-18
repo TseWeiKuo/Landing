@@ -1,3 +1,4 @@
+import json
 import threading
 from subprocess import Popen
 from simple_pid import PID
@@ -81,6 +82,7 @@ def ViewFly():
     camera4.StartGrabbing(py.GrabStrategy_LatestImageOnly)
     camera5.StartGrabbing(py.GrabStrategy_LatestImageOnly)
     camera6.StartGrabbing(py.GrabStrategy_LatestImageOnly)
+
     while not stopCam:
         try:
             grabResult1 = camera1.RetrieveResult(wait_time, py.TimeoutHandling_ThrowException)
@@ -100,10 +102,10 @@ def ViewFly():
                 TargetCoord4 = [FrontViewX - 4, FrontViewY]
                 Image4 = grabResult4.Array
                 Image4 = DisplayGrid(Image4, 300, 120, 200, 380, TargetCoord)
-                # Image4 = DisplayGrid(Image4, 300, 120, 200, 380, TargetCoord1)
-                # Image4 = DisplayGrid(Image4, 300, 120, 200, 380, TargetCoord2)
-                # Image4 = DisplayGrid(Image4, 300, 120, 200, 380, TargetCoord3)
-                # Image4 = DisplayGrid(Image4, 300, 120, 200, 380, TargetCoord4)
+                Image4 = DisplayGrid(Image4, 300, 120, 200, 380, TargetCoord1)
+                Image4 = DisplayGrid(Image4, 300, 120, 200, 380, TargetCoord2)
+                Image4 = DisplayGrid(Image4, 300, 120, 200, 380, TargetCoord3)
+                Image4 = DisplayGrid(Image4, 300, 120, 200, 380, TargetCoord4)
 
                 Draw_boundary(Image4)
 
@@ -114,12 +116,13 @@ def ViewFly():
                 TargetCoord4 = [SideViewX - 2, SideViewY]
                 Image6 = grabResult6.Array
                 Image6 = DisplayGrid(Image6, 180, 140, 440, 260, TargetCoord)
-                # Image6 = DisplayGrid(Image6, 180, 140, 440, 260, TargetCoord1)
-                # Image6 = DisplayGrid(Image6, 180, 140, 440, 260, TargetCoord2)
-                # Image6 = DisplayGrid(Image6, 180, 140, 440, 260, TargetCoord3)
-                # Image6 = DisplayGrid(Image6, 180, 140, 440, 260, TargetCoord4)
+                Image6 = DisplayGrid(Image6, 180, 140, 440, 260, TargetCoord1)
+                Image6 = DisplayGrid(Image6, 180, 140, 440, 260, TargetCoord2)
+                Image6 = DisplayGrid(Image6, 180, 140, 440, 260, TargetCoord3)
+                Image6 = DisplayGrid(Image6, 180, 140, 440, 260, TargetCoord4)
                 Draw_boundary(Image6)
 
+                Image5 = grabResult5.Array
                 Combined_images_1 = cv2.hconcat([Image6, Image4])
                 # Combined_images_2 = cv2.hconcat([Image5, Image4])
 
@@ -211,18 +214,19 @@ def InitializeCamera(Device, ExposureTime, sharpness, noise_reduction_value, Buf
         Camera.TriggerMode = "On"
     return Camera
 
+
 Cropped = False
-SideViewX = 14
-SideViewY = 10
+SideViewX = 11
+SideViewY = 9
 FrontViewX = 5
 FrontViewY = 12
 Continuous_recording = 1
 
 # Set the camera acquisition setting
 FPS = 40
-ExposureTime = 80
+ExposureTime = 5000
 noise_reduction_value = 1  # Noise reduction
-Buffer = 100  # Recording buffer
+Buffer = 300  # Recording buffer
 sharpness = 3  # Sharpness
 print(f"ExposureTime: {ExposureTime} us")
 
@@ -248,7 +252,11 @@ camera5 = InitializeCamera(devices[4], ExposureTime=ExposureTime, sharpness=shar
 # Camera 6 initialization
 camera6 = InitializeCamera(devices[5], ExposureTime=ExposureTime, sharpness=sharpness, noise_reduction_value=noise_reduction_value, Buffer=Buffer)
 
-Send_signal_process = Popen(['python', 'subprocess_daq_trigger.py', str(FPS), str(20), str(Continuous_recording)], stdin=subprocess.PIPE, text=True)
+# Camera 7 initialization
+# camera7 = InitializeCamera(devices[6], ExposureTime=ExposureTime, sharpness=sharpness, noise_reduction_value=noise_reduction_value, Buffer=Buffer)
+
+placeholder_list = []
+Send_signal_process = Popen(['python', 'subprocess_daq_trigger.py', str(FPS), str(20), str(Continuous_recording), json.dumps(placeholder_list)], stdin=subprocess.PIPE, text=True)
 stopCam = False
 ViewThread = threading.Thread(target=ViewFly)
 ViewThread.start()
@@ -257,6 +265,8 @@ Current_target_position = 1
 last_voltage = 0
 max_duty_cycle = 1
 deadband = 0.01
+
+
 
 dcMotor0 = DCMotor()
 voltageInput0 = VoltageInput()
@@ -268,6 +278,7 @@ voltageInput0.openWaitForAttachment(5000)
 voltageInput0.setOnVoltageChangeHandler(onVoltageChange)
 voltageInput0.setChannel(0)
 voltageInput0.setDataRate(125)
+
 
 
 try:

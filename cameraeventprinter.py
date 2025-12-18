@@ -1,15 +1,14 @@
 # Contains a Camera Event Handler that prints a message for each event method call.
+import numpy as np
+import random
+import subprocess
+from subprocess import Popen
+import json
+import time
+import sys
 
-from pypylon import pylon
-from pypylon import genicam
+nums = random.sample(range(0, 29), 15)
 
+Send_signal_process = Popen(['python', 'DeblurImages.py', json.dumps(nums)], stdin=subprocess.PIPE, text=True)
 
-class CameraEventPrinter(pylon.CameraEventHandler):
-    def OnCameraEvent(self, camera, userProvidedId, node):
-        print("OnCameraEvent event for device ", camera.GetDeviceInfo().GetModelName())
-        print("User provided ID: ", userProvidedId)
-        print("Event data node name: ", node.GetName())
-        value = genicam.CValuePtr(node)
-        if value.IsValid():
-            print("Event node data: ", value.ToString())
-        print()
+time.sleep(3)

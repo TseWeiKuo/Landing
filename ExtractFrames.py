@@ -54,11 +54,34 @@ def ExtractFrames(Video_files_path, ExtractedF_Dir, extract_frame_range, step):
                 output_file_path = os.path.join(Frames_output_directory, f"img{extracted_frame_ind[i]:04d}.png")
                 cv2.imwrite(output_file_path, Videos[extracted_frame_ind[i] + f * Total_frames_num])
         cam += 1
-Vid_Dir = os.path.join(r"C:\Users\agrawal-admin\Desktop\Landing\vids")
-ExtractedFPath = os.path.join(r"C:\Users\agrawal-admin\Desktop\Landing\frames")
-Total_frames_num = 1400
-extract_frame_range = [400, 900]
-step = 5
+
+def ExtractSingleFrames(Video_files, extract_frame_range, step):
+    global Total_frames_num
+    global FolderName
+    global ExtractedFPath
+
+    Videos = []
+
+    Videos.extend(ExtractFramesValue(Video_files))
+
+    extracted_frame_ind = range(extract_frame_range[0], extract_frame_range[1], step)
+
+    Frames_output_directory = os.path.join(ExtractedFPath, "New folder")
+
+    if not os.path.exists(Frames_output_directory):
+        os.mkdir(Frames_output_directory)
+
+    for i in range(len(extracted_frame_ind)):
+        output_file_path = os.path.join(Frames_output_directory, f"img{extracted_frame_ind[i]:04d}.png")
+        cv2.imwrite(output_file_path, Videos[extracted_frame_ind[i]])
+
+
+Vid_file = r"C:\Users\agrawal-admin\Desktop\Basler_acA800-510um__24524019__20250514_124401793.mp4"
+Vid_Dir = r"C:\Users\agrawal-admin\Desktop\Landing\vids"
+ExtractedFPath = r"C:\Users\agrawal-admin\Desktop\Landing\frames"
+Total_frames_num = 1750
+extract_frame_range = [500, 900]
+step = 4
 remaining_files = []
 FolderName = ""
 Vid_By_Cam = dict()
@@ -73,7 +96,7 @@ for file in os.listdir(Vid_Dir):
         Vid_By_Cam[str(cam_number)] = [os.path.join(Vid_Dir, file)]
 
 
-
-# ExtractFrames(Vid_By_Cam, ExtractedFPath, extract_frame_range, step)
-# FilterFrames(ExtractedFPath)
+# Frames(Vid_By_Cam, ExtractedFPath, extract_frame_range, step)
+FilterFrames(ExtractedFPath)
+# Extrac
 

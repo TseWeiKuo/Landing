@@ -7,6 +7,7 @@ from Phidget22.Devices.VoltageInput import *
 import pypylon.pylon as py
 import numpy as np
 import cv2
+import json
 
 import subprocess
 
@@ -134,7 +135,7 @@ def ViewFly():
     camera6.Close()
 
 FPS = 40
-ExposureTime = 80
+ExposureTime = 2000
 noise_reduction_value = 1.2
 sharpness = 3
 Continuous_recording = 1
@@ -437,7 +438,9 @@ else:
     camera4.TriggerMode = "On"
     camera5.TriggerMode = "On"
     camera6.TriggerMode = "On"
-Send_signal_process = Popen(['python', 'subprocess_daq_trigger.py', str(FPS), str(20), str(Continuous_recording)], stdin=subprocess.PIPE, text=True)
+
+placeholder_list = []
+Send_signal_process = Popen(['python', 'subprocess_daq_trigger.py', str(FPS), str(20), str(Continuous_recording), json.dumps(placeholder_list)], stdin=subprocess.PIPE, text=True)
 stopCam = False
 ViewThread = threading.Thread(target=ViewFly)
 ViewThread.start()

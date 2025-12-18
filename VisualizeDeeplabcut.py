@@ -136,19 +136,17 @@ def Calculate_key_point_distance(threedData, keypoint1, keypoint2):
             threedData[f"{keypoint1}_x"][i], threedData[f"{keypoint1}_y"][i], threedData[f"{keypoint1}_z"][i],
             threedData[f"{keypoint2}_x"][i], threedData[f"{keypoint2}_y"][i], threedData[f"{keypoint2}_z"][i]))
     return distances
-# KeyPoints = ["L-fBC", "L-fCT", "L-fFT", "L-fTT", "L-fLT", "L-mBC", "L-mCT", "L-mFT", "L-mTT", "L-mLT", "L-hBC", "L-hCT", "L-hFT", "L-hTT", "L-hLT"]
-KeyPoints = [ "R-fBC", "R-fCT", "R-fFT", "R-fTT", "R-fLT", "R-mBC", "R-mCT", "R-mFT", "R-mTT", "R-mLT", "R-hBC", "R-hCT", "R-hFT", "R-hTT", "R-hLT"]
 
-"""
-
-KeyPoints = ["L-wing", "L-wing-hinge", "R-wing", "R-wing-hinge", "platform",
-              "L-fBC", "L-fCT", "L-fFT", "L-fTT", "L-fLT",
-              "L-mBC", "L-mCT", "L-mFT", "L-mTT", "L-mLT",
-              "L-hBC", "L-hCT", "L-hFT", "L-hTT", "L-hLT",
-              "R-fBC", "R-fCT", "R-fFT", "R-fTT", "R-fLT",
-              "R-mBC", "R-mCT", "R-mFT", "R-mTT", "R-mLT",
-              "R-hBC", "R-hCT", "R-hFT", "R-hTT", "R-hLT"]
-"""
+Segments = [["L-wing", "L-wing-hinge"], ["R-wing", "R-wing-hinge"], ["abdomen-tip"],
+              ["platform-tip", "L-platform-tip", "R-platform-tip", "platform-axis"],
+              ["R-fBC", "R-fCT", "R-fFT", "R-fTT", "R-fLT"], ["R-mBC", "R-mCT", "R-mFT", "R-mTT", "R-mLT"],
+              ["R-hBC", "R-hCT", "R-hFT", "R-hTT", "R-hLT"], ["L-fBC", "L-fCT", "L-fFT", "L-fTT", "L-fLT"],
+              ["L-mBC", "L-mCT", "L-mFT", "L-mTT", "L-mLT"], ["L-hBC", "L-hCT", "L-hFT", "L-hTT", "L-hLT"]]
+Key_points = ["L-wing", "L-wing-hinge", "R-wing", "R-wing-hinge", "abdomen-tip",
+              "platform-tip", "L-platform-tip", "R-platform-tip", "platform-axis",
+              "R-fBC", "R-fCT", "R-fFT", "R-fTT", "R-fLT", "R-mBC", "R-mCT", "R-mFT", "R-mTT", "R-mLT",
+              "R-hBC", "R-hCT", "R-hFT", "R-hTT", "R-hLT", "L-fBC", "L-fCT", "L-fFT", "L-fTT", "L-fLT",
+              "L-mBC", "L-mCT", "L-mFT", "L-mTT", "L-mLT", "L-hBC", "L-hCT", "L-hFT", "L-hTT", "L-hLT"]
 KeyPointsToPlot = [["L-fFT", "L-fTT", "L-fLT"], ["R-fFT", "R-fTT", "R-fLT"],
                    ["L-mFT", "L-mTT", "L-mLT"], ["R-mFT", "R-mTT", "R-mLT"],
                    ["L-hFT", "L-hTT", "L-hLT"], ["R-hFT", "R-hTT", "R-hLT"]]
@@ -164,92 +162,105 @@ FrameIndex = [x for x in range(start, end)]
 
 
 Cam = 1
-r"""
-for ca in range(Cam):
-    FinalCollectedData = []
-    source_folder_CTF = r"C:\Users\agrawal-admin\Desktop\Data_to_be_analyzed\CTF_2D_tracking\Cam" + str(ca + 1)
-    scorer_CTF = "DLC_resnet50_Landing_3DJan25shuffle1_1600000"
+frame_index = 700
 
-    source_folder_ODL_old = r"C:\Users\agrawal-admin\Desktop\Data_to_be_analyzed\ODL_Network-10-18-2024-TwoBarLight\Cam" + str(ca + 1)
-    scorer_ODL_old = "DLC_resnet50_TibiaTarsusPlatformODLightOct19shuffle1_2050000"
+import h5py
+h5file = r"C:\Users\agrawal-admin\Desktop\TibiaTarsusPlatformODLight-Wayne-2024-10-19\Network-07-04\Optogenetics\ANxGTACR-Max\ANxGTACR-Max-F1\pose-2d\2025-10-20-11-47-27.21_Optogenetics_ANxGTACR-Max_NL_Fly_1_Trial_1_Cam4.h5"
+# Open the HDF5 file (read mode)
+with h5py.File(h5file, "r") as f:
+    # List all groups and datasets
+    def print_h5_structure(name, obj):
+        if isinstance(obj, h5py.Dataset):
+            print(f"Dataset: {name}, shape: {obj.shape}, dtype: {obj.dtype}")
+        elif isinstance(obj, h5py.Group):
+            print(f"Group: {name}")
 
-    source_folder_ODL_new = r"C:\Users\agrawal-admin\Desktop\Data_to_be_analyzed\ODL_Network-10-28-2024-TwoBarLight\Cam" + str(ca + 1)
-    scorer_ODL_new = "DLC_resnet50_TibiaTarsusPlatformODLightOct19shuffle1_2550000"
+    f.visititems(print_h5_structure)
 
-    FinalCollectedData.extend(ReadCamData(source_folder_CTF, scorer_CTF, KeyPoints, 0, 1000))
-    FinalCollectedData.extend(ReadCamData(source_folder_ODL_old, scorer_ODL_old, KeyPoints, 200, 1000))
-    FinalCollectedData.extend(ReadCamData(source_folder_ODL_new, scorer_ODL_new, KeyPoints, 200, 1000))
+    data = f["df_with_missing/table"][:]  # load all data
+    frames_data = []
+    point_predictions = []
+    single_prediction = dict()
+    k = 0
+    for i in range(len(data[frame_index][1])):
+        if (i + 1) % 60 == 0:
+            single_prediction[Key_points[k]] = point_predictions
+            k += 1
+            point_predictions = []
+        if (i + 1) % 3 == 0:
+            point_predictions.append((float(data[frame_index][1][i - 2]), float(data[frame_index][1][i - 1]), float(data[frame_index][1][i])))
 
-    print(len(FinalCollectedData[0]))
-    Groups = ["Group1", "Group2", "Group3"]
-    videos_per_cam = 20
+video_path = r"C:\Users\agrawal-admin\Desktop\DataFolder\Optogenetics\ANxGTACR-Max\2025-10-20\Fly_1\2025-10-20-11-47-27.21_Optogenetics_ANxGTACR-Max_NL_Fly_1_Trial_1_Cam4.mp4"
+import cv2
 
-    Label_ticks = [i * 15 + 3 for i in range(len(KeyPoints))]
-    X_ticks = [i * 15 + k * 3 for i in range(len(KeyPoints)) for k in range(len(Groups))]
+# ---------- Grab frame ----------
+cap = cv2.VideoCapture(video_path)
+if not cap.isOpened():
+    raise RuntimeError(f"Could not open {video_path}")
+# Jump to desired frame and read
+cap.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
+ok, frame_bgr = cap.read()
+cap.release()
+if not ok:
+    raise RuntimeError(f"Could not read frame {frame_index} from {video_path}")
 
-
-    Scatter_Xticks = []
-
-    for i, t in enumerate(X_ticks):
-        Scatter_Xticks.append(np.random.uniform(t - 0.3, t + 0.3, videos_per_cam))
-    RandomY = []
-
-    for k in range(len(Groups) * len(KeyPoints)):
-        RandomY.append(np.random.randint(k, k + 20, videos_per_cam).tolist())
-
-    palette = sns.color_palette("plasma", len(KeyPoints) * len(Groups) * 3)
-    c = 0
-    markers = ["o", "s", "d", "s"]
-    plt.figure(figsize=(30, 18))
-    plt.suptitle(f"Cam {ca + 1}", fontsize=50)
-    print(len(Scatter_Xticks[0]))
-    for j in range(len(Groups)):
-        for i in range(j, len(KeyPoints) * len(Groups), len(Groups)):
-            sns.scatterplot(x=Scatter_Xticks[i][:len(FinalCollectedData[c])], y=FinalCollectedData[c], color=palette[(i - j) * 3], marker=markers[j], s=300, edgecolor='black', linewidth=1, alpha=0.5)
-            c += 1
-    plt.xticks(ticks=Label_ticks, labels=KeyPoints, rotation=90, fontsize=30)
-    plt.yticks(ticks=[0, 200, 400, 600], fontsize=30)
-    plt.ylim(-30, 800)
-    sns.despine(top=True, right=True)
-    plt.tick_params(width=4, length=15)
-    plt.ylabel(ylabel="# of jumps detected", fontsize=30)
-    plt.gca().spines['bottom'].set_linewidth(4)
-    plt.gca().spines['left'].set_linewidth(4)
-    plt.savefig(f"Jumps_in_joints_cam{ca + 1}")
-    plt.tight_layout()
-    # plt.show()
-"""
-r"""
-data_path = r"C:\Users\agrawal-admin\OneDrive - Virginia Tech\Desktop\DataFolder\TestingData\TwoBarLight\2024-10-29\Fly_3\2024-10-29-15-03-32.44_TwoBarLight_Fly_3_Trial_3_Cam4DLC_resnet50_TibiaTarsusPlatformODLightOct19shuffle1_2550000.csv"
-scorer = "DLC_resnet50_TibiaTarsusPlatformODLightOct19shuffle1_2550000"
-df = pd.read_csv(data_path, header=[0, 1, 2])
-data = dict()
-for point in KeyPoints:
-    # print(f"Processing {point} key point")
-    data[f"{point}_x"] = df[(scorer, point, "x")]
-    data[f"{point}_y"] = df[(scorer, point, "y")]
-    data[f"{point}_p"] = df[(scorer, point, "likelihood")]
-data = pd.DataFrame(data)
-x_coord = data["L-fLT_x"]
-y_coord = data["L-fLT_y"]
-p_score = data["L-fLT_p"]
-
-velocities, jumps = detect_velocity_jumps(x_coord, y_coord, p_score)
-print(jumps)
-confident_jumps = detect_confident_jumps(x_coord, y_coord, p_score)
-print(confident_jumps)
-sns.pointplot(x=FrameIndex, y=velocities, join=False, markersize=2)
-# sns.pointplot(x=FrameIndex, y=y_coord, join=False, markersize=2)
-plt.xticks([0, 200, 400, 600, 800, 1000, 1200, 1400])
-plt.tight_layout()
-# plt.show()
-"""
+# Convert BGR (OpenCV) -> RGB (matplotlib)
+# frame = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
+frame = frame_bgr
+h, w = frame.shape[:2]
 
 
-palette = ["gray", "y", "cyan"]
-data = pd.read_csv(r"C:\Users\agrawal-admin\Desktop\TibiaTarsusPlatformODLight-Wayne-2024-10-19\network\dlc-models\iteration-Network-01-10-2024\TibiaTarsusPlatformODLightOct19-trainset95shuffle1\train\learning_stats.csv")
+for segment in Segments:
+    plt.figure(figsize=(8, 8))
+    plt.imshow(frame, origin="upper")
+    points_to_plot = []
+    # ---------- Prepare data ----------
+    for s in segment:
+        points_to_plot.extend(single_prediction[s])
 
-sns.lineplot(data["loss"])
 
-plt.show()
+    pts = np.array(points_to_plot, dtype=float)  # shape (N, 3)
+    xs, ys, conf = pts[:, 0], pts[:, 1], pts[:, 2]
 
+    # Clip points to image bounds (optional safety)
+    mask = (xs >= 0) & (xs < w) & (ys >= 0) & (ys < h)
+    xs, ys, conf = xs[mask], ys[mask], conf[mask]
+
+    score_map = np.zeros((h, w), dtype=np.float32)
+
+    # Parameters for the soft blob
+    sigma = 7  # controls blob width (in pixels)
+    radius = int(3 * sigma)  # local patch size
+
+    for x, y, c in zip(xs, ys, conf):
+        if c <= 0:
+            continue  # skip zero-confidence points
+        ix, iy = int(round(x)), int(round(y))
+        # Bounding box for local patch
+        x_min, x_max = max(0, ix - radius), min(w, ix + radius + 1)
+        y_min, y_max = max(0, iy - radius), min(h, iy + radius + 1)
+
+        # Create coordinate grid relative to the point
+        yy, xx = np.mgrid[y_min:y_max, x_min:x_max]
+        g = np.exp(-((xx - x) ** 2 + (yy - y) ** 2) / (2 * sigma ** 2))
+        g *= c  # scale by confidence (peak = confidence value)
+
+        # Blend with existing map — keep max at each pixel
+        score_map[y_min:y_max, x_min:x_max] = np.maximum(
+            score_map[y_min:y_max, x_min:x_max],
+            g
+        )
+
+    # Normalize 0..1 for visualization
+    mmin, mmax = score_map.min(), score_map.max()
+    if mmax > mmin:
+        score_vis = (score_map - mmin) / (mmax - mmin)
+    else:
+        score_vis = score_map  # all zeros case
+
+    # Use default colormap; alpha controls overlay strength
+    plt.imshow(score_map, origin="upper", alpha=0.5)
+
+    plt.title(f"Score-map overlay (frame {frame_index})")
+    plt.axis("off")
+    plt.show()
