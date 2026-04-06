@@ -1,5 +1,4 @@
 import os
-
 from kinematic_object import Group, Trial, Point
 import KinematicPlot as kp
 import warnings
@@ -12,6 +11,9 @@ warnings.filterwarnings(action="ignore", category=FutureWarning)
 def Group_meta_data(Video_duration=7, Trials_num=20):
     global Key_points
 
+    global WT_T1_CTF_Fly_Num
+    global WT_T2_CTF_Fly_Num
+    global WT_T3_CTF_Fly_Num
     global WT_T1_TTa_Fly_Num
     global WT_T2_TTa_Fly_Num
     global WT_T3_TTa_Fly_Num
@@ -25,20 +27,52 @@ def Group_meta_data(Video_duration=7, Trials_num=20):
     global G118_TTa_Fly_Num
     global G119_TTa_Fly_Num
 
+    global WT_Green_Fly_Num
+    global ANxGTACR_Fly_Num
+    global LexA_Br_Fly_Num
+    global MTGal4_Fly_Num
+    global IavxGTACR_Fly_Num
+    global CSS048xGTACR_Fly_Num
+    global CSS021xGTACR_Fly_Num
+
     global WT_T2_CTF_Fly_Num
     global G108_CTF_Fly_Num
+    global Trial_offset
 
+    DataFolder = r"C:\Users\agrawal-admin\Desktop\TibiaTarsusPlatformODLight-Wayne-2024-10-19"
+    LandingDataFolder = r"C:\Users\agrawal-admin\Desktop\LandingData"
 
+    """
+    WT T1 CxTr
+    """
+    FPS = [250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250]
+    GroupName = "WT-T1-CxTr"
+    Kine_path = os.path.join(DataFolder, r"Network-05-30\LPAcrossLegsJoints\T1-CxTr")
+    LaLPath = os.path.join(LandingDataFolder, "LPAcrossLegsJoints\T1-CxTr\T1-CxTr-LL.xlsx")
+    MOCPath = os.path.join(LandingDataFolder, "LPAcrossLegsJoints\T1-CxTr\T1-CxTr-MOC_old.xlsx")
+    MOLPath = os.path.join(LandingDataFolder, "LPAcrossLegsJoints\T1-CxTr\T1-CxTr-MOL.xlsx")
+    WT_T1_CTF = Group(moc_data_path=MOCPath,
+               mol_data_path=MOLPath,
+               ll_data_path=LaLPath,
+               fly_kinematic_data_path=Kine_path,
+               group_name=GroupName,
+               angles=Angles,
+               joints=Key_points,
+               total_fly_number=WT_T1_CTF_Fly_Num,
+               fps=FPS,
+               trial_num=Trials_num,
+               trials_offset=Trial_offset,
+               video_duration=Video_duration)
 
     """
     WT T1 TiTa
     """
-    r"""FPS = [200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 250, 250, 250]
+    FPS = [200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 250, 250, 250]
     GroupName = "WT-T1-TiTa"
-    Kine_path = r"C:\Users\agrawal-admin\Desktop\TibiaTarsusPlatformODLight-Wayne-2024-10-19\Network-07-04\LPAcrossLegsJoints\T1-TiTa"
-    LaLPath = r"C:\Users\agrawal-admin\Desktop\DataFolder\LPAcrossLegsJoints\T1-TiTa\T1-TiTaLP.xlsx"
-    MOCPath = r"C:\Users\agrawal-admin\Desktop\DataFolder\LPAcrossLegsJoints\T1-TiTa\MOC.xlsx"
-    MOLPath = r"C:\Users\agrawal-admin\Desktop\DataFolder\LPAcrossLegsJoints\T1-TiTa\MOL.xlsx"
+    Kine_path = os.path.join(DataFolder, "Network-01-18-2026\LPAcrossLegsJoints\T1-TiTa")
+    LaLPath = os.path.join(LandingDataFolder, "LPAcrossLegsJoints\T1-TiTa\T1-TiTaLP.xlsx")
+    MOCPath = os.path.join(LandingDataFolder, "LPAcrossLegsJoints\T1-TiTa\MOC.xlsx")
+    MOLPath = os.path.join(LandingDataFolder, "LPAcrossLegsJoints\T1-TiTa\MOL.xlsx")
     WT_T1_TTa = Group(moc_data_path=MOCPath,
                   mol_data_path=MOLPath,
                   ll_data_path=LaLPath,
@@ -48,19 +82,39 @@ def Group_meta_data(Video_duration=7, Trials_num=20):
                   joints=Key_points,
                   total_fly_number=WT_T1_TTa_Fly_Num,
                   fps=FPS,
+                  trials_offset=Trial_offset,
                   trial_num=Trials_num,
-                  video_duration=Video_duration)"""
-
+                  video_duration=Video_duration)
+    """
+    WT T2 CxTr
+    """
+    FPS = [250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250]
+    GroupName = "WT-T2-CxTr"
+    Kine_path = os.path.join(DataFolder, "Network-05-30\LPAcrossLegsJoints\T2-CxTr")
+    LaLPath = os.path.join(LandingDataFolder, "LPAcrossLegsJoints\T2-CxTr\T2-CxTr-LL.xlsx")
+    MOCPath = os.path.join(LandingDataFolder, "LPAcrossLegsJoints\T2-CxTr\T2-CxTr-MOC.xlsx")
+    MOLPath = os.path.join(LandingDataFolder, "LPAcrossLegsJoints\T2-CxTr\T2-CxTr-MOL.xlsx")
+    WT_T2_CTF = Group(moc_data_path=MOCPath,
+                      mol_data_path=MOLPath,
+                      ll_data_path=LaLPath,
+                      fly_kinematic_data_path=Kine_path,
+                      group_name=GroupName,
+                      angles=Angles,
+                      joints=Key_points,
+                      total_fly_number=WT_T2_CTF_Fly_Num,
+                      fps=FPS,
+                      trial_num=Trials_num,
+                      trials_offset=Trial_offset,
+                      video_duration=Video_duration)
     """
     WT T2 TiTa
     """
     FPS = [200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200]
-    Trial_offset = 0
     GroupName = "WT-T2-TiTa"
-    Kine_path = r"C:\Users\agrawal-admin\Desktop\TibiaTarsusPlatformODLight-Wayne-2024-10-19\Network-05-30\LPAcrossLegsJoints\T2-TiTa"
-    LaLPath = r"C:\Users\agrawal-admin\Desktop\DataFolder\DataWithNoVideos\WT-T2-TiTaLP.xlsx"
-    MOCPath = r"C:\Users\agrawal-admin\Desktop\DataFolder\DataWithNoVideos\WT-T2-TiTaMOC.xlsx"
-    MOLPath = r"C:\Users\agrawal-admin\Desktop\DataFolder\DataWithNoVideos\WT-T2-TiTaMOL.xlsx"
+    Kine_path = os.path.join(DataFolder, "Network-01-18-2026\LPAcrossLegsJoints\T2-TiTa")
+    LaLPath = os.path.join(LandingDataFolder, "LPAcrossLegsJoints\T2-TiTa\T2-TiTaLP.xlsx")
+    MOCPath = os.path.join(LandingDataFolder, "LPAcrossLegsJoints\T2-TiTa\T2-TiTaMOC.xlsx")
+    MOLPath = os.path.join(LandingDataFolder, "LPAcrossLegsJoints\T2-TiTa\T2-TiTaMOL.xlsx")
     WT_T2_TTa = Group(moc_data_path=MOCPath,
                mol_data_path=MOLPath,
                ll_data_path=LaLPath,
@@ -74,36 +128,36 @@ def Group_meta_data(Video_duration=7, Trials_num=20):
                trials_offset=Trial_offset,
                video_duration=Video_duration)
     """
-    WT T2 CxTr
+    WT T3 CxTr
     """
-    r"""FPS = [250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250]
-    Trial_offset = 0
-    GroupName = "WT-T2-CxTr"
-    Kine_path = r"C:\Users\agrawal-admin\Desktop\TibiaTarsusPlatformODLight-Wayne-2024-10-19\Network-05-30\LPAcrossLegsJoints\T2-CxTr"
-    LaLPath = r"C:\Users\agrawal-admin\Desktop\DataFolder\LPAcrossLegsJoints\T2-CxTr\T2-CxTrLP.xlsx"
-    MOCPath = r"C:\Users\agrawal-admin\Desktop\DataFolder\LPAcrossLegsJoints\T2-CxTr\MOC.xlsx"
-    MOLPath = r"C:\Users\agrawal-admin\Desktop\DataFolder\LPAcrossLegsJoints\T2-CxTr\MOL.xlsx"
-    WT_T2_CTF = Group(moc_data_path=MOCPath,
-               mol_data_path=MOLPath,
-               ll_data_path=LaLPath,
-               fly_kinematic_data_path=Kine_path,
-               group_name=GroupName,
-               angles=Angles,
-               joints=Key_points,
-               total_fly_number=WT_T2_TTa_Fly_Num,
-               fps=FPS,
-               trial_num=Trials_num,
-               trials_offset=Trial_offset,
-               video_duration=Video_duration)"""
+    FPS = [250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250]
+    GroupName = "WT-T3-CxTr"
+    Kine_path = os.path.join(DataFolder, "Network-01-18-2026\LPAcrossLegsJoints\T3-CxTr")
+    LaLPath = os.path.join(LandingDataFolder, "LPAcrossLegsJoints\T3-CxTr\T3-CxTr-LL.xlsx")
+    MOCPath = os.path.join(LandingDataFolder, "LPAcrossLegsJoints\T3-CxTr\T3-CxTr-MOC-old.xlsx")
+    MOLPath = os.path.join(LandingDataFolder, "LPAcrossLegsJoints\T3-CxTr\T3-CxTr-MOL.xlsx")
+    WT_T3_CTF = Group(moc_data_path=MOCPath,
+                      mol_data_path=MOLPath,
+                      ll_data_path=LaLPath,
+                      fly_kinematic_data_path=Kine_path,
+                      group_name=GroupName,
+                      angles=Angles,
+                      joints=Key_points,
+                      total_fly_number=WT_T3_CTF_Fly_Num,
+                      fps=FPS,
+                      trials_offset=Trial_offset,
+                      trial_num=Trials_num,
+                      video_duration=Video_duration)
+
     """
     WT T3 TiTa
     """
-    r"""FPS = [200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 250, 250, 250, 250, 250]
+    FPS = [200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 250, 250, 250, 250, 250]
     GroupName = "WT-T3-TiTa"
-    Kine_path = r"C:\Users\agrawal-admin\Desktop\TibiaTarsusPlatformODLight-Wayne-2024-10-19\Network-05-30\LPAcrossLegsJoints\T3-TiTa"
-    LaLPath = r"C:\Users\agrawal-admin\Desktop\DataFolder\LPAcrossLegsJoints\T3-TiTa\T3-TiTaLP.xlsx"
-    MOCPath = r"C:\Users\agrawal-admin\Desktop\DataFolder\LPAcrossLegsJoints\T3-TiTa\MOC.xlsx"
-    MOLPath = r"C:\Users\agrawal-admin\Desktop\DataFolder\LPAcrossLegsJoints\T3-TiTa\MOL.xlsx"
+    Kine_path = os.path.join(DataFolder, "Network-01-18-2026\LPAcrossLegsJoints\T3-TiTa")
+    LaLPath = os.path.join(LandingDataFolder, "LPAcrossLegsJoints\T3-TiTa\T3-TiTaLP.xlsx")
+    MOCPath = os.path.join(LandingDataFolder, "LPAcrossLegsJoints\T3-TiTa\MOC.xlsx")
+    MOLPath = os.path.join(LandingDataFolder, "LPAcrossLegsJoints\T3-TiTa\MOL.xlsx")
     WT_T3_TTa = Group(moc_data_path=MOCPath,
                   mol_data_path=MOLPath,
                   ll_data_path=LaLPath,
@@ -113,8 +167,9 @@ def Group_meta_data(Video_duration=7, Trials_num=20):
                   joints=Key_points,
                   total_fly_number=WT_T3_TTa_Fly_Num,
                   fps=FPS,
+                  trials_offset=Trial_offset,
                   trial_num=Trials_num,
-                  video_duration=Video_duration)"""
+                  video_duration=Video_duration)
 
 
     """
@@ -122,10 +177,10 @@ def Group_meta_data(Video_duration=7, Trials_num=20):
     """
     FPS = [250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250]
     GroupName = "G106-HP1"
-    Kine_path = r"C:\Users\agrawal-admin\Desktop\TibiaTarsusPlatformODLight-Wayne-2024-10-19\Network-03-14\HCS+_UASKir2.1eGFP\G106-HP1_T2-TiTa"
-    LaLPath = r"C:\Users\agrawal-admin\Desktop\DataFolder\DataWithNoVideos\HP1-T2-TiTaLP.xlsx"
-    MOCPath = r"C:\Users\agrawal-admin\Desktop\DataFolder\DataWithNoVideos\HP1-T2-TiTaMOC.xlsx"
-    MOLPath = r"C:\Users\agrawal-admin\Desktop\DataFolder\DataWithNoVideos\HP1-T2-TiTaMOL.xlsx"
+    Kine_path = os.path.join(DataFolder, "Network-03-14\HCS+_UASKir2.1eGFP\G106-HP1_T2-TiTa")
+    LaLPath = os.path.join(LandingDataFolder, "HCS+_UASKir2.1eGFP\G106-HP1_T2-TiTa\G106-HP1_T2-TiTa-ALL.xlsx")
+    MOCPath = os.path.join(LandingDataFolder, "HCS+_UASKir2.1eGFP\G106-HP1_T2-TiTa\G106-HP1_T2-TiTa-MOC.xlsx")
+    MOLPath = os.path.join(LandingDataFolder, "HCS+_UASKir2.1eGFP\G106-HP1_T2-TiTa\G106-HP1_T2-TiTa-MOL.xlsx")
     G106_T2_TTa = Group(moc_data_path=MOCPath,
                  mol_data_path=MOLPath,
                  ll_data_path=LaLPath,
@@ -134,6 +189,7 @@ def Group_meta_data(Video_duration=7, Trials_num=20):
                  angles=Angles,
                  joints=Key_points,
                  total_fly_number=G106_TTa_Fly_Num,
+                 trials_offset=Trial_offset,
                  fps=FPS,
                  trial_num=Trials_num,
                  video_duration=Video_duration)
@@ -144,10 +200,10 @@ def Group_meta_data(Video_duration=7, Trials_num=20):
     """
     FPS = [250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250]
     GroupName = "G107-HP2"
-    Kine_path = r"C:\Users\agrawal-admin\Desktop\TibiaTarsusPlatformODLight-Wayne-2024-10-19\Network-05-30\HCS+_UASKir2.1eGFP\G107-HP2_T2-TiTa"
-    LaLPath = r"C:\Users\agrawal-admin\Desktop\DataFolder\DataWithNoVideos\HP2-T2-TiTaLP.xlsx"
-    MOCPath = r"C:\Users\agrawal-admin\Desktop\DataFolder\DataWithNoVideos\HP2-T2-TiTaMOC.xlsx"
-    MOLPath = r"C:\Users\agrawal-admin\Desktop\DataFolder\DataWithNoVideos\HP2-T2-TiTaMOL.xlsx"
+    Kine_path = os.path.join(DataFolder, "Network-05-30\HCS+_UASKir2.1eGFP\G107-HP2_T2-TiTa")
+    LaLPath = os.path.join(LandingDataFolder, "HCS+_UASKir2.1eGFP\G107-HP2_T2-TiTa\G107-HP2_T2-TiTa-ALL.xlsx")
+    MOCPath = os.path.join(LandingDataFolder, "HCS+_UASKir2.1eGFP\G107-HP2_T2-TiTa\MOC.xlsx")
+    MOLPath = os.path.join(LandingDataFolder, "HCS+_UASKir2.1eGFP\G107-HP2_T2-TiTa\MOL.xlsx")
     G107_T2_TTa = Group(moc_data_path=MOCPath,
                  mol_data_path=MOLPath,
                  ll_data_path=LaLPath,
@@ -155,6 +211,7 @@ def Group_meta_data(Video_duration=7, Trials_num=20):
                  group_name=GroupName,
                  angles=Angles,
                  joints=Key_points,
+                 trials_offset=Trial_offset,
                  total_fly_number=G107_TTa_Fly_Num,
                  fps=FPS,
                  trial_num=Trials_num,
@@ -165,10 +222,10 @@ def Group_meta_data(Video_duration=7, Trials_num=20):
     """
     FPS = [250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250]
     GroupName = "G108-HP3"
-    Kine_path = r"C:\Users\agrawal-admin\Desktop\TibiaTarsusPlatformODLight-Wayne-2024-10-19\Network-05-30\HCS+_UASKir2.1eGFP\G108-HP3_T2-TiTa"
-    LaLPath = r"C:\Users\agrawal-admin\Desktop\DataFolder\DataWithNoVideos\HP3-T2-TiTaLP.xlsx"
-    MOCPath = r"C:\Users\agrawal-admin\Desktop\DataFolder\DataWithNoVideos\HP3-T2-TiTaMOC.xlsx"
-    MOLPath = r"C:\Users\agrawal-admin\Desktop\DataFolder\DataWithNoVideos\HP3-T2-TiTaMOL.xlsx"
+    Kine_path = os.path.join(DataFolder, "Network-05-30\HCS+_UASKir2.1eGFP\G108-HP3_T2-TiTa")
+    LaLPath = os.path.join(LandingDataFolder, "HCS+_UASKir2.1eGFP\G108-HP3_T2-TiTa\G108-HP3_T2-TiTa-ALL.xlsx")
+    MOCPath = os.path.join(LandingDataFolder, "HCS+_UASKir2.1eGFP\G108-HP3_T2-TiTa\G108MOC.xlsx")
+    MOLPath = os.path.join(LandingDataFolder, "HCS+_UASKir2.1eGFP\G108-HP3_T2-TiTa\MOL.xlsx")
     G108_T2_TTa = Group(moc_data_path=MOCPath,
                  mol_data_path=MOLPath,
                  ll_data_path=LaLPath,
@@ -176,6 +233,7 @@ def Group_meta_data(Video_duration=7, Trials_num=20):
                  group_name=GroupName,
                  angles=Angles,
                  joints=Key_points,
+                 trials_offset=Trial_offset,
                  total_fly_number=G108_TTa_Fly_Num,
                  fps=FPS,
                  trial_num=Trials_num,
@@ -186,10 +244,10 @@ def Group_meta_data(Video_duration=7, Trials_num=20):
     """
     FPS = [250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250]
     GroupName = "G114-ClFl"
-    Kine_path = r"C:\Users\agrawal-admin\Desktop\TibiaTarsusPlatformODLight-Wayne-2024-10-19\Network-05-30\HCS+_UASKir2.1eGFP\G114-ClFl_T2-TiTa"
-    LaLPath = r"C:\Users\agrawal-admin\Desktop\DataFolder\DataWithNoVideos\ClFl-T2-TiTaLP.xlsx"
-    MOCPath = r"C:\Users\agrawal-admin\Desktop\DataFolder\DataWithNoVideos\ClFl-T2-TiTaMOC.xlsx"
-    MOLPath = r"C:\Users\agrawal-admin\Desktop\DataFolder\DataWithNoVideos\ClFl-T2-TiTaMOL.xlsx"
+    Kine_path = os.path.join(DataFolder, "Network-05-30\HCS+_UASKir2.1eGFP\G114-ClFl_T2-TiTa")
+    LaLPath = os.path.join(LandingDataFolder, "HCS+_UASKir2.1eGFP\G114-ClFl_T2-TiTa\G114-ClFl_T2-TiTa-ALL.xlsx")
+    MOCPath = os.path.join(LandingDataFolder, "HCS+_UASKir2.1eGFP\G114-ClFl_T2-TiTa\MOC.xlsx")
+    MOLPath = os.path.join(LandingDataFolder, "HCS+_UASKir2.1eGFP\G114-ClFl_T2-TiTa\MOL.xlsx")
     G114_T2_TTa = Group(moc_data_path=MOCPath,
                  mol_data_path=MOLPath,
                  ll_data_path=LaLPath,
@@ -197,6 +255,7 @@ def Group_meta_data(Video_duration=7, Trials_num=20):
                  group_name=GroupName,
                  angles=Angles,
                  joints=Key_points,
+                 trials_offset=Trial_offset,
                  total_fly_number=G114_TTa_Fly_Num,
                  fps=FPS,
                  trial_num=Trials_num,
@@ -207,10 +266,10 @@ def Group_meta_data(Video_duration=7, Trials_num=20):
     """
     FPS = [250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250]
     GroupName = "G115-Iav"
-    Kine_path = r"C:\Users\agrawal-admin\Desktop\TibiaTarsusPlatformODLight-Wayne-2024-10-19\Network-05-30\HCS+_UASKir2.1eGFP\G115-Iav_T2-TiTa"
-    LaLPath = r"C:\Users\agrawal-admin\Desktop\DataFolder\DataWithNoVideos\Iav-T2-TiTaLP.xlsx"
-    MOCPath = r"C:\Users\agrawal-admin\Desktop\DataFolder\DataWithNoVideos\Iav-T2-TiTaMOC.xlsx"
-    MOLPath = r"C:\Users\agrawal-admin\Desktop\DataFolder\DataWithNoVideos\Iav-T2-TiTaMOL.xlsx"
+    Kine_path = os.path.join(DataFolder, "Network-05-30\HCS+_UASKir2.1eGFP\G115-Iav_T2-TiTa")
+    LaLPath = os.path.join(LandingDataFolder, "HCS+_UASKir2.1eGFP\G115-Iav_T2-TiTa\G115-Iav_T2-TiTa-ALL.xlsx")
+    MOCPath = os.path.join(LandingDataFolder, "HCS+_UASKir2.1eGFP\G115-Iav_T2-TiTa\MOC.xlsx")
+    MOLPath = os.path.join(LandingDataFolder, "HCS+_UASKir2.1eGFP\G115-Iav_T2-TiTa\MOL.xlsx")
     G115_T2_TTa = Group(moc_data_path=MOCPath,
                  mol_data_path=MOLPath,
                  ll_data_path=LaLPath,
@@ -218,6 +277,7 @@ def Group_meta_data(Video_duration=7, Trials_num=20):
                  group_name=GroupName,
                  angles=Angles,
                  joints=Key_points,
+                 trials_offset=Trial_offset,
                  total_fly_number=G115_TTa_Fly_Num,
                  fps=FPS,
                  trial_num=Trials_num,
@@ -228,10 +288,10 @@ def Group_meta_data(Video_duration=7, Trials_num=20):
     """
     FPS = [250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250]
     GroupName = "G116-ClEx"
-    Kine_path = r"C:\Users\agrawal-admin\Desktop\TibiaTarsusPlatformODLight-Wayne-2024-10-19\Network-04-26\HCS+_UASKir2.1eGFP\G116-ClEx_T2-TiTa"
-    LaLPath = r"C:\Users\agrawal-admin\Desktop\DataFolder\DataWithNoVideos\ClEx-T2-TiTaLP.xlsx"
-    MOCPath = r"C:\Users\agrawal-admin\Desktop\DataFolder\DataWithNoVideos\ClEx-T2-TiTaMOC.xlsx"
-    MOLPath = r"C:\Users\agrawal-admin\Desktop\DataFolder\DataWithNoVideos\ClEx-T2-TiTaMOL.xlsx"
+    Kine_path = os.path.join(DataFolder, "Network-05-30\HCS+_UASKir2.1eGFP\G116-ClEx_T2-TiTa")
+    LaLPath = os.path.join(LandingDataFolder, "HCS+_UASKir2.1eGFP\G116-ClEx_T2-TiTa\G116-ClEx_T2-TiTa-ALL.xlsx")
+    MOCPath = os.path.join(LandingDataFolder, "HCS+_UASKir2.1eGFP\G116-ClEx_T2-TiTa\MOC.xlsx")
+    MOLPath = os.path.join(LandingDataFolder, "HCS+_UASKir2.1eGFP\G116-ClEx_T2-TiTa\MOL.xlsx")
     G116_T2_TTa = Group(moc_data_path=MOCPath,
                  mol_data_path=MOLPath,
                  ll_data_path=LaLPath,
@@ -239,6 +299,7 @@ def Group_meta_data(Video_duration=7, Trials_num=20):
                  group_name=GroupName,
                  angles=Angles,
                  joints=Key_points,
+                 trials_offset=Trial_offset,
                  total_fly_number=G116_TTa_Fly_Num,
                  fps=FPS,
                  trial_num=Trials_num,
@@ -249,10 +310,10 @@ def Group_meta_data(Video_duration=7, Trials_num=20):
     """
     FPS = [250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250]
     GroupName = "G117-HkFl"
-    Kine_path = r"C:\Users\agrawal-admin\Desktop\TibiaTarsusPlatformODLight-Wayne-2024-10-19\Network-05-30\HCS+_UASKir2.1eGFP\G117-HkFl_T2-TiTa"
-    LaLPath = r"C:\Users\agrawal-admin\Desktop\DataFolder\DataWithNoVideos\HKFL-T2-TiTaLP.xlsx"
-    MOCPath = r"C:\Users\agrawal-admin\Desktop\DataFolder\DataWithNoVideos\HKFL-T2-TiTaMOC.xlsx"
-    MOLPath = r"C:\Users\agrawal-admin\Desktop\DataFolder\DataWithNoVideos\HKFL-T2-TiTaMOL.xlsx"
+    Kine_path = os.path.join(DataFolder, "Network-05-30\HCS+_UASKir2.1eGFP\G117-HkFl_T2-TiTa")
+    LaLPath = os.path.join(LandingDataFolder, "HCS+_UASKir2.1eGFP\G117-HkFl_T2-TiTa\G117-HkFl_T2-TiTa-ALL.xlsx")
+    MOCPath = os.path.join(LandingDataFolder, "HCS+_UASKir2.1eGFP\G117-HkFl_T2-TiTa\MOC.xlsx")
+    MOLPath = os.path.join(LandingDataFolder, "HCS+_UASKir2.1eGFP\G117-HkFl_T2-TiTa\MOL.xlsx")
     G117_T2_TTa = Group(moc_data_path=MOCPath,
                  mol_data_path=MOLPath,
                  ll_data_path=LaLPath,
@@ -260,6 +321,7 @@ def Group_meta_data(Video_duration=7, Trials_num=20):
                  group_name=GroupName,
                  angles=Angles,
                  joints=Key_points,
+                 trials_offset=Trial_offset,
                  total_fly_number=G117_TTa_Fly_Num,
                  fps=FPS,
                  trial_num=Trials_num,
@@ -270,10 +332,10 @@ def Group_meta_data(Video_duration=7, Trials_num=20):
     """
     FPS = [250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250]
     GroupName = "G118-HkEx"
-    Kine_path = r"C:\Users\agrawal-admin\Desktop\TibiaTarsusPlatformODLight-Wayne-2024-10-19\Network-05-30\HCS+_UASKir2.1eGFP\G118-HkEx_T2-TiTa"
-    LaLPath = r"C:\Users\agrawal-admin\Desktop\DataFolder\DataWithNoVideos\HKEX-T2-TiTaLP.xlsx"
-    MOCPath = r"C:\Users\agrawal-admin\Desktop\DataFolder\DataWithNoVideos\HKEX-T2-TiTaMOC.xlsx"
-    MOLPath = r"C:\Users\agrawal-admin\Desktop\DataFolder\DataWithNoVideos\HKEX-T2-TiTaMOL.xlsx"
+    Kine_path = os.path.join(DataFolder, "Network-05-30\HCS+_UASKir2.1eGFP\G118-HkEx_T2-TiTa")
+    LaLPath = os.path.join(LandingDataFolder, "HCS+_UASKir2.1eGFP\G118-HkEx_T2-TiTa\G118-HkEx_T2-TiTa-ALL.xlsx")
+    MOCPath = os.path.join(LandingDataFolder, "HCS+_UASKir2.1eGFP\G118-HkEx_T2-TiTa\MOC.xlsx")
+    MOLPath = os.path.join(LandingDataFolder, "HCS+_UASKir2.1eGFP\G118-HkEx_T2-TiTa\MOL.xlsx")
     G118_T2_TTa = Group(moc_data_path=MOCPath,
                  mol_data_path=MOLPath,
                  ll_data_path=LaLPath,
@@ -281,6 +343,7 @@ def Group_meta_data(Video_duration=7, Trials_num=20):
                  group_name=GroupName,
                  angles=Angles,
                  joints=Key_points,
+                 trials_offset=Trial_offset,
                  total_fly_number=G118_TTa_Fly_Num,
                  fps=FPS,
                  trial_num=Trials_num,
@@ -291,10 +354,10 @@ def Group_meta_data(Video_duration=7, Trials_num=20):
     """
     FPS = [250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250]
     GroupName = "G119-Club"
-    Kine_path = r"C:\Users\agrawal-admin\Desktop\TibiaTarsusPlatformODLight-Wayne-2024-10-19\Network-05-30\HCS+_UASKir2.1eGFP\G119-Club_T2-TiTa"
-    LaLPath = r"C:\Users\agrawal-admin\Desktop\DataFolder\DataWithNoVideos\CLUB-T2-TiTaLP.xlsx"
-    MOCPath = r"C:\Users\agrawal-admin\Desktop\DataFolder\DataWithNoVideos\CLUB-T2-TiTaMOC.xlsx"
-    MOLPath = r"C:\Users\agrawal-admin\Desktop\DataFolder\DataWithNoVideos\CLUB-T2-TiTaMOL.xlsx"
+    Kine_path = os.path.join(DataFolder, "Network-05-30\HCS+_UASKir2.1eGFP\G119-Club_T2-TiTa")
+    LaLPath = os.path.join(LandingDataFolder, "HCS+_UASKir2.1eGFP\G119-Club_T2-TiTa\G119-Club_T2-TiTa-ALL.xlsx")
+    MOCPath = os.path.join(LandingDataFolder, "HCS+_UASKir2.1eGFP\G119-Club_T2-TiTa\G119MOC.xlsx")
+    MOLPath = os.path.join(LandingDataFolder, "HCS+_UASKir2.1eGFP\G119-Club_T2-TiTa\MOL.xlsx")
     G119_T2_TTa = Group(moc_data_path=MOCPath,
                  mol_data_path=MOLPath,
                  ll_data_path=LaLPath,
@@ -302,20 +365,43 @@ def Group_meta_data(Video_duration=7, Trials_num=20):
                  group_name=GroupName,
                  angles=Angles,
                  joints=Key_points,
+                 trials_offset=Trial_offset,
                  total_fly_number=G119_TTa_Fly_Num,
                  fps=FPS,
                  trial_num=Trials_num,
                  video_duration=Video_duration)
 
     """
-    ANxGTACR
+    WT-Green
     """
     FPS = [250, 250, 250, 250, 250, 250, 250, 250, 250]
+    GroupName = "WT-Green"
+    Kine_path = os.path.join(DataFolder, r"Network-01-18-2026\Optogenetics\WT-Green-Max")
+    LaLPath = os.path.join(LandingDataFolder, "OPTO\WT-Green\WT-Green-Max-LL.xlsx")
+    MOCPath = os.path.join(LandingDataFolder, "OPTO\WT-Green\WT-Green-Max-MOC.xlsx")
+    MOLPath = os.path.join(LandingDataFolder, "OPTO\WT-Green\WT-Green-Max-MOL.xlsx")
+    WT_Green = Group(moc_data_path=MOCPath,
+                     mol_data_path=MOLPath,
+                     ll_data_path=LaLPath,
+                     fly_kinematic_data_path=Kine_path,
+                     group_name=GroupName,
+                     angles=Angles,
+                     joints=Key_points,
+                     total_fly_number=WT_Green_Fly_Num,
+                     fps=FPS,
+                     trial_num=30,
+                     video_duration=Video_duration)
+
+
+    """
+    ANxGTACR
+    """
+    FPS = [250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250]
     GroupName = "ANxGTACR"
-    Kine_path = r"C:\Users\agrawal-admin\Desktop\TibiaTarsusPlatformODLight-Wayne-2024-10-19\Network-07-04\Optogenetics\ANxGTACR-Max"
-    LaLPath = r"C:\Users\agrawal-admin\Desktop\DataFolder\DataWithNoVideos\ANxGTACRLP.xlsx"
-    MOCPath = r"C:\Users\agrawal-admin\Desktop\DataFolder\DataWithNoVideos\ANxGTACRMOC.xlsx"
-    MOLPath = r"C:\Users\agrawal-admin\Desktop\DataFolder\DataWithNoVideos\ANxGTACRMOL.xlsx"
+    Kine_path = os.path.join(DataFolder, r"Network-01-18-2026\Optogenetics\ANxGTACR-Max")
+    LaLPath = os.path.join(LandingDataFolder, "OPTO\ANxGTACR-12mW\ANxGTACR-12mW-ALL.xlsx")
+    MOCPath = os.path.join(LandingDataFolder, "OPTO\ANxGTACR-12mW\ANxGTACR-12mW-MOC.xlsx")
+    MOLPath = os.path.join(LandingDataFolder, "OPTO\ANxGTACR-12mW\ANxGTACR-12mW-MOL.xlsx")
     ANxGTACR = Group(moc_data_path=MOCPath,
                  mol_data_path=MOLPath,
                  ll_data_path=LaLPath,
@@ -323,135 +409,182 @@ def Group_meta_data(Video_duration=7, Trials_num=20):
                  group_name=GroupName,
                  angles=Angles,
                  joints=Key_points,
-                 total_fly_number=9,
+                 total_fly_number=ANxGTACR_Fly_Num,
                  fps=FPS,
                  trial_num=30,
                  video_duration=Video_duration)
 
+    """
+    Tarsal Bristle x GTACR
+    """
+    Kine_path = os.path.join(DataFolder, "Network-07-04\Optogenetics\L006xL011-Max")
+    LaLPath = os.path.join(LandingDataFolder, "OPTO\TaBRIxLexAG-12mW\TaBRIxLexAG-12mW-ALL.xlsx")
+    MOCPath = os.path.join(LandingDataFolder, "OPTO\TaBRIxLexAG-12mW\TaBRIxLexAG-12mW-MOC.xlsx")
+    MOLPath = os.path.join(LandingDataFolder, "OPTO\TaBRIxLexAG-12mW\TaBRIxLexAG-12mW-MOL.xlsx")
+    LexA_Br = Group(moc_data_path=MOCPath,
+                    mol_data_path=MOLPath,
+                    ll_data_path=LaLPath,
+                    fly_kinematic_data_path=Kine_path,
+                    group_name="LexA-Br-Green",
+                    angles=Angles,
+                    joints=Key_points,
+                    total_fly_number=LexA_Br_Fly_Num,
+                    fps=[250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250],
+                    trial_num=30,
+                    video_duration=Video_duration)
+
+    """
+    Empty Gal4 x GTACR
+    """
+    Kine_path = os.path.join(DataFolder, r"Network-01-18-2026\Optogenetics\GTACRxEmpty-Max")
+    LaLPath = os.path.join(LandingDataFolder, "OPTO\MTGal4xGTACR-12mW\MTGal4xGTACR-12mW-ALL.xlsx")
+    MOCPath = os.path.join(LandingDataFolder, "OPTO\MTGal4xGTACR-12mW\MTGal4xGTACR-12mW-MOC.xlsx")
+    MOLPath = os.path.join(LandingDataFolder, "OPTO\MTGal4xGTACR-12mW\MTGal4xGTACR-12mW-MOL.xlsx")
+    MTGal4 = Group(moc_data_path=MOCPath,
+                   mol_data_path=MOLPath,
+                   ll_data_path=LaLPath,
+                   fly_kinematic_data_path=Kine_path,
+                   group_name="MTGal4",
+                   angles=Angles,
+                   joints=Key_points,
+                   total_fly_number=MTGal4_Fly_Num,
+                   fps=[250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250],
+                   trial_num=30,
+                   video_duration=Video_duration)
+
+    """
+    IAV x GTACR
+    """
+    Kine_path = os.path.join(DataFolder, r"Network-01-18-2026\Optogenetics\IavxGTACR-Max")
+    LaLPath = os.path.join(LandingDataFolder, "OPTO\IAVxGTACR-12mW\IAVxGTACR-12mW-ALL.xlsx")
+    MOCPath = os.path.join(LandingDataFolder, "OPTO\IAVxGTACR-12mW\IAVxGTACR-12mW-MOC.xlsx")
+    MOLPath = os.path.join(LandingDataFolder, "OPTO\IAVxGTACR-12mW\IAVxGTACR-12mW-MOL.xlsx")
+    IavxGTACR = Group(moc_data_path=MOCPath,
+                      mol_data_path=MOLPath,
+                      ll_data_path=LaLPath,
+                      fly_kinematic_data_path=Kine_path,
+                      group_name="IavxGTACR",
+                      angles=Angles,
+                      joints=Key_points,
+                      total_fly_number=IavxGTACR_Fly_Num,
+                      fps=[250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250],
+                      trial_num=30,
+                      video_duration=Video_duration)
+
+    """
+    CSS048 x GTACR
+    """
+    Kine_path = os.path.join(DataFolder, r"Network-01-18-2026\Optogenetics\CSS048xGTACR-Max")
+    LaLPath = os.path.join(LandingDataFolder, "OPTO\CS048xGTACR-12mW\CS048xGTACR-12mW-ALL.xlsx")
+    MOCPath = os.path.join(LandingDataFolder, "OPTO\CS048xGTACR-12mW\CS048xGTACR-12mW-MOC.xlsx")
+    MOLPath = os.path.join(LandingDataFolder, "OPTO\CS048xGTACR-12mW\CS048xGTACR-12mW-MOL.xlsx")
+    CSS048xGTACR = Group(moc_data_path=MOCPath,
+                      mol_data_path=MOLPath,
+                      ll_data_path=LaLPath,
+                      fly_kinematic_data_path=Kine_path,
+                      group_name="CSS048xGTACR",
+                      angles=Angles,
+                      joints=Key_points,
+                      total_fly_number=CSS048xGTACR_Fly_Num,
+                      fps=[250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250],
+                      trial_num=30,
+                      video_duration=Video_duration)
+
+    """
+    CSS021 x GTACR
+    """
+    Kine_path = os.path.join(DataFolder, r"Network-01-18-2026\Optogenetics\CSS021xGTACR")
+    LaLPath = os.path.join(LandingDataFolder, "OPTO\CSS021xGTACR-12mW\CSS021xGTACR-12mW-LL.xlsx")
+    MOCPath = os.path.join(LandingDataFolder, "OPTO\CSS021xGTACR-12mW\CSS021xGTACR-12mW-MOC.xlsx")
+    MOLPath = os.path.join(LandingDataFolder, "OPTO\CSS021xGTACR-12mW\CSS021xGTACR-12mW-MOL.xlsx")
+    CSS021xGTACR = Group(moc_data_path=MOCPath,
+                         mol_data_path=MOLPath,
+                         ll_data_path=LaLPath,
+                         fly_kinematic_data_path=Kine_path,
+                         group_name="CSS021xGTACR",
+                         angles=Angles,
+                         joints=Key_points,
+                         total_fly_number=CSS021xGTACR_Fly_Num,
+                         fps=[250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250,
+                              250],
+                         trial_num=30,
+                         video_duration=Video_duration)
 
 
-
-    ADxChr = Group(
-        fly_kinematic_data_path=r"C:\Users\agrawal-admin\Desktop\TibiaTarsusPlatformODLight-Wayne-2024-10-19\Network-07-04\Optogenetics\ANxChr-3mW",
-        group_name="ADxChr",
-        angles=Angles,
-        joints=Key_points,
-        total_fly_number=10,
-        fps=[250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250],
-        trial_num=30,
-        video_duration=7)
-
-    ADxChr_NATR = Group(
-        fly_kinematic_data_path=r"C:\Users\agrawal-admin\Desktop\TibiaTarsusPlatformODLight-Wayne-2024-10-19\Network-07-04\Optogenetics\ANxChr-NATR-3mW",
-        group_name="ADxChr-NoATR",
-        angles=Angles,
-        joints=Key_points,
-        total_fly_number=10,
-        fps=[250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250],
-        trial_num=30,
-        video_duration=7)
-
-    IavxChr = Group(
-        fly_kinematic_data_path=r"C:\Users\agrawal-admin\Desktop\TibiaTarsusPlatformODLight-Wayne-2024-10-19\Network-07-04\Optogenetics\G115xChr-30Hz-22ms-2s",
-        group_name="IavxChr",
-        angles=Angles,
-        joints=Key_points,
-        total_fly_number=15,
-        fps=[250, 250, 250, 250, 250,
-             250, 250, 250, 250, 250,
-             250, 250, 250, 250, 250],
-        trial_num=30,
-        video_duration=7)
-
-    IavxChr_NATR = Group(
-        fly_kinematic_data_path=r"C:\Users\agrawal-admin\Desktop\TibiaTarsusPlatformODLight-Wayne-2024-10-19\Network-07-04\Optogenetics\G115xChr-NATR",
-        group_name="IavxChr-NoATR",
-        angles=Angles,
-        joints=Key_points,
-        total_fly_number=15,
-        fps=[250, 250, 250, 250, 250,
-             250, 250, 250, 250, 250,
-             250, 250, 250, 250, 250],
-        trial_num=30,
-        video_duration=7)
 
     AllCSxChr = Group(
-        fly_kinematic_data_path=r"C:\Users\agrawal-admin\Desktop\TibiaTarsusPlatformODLight-Wayne-2024-10-19\Network-07-04\Optogenetics\AllCSxChr",
+        fly_kinematic_data_path=os.path.join(DataFolder, "Network-07-04\Optogenetics\AllCSxChr"),
         group_name="AllCSxChr",
         angles=Angles,
         joints=Key_points,
         total_fly_number=15,
+        ll_data_path=r"C:\Users\agrawal-admin\Desktop\LandingData\OPTO\ALLCSxCHR-400uW-ALL.xlsx",
         fps=[250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250],
         trial_num=30,
         video_duration=7)
-
-    AllCSxChr_NATR = Group(
-        fly_kinematic_data_path=r"C:\Users\agrawal-admin\Desktop\TibiaTarsusPlatformODLight-Wayne-2024-10-19\Network-07-04\Optogenetics\AllCSxChr-NATR",
-        group_name="AllCSxChr-NoATR",
-        angles=Angles,
-        joints=Key_points,
-        total_fly_number=11,
-        fps=[250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250],
-        trial_num=30,
-        video_duration=7)
-
 
     ANxChr = Group(
-        fly_kinematic_data_path=r"C:\Users\agrawal-admin\Desktop\TibiaTarsusPlatformODLight-Wayne-2024-10-19\Network-07-04\Optogenetics\ANxChr-3mW",
+        fly_kinematic_data_path=os.path.join(DataFolder, "Network-01-18-2026\OPTO\ANxCHR-4mW"),
         group_name="ANxChr",
         angles=Angles,
+        joints=Key_points,
+        total_fly_number=10,
+        ll_data_path=r"C:\Users\agrawal-admin\Desktop\LandingData\OPTO\ANxCHR-4mW-ALL.xlsx",
+        fps=[250, 250, 250, 250, 250, 250, 250, 250, 250, 250],
+        trial_num=30,
+        video_duration=7)
+
+    BrixL006 = Group(
+        fly_kinematic_data_path=os.path.join(DataFolder, "Network-01-18-2026\OPTO\TaBRIxLexAR-4mW"),
+        group_name="LexA-Bri-Red",
+        angles=Angles,
+        joints=Key_points,
+        total_fly_number=9,
+        ll_data_path=r"C:\Users\agrawal-admin\Desktop\LandingData\OPTO\TaBRIxLexAR-4mW-ALL.xlsx",
+        fps=[250, 250, 250, 250, 250, 250, 250, 250, 250],
+        trial_num=30,
+        video_duration=7)
+
+    CSS48xChr = Group(
+        fly_kinematic_data_path=os.path.join(DataFolder, r"Network-01-18-2026\Optogenetics\CSS48xChr-Max"),
+        group_name="CSS48xChr",
+        angles=Angles,
+        ll_data_path=r"C:\Users\agrawal-admin\Desktop\LandingData\OPTO\CS048xCHR-12mW-ALL.xlsx",
+        joints=Key_points,
+        total_fly_number=18,
+        fps=[250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250],
+        trial_num=30,
+        video_duration=7)
+
+    CSS21xChr = Group(
+        fly_kinematic_data_path=os.path.join(DataFolder, r"Network-01-18-2026\Optogenetics\CSS021xChr-Max"),
+        group_name="CSS21xChr",
+        angles=Angles,
+        ll_data_path=r"C:\Users\agrawal-admin\Desktop\LandingData\OPTO\CSS021xCHR-12mW-ALL.xlsx",
         joints=Key_points,
         total_fly_number=10,
         fps=[250, 250, 250, 250, 250, 250, 250, 250, 250, 250],
         trial_num=30,
         video_duration=7)
 
-    BrixL006 = Group(
-        fly_kinematic_data_path=r"C:\Users\agrawal-admin\Desktop\TibiaTarsusPlatformODLight-Wayne-2024-10-19\Network-07-04\Optogenetics\BrixL006-3mW",
-        group_name="BrixL006",
+    IavxChr = Group(
+        fly_kinematic_data_path=os.path.join(DataFolder, r"Network-01-18-2026\Optogenetics\IavxChr-Max"),
+        group_name="IAVxChr",
         angles=Angles,
+        ll_data_path=r"C:\Users\agrawal-admin\Desktop\LandingData\OPTO\IAVxCHR-12mW-ALL.xlsx",
         joints=Key_points,
-        total_fly_number=9,
-        fps=[250, 250, 250, 250, 250, 250, 250, 250, 250],
+        total_fly_number=12,
+        fps=[250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250],
         trial_num=30,
         video_duration=7)
 
-    Kine_path = r"C:\Users\agrawal-admin\Desktop\TibiaTarsusPlatformODLight-Wayne-2024-10-19\Network-07-04\Optogenetics\L006xL011-Max"
-    LaLPath = r"C:\Users\agrawal-admin\Desktop\DataFolder\Optogenetics\L006xL011-Max\All.xlsx"
-    MOCPath = r"C:\Users\agrawal-admin\Desktop\DataFolder\Optogenetics\L006xL011-Max\MOC.xlsx"
-    MOLPath = r"C:\Users\agrawal-admin\Desktop\DataFolder\Optogenetics\L006xL011-Max\MOL.xlsx"
-    LexA_Br = Group(moc_data_path=MOCPath,
-                 mol_data_path=MOLPath,
-                 ll_data_path=LaLPath,
-                 fly_kinematic_data_path=Kine_path,
-                 group_name="LexA-Br-Green",
-                 angles=Angles,
-                 joints=Key_points,
-                 total_fly_number=15,
-                 fps=[250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250],
-                 trial_num=30,
-                 video_duration=Video_duration)
-
-    WT_Opto = Group(
-        fly_kinematic_data_path=r"C:\Users\agrawal-admin\Desktop\TibiaTarsusPlatformODLight-Wayne-2024-10-19\Network-07-04\Optogenetics\CT-WT-NC-22ms-2s",
-        group_name="WT",
-        angles=Angles,
-        joints=Key_points,
-        total_fly_number=4,
-        fps=[250, 250, 250, 250],
-        trial_num=30,
-        video_duration=7)
-
-    WT_T1_TTa = None
-    # WT_T2_TTa = None
-    WT_T3_TTa = None
-    WT_T2_CTF = None
-    return (WT_T1_TTa, WT_T2_TTa, WT_T3_TTa, G106_T2_TTa, G107_T2_TTa, G108_T2_TTa, G114_T2_TTa,
-            G115_T2_TTa, G116_T2_TTa, G117_T2_TTa, G118_T2_TTa, G119_T2_TTa, ANxChr, BrixL006, WT_Opto, ANxGTACR, LexA_Br)
+    return (WT_T1_CTF, WT_T1_TTa, WT_T2_CTF, WT_T2_TTa, WT_T3_CTF, WT_T3_TTa, G106_T2_TTa, G107_T2_TTa, G108_T2_TTa, G114_T2_TTa,
+            G115_T2_TTa, G116_T2_TTa, G117_T2_TTa, G118_T2_TTa, G119_T2_TTa, ANxChr, BrixL006, ANxGTACR, LexA_Br, AllCSxChr, CSS48xChr, CSS21xChr, IavxChr,
+            MTGal4, IavxGTACR, WT_Green, CSS048xGTACR, CSS021xGTACR)
 
 if __name__ == "__main__":
 
-    os.chdir(r"C:\Users\agrawal-admin\Desktop\Landing\Graph")
+    os.chdir(r"C:\Users\agrawal-admin\Desktop\Landing")
     Key_points = ["L-wing", "L-wing-hinge", "R-wing", "R-wing-hinge", "abdomen-tip",
                   "platform-tip", "L-platform-tip", "R-platform-tip", "platform-axis",
                   "R-fBC", "R-fCT", "R-fFT", "R-fTT", "R-fLT", "R-mBC", "R-mCT", "R-mFT", "R-mTT", "R-mLT",
@@ -460,6 +593,9 @@ if __name__ == "__main__":
 
     Angles = [["R-mCT", "R-mFT", "R-mTT"], ["L-mCT", "L-mFT", "L-mTT"], ["L-wing", "L-wing-hinge", "R-wing"]]
 
+    WT_T1_CTF_Fly_Num = 15
+    WT_T2_CTF_Fly_Num = 18
+    WT_T3_CTF_Fly_Num = 17
     WT_T1_TTa_Fly_Num = 15
     WT_T2_TTa_Fly_Num = 15
     WT_T3_TTa_Fly_Num = 20
@@ -472,115 +608,175 @@ if __name__ == "__main__":
     G117_TTa_Fly_Num = 18
     G118_TTa_Fly_Num = 15
     G119_TTa_Fly_Num = 18
+    WT_Green_Fly_Num = 9
+    ANxGTACR_Fly_Num = 12
+    LexA_Br_Fly_Num = 15
+    MTGal4_Fly_Num = 15
+    IavxGTACR_Fly_Num = 17
+    CSS048xGTACR_Fly_Num = 23
+    CSS021xGTACR_Fly_Num = 19
 
     G108_CTF_Fly_Num = 13
     WT_T2_CTF_Fly_Num = 18
 
+
+    WT_T1_CTF_Fly_Num = 15
+    WT_T2_CTF_Fly_Num = 18
+    WT_T3_CTF_Fly_Num = 17
+    WT_T1_TTa_Fly_Num = 15
     WT_T2_TTa_Fly_Num = 15
-    G106_TTa_Fly_Num = 16
-    G107_TTa_Fly_Num = 14
-    G108_TTa_Fly_Num = 17
+    WT_T3_TTa_Fly_Num = 20
+
+    G106_TTa_Fly_Num = 1
+    G107_TTa_Fly_Num = 1
+    G108_TTa_Fly_Num = 1
     G114_TTa_Fly_Num = 1
-    G115_TTa_Fly_Num = 16
-    G116_TTa_Fly_Num = 15
-    G117_TTa_Fly_Num = 18
-    G118_TTa_Fly_Num = 15
-    G119_TTa_Fly_Num = 18
+    G115_TTa_Fly_Num = 1
+    G116_TTa_Fly_Num = 2
+    G117_TTa_Fly_Num = 1
+    G118_TTa_Fly_Num = 1
+    G119_TTa_Fly_Num = 1
 
+    WT_Green_Fly_Num = 9
+    ANxGTACR_Fly_Num = 12
+    LexA_Br_Fly_Num = 15
+    MTGal4_Fly_Num = 15
+    IavxGTACR_Fly_Num = 17
+    CSS048xGTACR_Fly_Num = 23
+    CSS021xGTACR_Fly_Num = 19
 
+    Trial_offset = 3
     # WT_T2_CTF_Fly_Num = 1
     # G108_CTF_Fly_Num = 5
 
-    (WT_T1_TTa, WT_T2_TTa, WT_T3_TTa, G106_T2_TTa, G107_T2_TTa, G108_T2_TTa, G114_T2_TTa,
-     G115_T2_TTa, G116_T2_TTa, G117_T2_TTa, G118_T2_TTa, G119_T2_TTa, ANxChr, BrixL006, WT_Opto, ANxGTACR, LexA_Br) = Group_meta_data()
+    (WT_T1_CTF, WT_T1_TTa, WT_T2_CTF, WT_T2_TTa, WT_T3_CTF, WT_T3_TTa, G106_T2_TTa, G107_T2_TTa, G108_T2_TTa, G114_T2_TTa,
+     G115_T2_TTa, G116_T2_TTa, G117_T2_TTa, G118_T2_TTa, G119_T2_TTa, ANxChr, BrixL006, ANxGTACR, LexA_Br, AllCSxChr, CSS48xChr, CSS21xChr, IavxChr,
+     MTGal4, IavxGTACR, WT_Green, CSS048xGTACR, CSS021xGTACR) = Group_meta_data()
 
-    exp = [WT_T2_TTa, G107_T2_TTa, G108_T2_TTa, G114_T2_TTa, G115_T2_TTa, G117_T2_TTa, G118_T2_TTa, G119_T2_TTa]
+    # MTGal4.read_all_data()
+    WT_T1_TTa.read_all_data()
+    WT_T1_TTa.filter_nan_fly()
+    WT_T2_TTa.read_all_data()
+    WT_T2_TTa.filter_nan_fly()
+    WT_T3_TTa.read_all_data()
+    WT_T3_TTa.filter_nan_fly()
 
-    # G114_NC_22ms.read_all_trials()
-    # G114_NC_NATR_22ms.read_all_trials()
-    # G114_NC_Cons.read_all_trials()
-
-    # WT_T1_TTa.read_all_data() # size bad
-    # WT_T1_TTa.filter_nan_fly()
-    # WT_T2_TTa.read_all_data() # good
-    # WT_T2_TTa.filter_nan_fly()
-    # ANxChr.read_all_trials()
-    # BrixL006.read_all_trials()
-    # WT_Opto.read_all_trials()
-    # WT_T3_TTa.read_all_data() # size bad
-    # WT_T3_TTa.filter_nan_fly()
-    # G106_T2_TTa.read_all_data() # size bad
+    # WT_T1_CTF.read_all_data()
+    # WT_T1_CTF.filter_nan_fly()
+    # WT_T2_CTF.read_all_data()
+    # WT_T2_CTF.filter_nan_fly()
+    # WT_T3_CTF.read_all_data()
+    # WT_T3_CTF.filter_nan_fly()
+    # G106_T2_TTa.read_all_data()
     # G106_T2_TTa.filter_nan_fly()
-
-    # G107_T2_TTa.read_all_data() # size bad
+    # G107_T2_TTa.read_all_data()
     # G107_T2_TTa.filter_nan_fly()
-    LexA_Br.read_all_data()
-    # G108_T2_TTa.read_all_data() # good
+    # G108_T2_TTa.read_all_data()
     # G108_T2_TTa.filter_nan_fly()
-
-    # G114_T2_TTa.read_all_data() # good
-    # G114_T2_TTa.filter_nan_fly()  # good
-
-    # G115_T2_TTa.read_all_data() # good
+    # G114_T2_TTa.read_all_data()
+    # G114_T2_TTa.filter_nan_fly()
+    # G115_T2_TTa.read_all_data()
     # G115_T2_TTa.filter_nan_fly()
-
     # G116_T2_TTa.read_all_data()
     # G116_T2_TTa.filter_nan_fly()
-
-    # G117_T2_TTa.read_all_data() # good
+    # G117_T2_TTa.read_all_data()
     # G117_T2_TTa.filter_nan_fly()
-
-    # G118_T2_TTa.read_all_data() # good
+    # G118_T2_TTa.read_all_data()
     # G118_T2_TTa.filter_nan_fly()
-
-    # G119_T2_TTa.read_all_data() # good
+    # G119_T2_TTa.read_all_data()
     # G119_T2_TTa.filter_nan_fly()
-    # WT_T2_CTF.read_all_data() # bad
-    # G108_T2_CTF.read_all_data() # good
-    KirGroups = [WT_T2_TTa, G106_T2_TTa, G107_T2_TTa, G108_T2_TTa, G114_T2_TTa, G116_T2_TTa, G117_T2_TTa, G118_T2_TTa, G119_T2_TTa, G115_T2_TTa]
-    # KirGroups = [WT_T2_TTa, G106_T2_TTa]
-    plotter = kp.PlotCreator(0.03, 3, 0.5, 250)
-    plotter.plot_ON_OFF_angle(LexA_Br)
-    # plotter.plot_motion_vector_with_plane(WT_T2_TTa.fly_kinematic_data["F2T7"], 50)
-    # IavxChr_NATR.read_all_trials()
-    # AllCSxChr.read_all_trials()
-    # AllCSxChr_NATR.read_all_trials()
-    # AllCSxChr.read_all_trials()
     # ANxGTACR.read_all_data()
-    # ANxGTACR.filter_nan_fly()
-    # plotter.plot_FT_change(WT_Opto)
-    # plotter.plot_FT_change(AllCSxChr_NATR)
-    # plotter.plot_flying_posture_over_trial(G117)
-    # plotter.plot_tarsus_contact_vs_latency(G117)
-    # plotter.MakePlot(G117)
-    # plotter.plot_motion_vector_with_plane(G117.fly_kinematic_data["F1T1"], int(G117.fly_kinematic_data["F1T1"].moc))
-    # plotter.plot_posture_angle_change(G117.fly_kinematic_data["F1T1"])
-    # plotter.plot_FT_ang_ll(G117)
-    # plotter.plot_IndiLegContactPointWithPlatform(G117.fly_kinematic_data["F1T1"], int(G117.fly_kinematic_data["F1T1"].moc))
-    # plotter.plot_IndividualLegLatency(G117)
-    # index_to_iterate = [(5, 5), (2, 11), (4, 5), (4, 13), (4, 15), (4, 16), (4, 18)]
-    # index_to_iterate = WT_T2_TTa.get_targeted_trials(["Landing"])
-    # for t in index_to_iterate:
-        # print(f"Fly: {t[0]} Trial: {t[1]}")
-        # if t[1] == 13:
-        # plotter.plot_leg_search_cycle(WT_T2_TTa.fly_kinematic_data[f"F{t[0]}T{t[1]}"], "R-f")
-    # plotter.plot_FTCT_characteristic(WT_T2_TTa)
-    # plotter.plot_FTCT_characteristic(WT_T2_TTa)
-    # plotter.plot_InidividualLegContactDistribution(WT_T3_TTa)
-    # plotter.plot_CTF_MOC(G108_CTF)
-    # plotter.plot_FTCT_characteristic(WT_T2_TTa)
-    # plotter.plot_CTF_MOC(G108_CTF.fly_kinematic_data[f"F{2}T{2}"])
-    # plotter.plot_trajectory(WT.fly_kinematic_data["F1T1"], ["L-mLT"])
-    # plotter.plot_angle_change_psd(WT_T2_TTa)
-    # plotter.plot_Inidi_Leg_Contact(WT_T2_TTa)
-    # plotter.normalized_leg_angle_change_trace(WT_T2_TTa)
-    # plotter.plotting_exp(WT_T2_TTa)
-    # plotter.plot_angle_change_traces_groups(exp)
+    # ANxGTACR.filter_opto_data()
+    # CSS048xGTACR.read_all_data()
+    # CSS048xGTACR.filter_opto_data()
+    # WT_Green.read_all_data()
+    # LexA_Br.read_all_data()
+    # MTGal4.read_all_data()
+    # IavxGTACR.read_all_data()
+    """ANxGTACR.read_all_data()
+    ANxGTACR.filter_opto_data()
+    LexA_Br.read_all_data()
+    LexA_Br.filter_opto_data()
+    MTGal4.read_all_data()
+    MTGal4.filter_opto_data()
+    IavxGTACR.read_all_data()
+    IavxGTACR.filter_opto_data()
+    WT_Green.read_all_data()
+    WT_Green.filter_opto_data()
+    CSS048xGTACR.read_all_data()
+    CSS048xGTACR.filter_opto_data()
+    CSS021xGTACR.read_all_data()
+    CSS021xGTACR.filter_opto_data()"""
 
-    # print(WT_T2_TTa.landing_trial_index)
-    # plotter.plot_angle_relative_mol(WT_T2_TTa)
-    # print([(s - (10 - 1)) / 100 for s in range(10)])
-    # plotter.plot_FT_change([G114_NC_22ms, G114_NC_NATR_22ms, G114_NC_Cons])
+    """ANxChr.read_all_trials()
+    BrixL006.read_all_trials()
+    CSS48xChr.read_all_trials()
+    CSS21xChr.read_all_trials()
+    IavxChr.read_all_trials()
+    AllCSxChr.read_all_trials()"""
+    # ANxGTACR.read_all_trials()
+
+
+    plotter = kp.PlotCreator(0.03, 3, 0.35, 250)
+    os.chdir(r"C:\Users\agrawal-admin\Desktop\Landing\stat and figures")
+    # plotter.plot_LS_vs_LL(WT_T2_TTa, False, r"C:\Users\agrawal-admin\Desktop\Landing\WT-T2-TiTa--0.71.csv", r"C:\Users\agrawal-admin\Desktop\Landing\WT-T2-TiTa-WT-T2-TiTa-LS_data_.csv")
+    # plotter.plot_LS_vs_LL(ANxGTACR, True)
+    # plotter.plot_IT_vs_OT(WT_T2_TTa)
+
+    # plotter.plot_LP([WT_T1_TTa, WT_T2_TTa, WT_T3_TTa])
+    # plotter.plot_secondary_contact_probability([WT_T1_TTa, WT_T2_TTa, WT_T3_TTa])
+    # plotter.plot_secondary_contact_probability_OPTO(ANxGTACR)
+    # plotter.plot_secondary_contact_probability_OPTO(LexA_Br)
+    # plotter.plot_secondary_contact_probability_OPTO(MTGal4)
+    # plotter.plot_secondary_contact_probability_OPTO(IavxGTACR)
+    # plotter.plot_secondary_contact_probability_OPTO(WT_Green)
+    # plotter.plot_secondary_contact_probability_OPTO(CSS048xGTACR)
+    # plotter.plot_secondary_contact_probability_OPTO(CSS021xGTACR)
+    # plotter.plot_LL([WT_T1_TTa, WT_T2_TTa, WT_T3_TTa])
+    # plotter.analyzer.combine_data(WT_T1_TTa, "LS", False)
+    # plotter.analyzer.combine_data(WT_T1_TTa, "SC", False)
+    # plotter.analyzer.combine_data(WT_T3_TTa, "LS", False)
+    # plotter.analyzer.combine_data(WT_T3_TTa, "SC", False)
+
+    # plotter.analyzer.combine_data(CSS021xGTACR, "LS", True)
+    # plotter.analyzer.combine_data(CSS021xGTACR, "SC", True)
+    """plotter.analyzer.combine_data(WT_T2_TTa, "LS", False)
+    plotter.analyzer.combine_data(WT_T2_TTa, "SC", False)
+
+    plotter.analyzer.combine_data(ANxGTACR, "LS", True)
+    plotter.analyzer.combine_data(ANxGTACR, "SC", True)
+
+    plotter.analyzer.combine_data(LexA_Br, "LS", True)
+    plotter.analyzer.combine_data(LexA_Br, "SC", True)
+
+    plotter.analyzer.combine_data(MTGal4, "LS", True)
+    plotter.analyzer.combine_data(MTGal4, "SC", True)
+
+    plotter.analyzer.combine_data(IavxGTACR, "LS", True)
+    plotter.analyzer.combine_data(IavxGTACR, "SC", True)
+
+    plotter.analyzer.combine_data(WT_Green, "LS", True)
+    plotter.analyzer.combine_data(WT_Green, "SC", True)
+
+    plotter.analyzer.combine_data(CSS048xGTACR, "LS", True)
+    plotter.analyzer.combine_data(CSS048xGTACR, "SC", True)
+
+    plotter.analyzer.combine_data(CSS021xGTACR, "LS", True)
+    plotter.analyzer.combine_data(CSS021xGTACR, "SC", True)"""
+    # plotter.plot_Chrimson_ang_change([ANxChr, BrixL006, CSS48xChr, CSS21xChr, IavxChr, AllCSxChr])
+    # plotter.plot_chrimson_LP([ANxChr, BrixL006, CSS48xChr, CSS21xChr, IavxChr, AllCSxChr])
+    # plotter.plot_combined_LS_and_SC([CSS021xGTACR], True, "orange")
+    # plotter.plot_Opto_data(CSS021xGTACR)
+    # plotter.plot_combined_LS_and_SC([ANxGTACR], True, "magenta")
+    # plotter.plot_IT_vs_OT(WT_T2_TTa)
+    # plotter.plot_combined_LS_and_SC([WT_T1_TTa, WT_T2_TTa, WT_T3_TTa], False, "green")
+    # plotter.plot_combined_LS_and_SC([ANxGTACR], True, "magenta")
+    # plotter.plot_combined_LS_and_SC([LexA_Br], True, "green")
+    # plotter.plot_combined_LS_and_SC([MTGal4], True, "blue")
+    # plotter.plot_combined_LS_and_SC([IavxGTACR], True, "brown")
+    # plotter.plot_combined_LS_and_SC([WT_Green], True, "grey")
+    # plotter.plot_combined_LS_and_SC([CSS048xGTACR], True, "red")
+    plotter.plot_combined_LS_and_SC([CSS021xGTACR], True, "orange")
 
 
 

@@ -21,16 +21,13 @@ def getVideoPaths(video_folder, filetype):
 
 
 
-Anipose_path = r"C:\Users\agrawal-admin\Desktop\TibiaTarsusPlatformODLight-Wayne-2024-10-19\Network-07-04"
-DLC_analyzed_data_folder = r"C:\Users\agrawal-admin\DLCData\Network-07-04"
+Anipose_path = r"C:\Users\agrawal-admin\Desktop\TibiaTarsusPlatformODLight-Wayne-2024-10-19\Network-01-18-2026"
+DLC_analyzed_data_folder = r"C:\Users\agrawal-admin\DLCData\Network-01-18-2026"
 DLC_config_path = r"C:\Users\agrawal-admin\Desktop\TibiaTarsusPlatformODLight-Wayne-2024-10-19\network\config.yaml"
-Data_folder = r"C:\Users\agrawal-admin\Desktop\DataFolder\Optogenetics\L006xL011-Max"
+Data_folder = r"D:\DataFolder\OPTO\HP2xCHR-4mW"
 video_paths = getVideoPaths(Data_folder, ".mp4")
 
-# comps = base_dir.split('\\')
 
-
-patter = re.compile(r'(?P<date>\d{4}-\d{2}-\d{2})\\Fly_(?P<fly_num>\d+)\\(?P<TimeStamp>\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}\.\d+)_(?P<experiment>[\w]+)_(?P<group_name>[\w-]+)_(?P<joint_name>[\w-]+)_Fly_\d+_Trial_\d+')
 # patter = re.compile(r'(?P<date>\d{4}-\d{2}-\d{2})\\Fly_(?P<fly_num>\d+)\\(?P<TimeStamp>\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}\.\d+)_(?P<experiment>[^_]+(?:_[^_]+)*)_(?P<group_name>[^_]+_[^_]+)_(?P<joint_name>[\w-]+)_Fly_\d+_Trial_\d+')
 unique_fly_combinations = {}
 destinations = {}

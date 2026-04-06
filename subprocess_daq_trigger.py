@@ -50,8 +50,8 @@ sig_R = np.zeros(n_samp)
 sig_R_f = np.zeros(n_samp)
 # Initialize signal for IR light trigger pulse
 
-light_duration = 7
-light_start = 0
+light_duration = 2
+light_start = 3
 sig_RedLight = np.zeros(int(light_duration * dac_rate))
 
 """

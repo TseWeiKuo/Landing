@@ -220,55 +220,29 @@ def InitializeDataFolder(DataFolderPath, Experiment, GroupName, Date):
 Initialize the camera acquisition setting
 """
 def InitializeCamera(Device, ExposureTime, sharpness, noise_reduction_value, Buffer):
-    Cropped = False
     print("Camera: " + str(Device.GetSerialNumber()))
     Camera = py.InstantCamera(py.TlFactory.GetInstance().CreateDevice(Device))
-    if Cropped:
-        Camera.Open()
-        Camera.Width.SetValue(640)
-        Camera.Height.SetValue(550)
-        Camera.OffsetX = 128
-        Camera.OffsetY = 43
-        Camera.PgiMode.Value = "On"
-        Camera.NoiseReduction.Value = noise_reduction_value
-        Camera.SensorReadoutMode.Value = "Fast"
-        Camera.SharpnessEnhancement.Value = sharpness
-        Camera.ExposureTime = ExposureTime
-        Camera.LineSelector = "Line4"
-        Camera.LineMode = "Output"
-        Camera.LineInverter = False
-        Camera.LineSource = "FrameTriggerWait"
-        Camera.Gain = Camera.Gain.Max
-        Camera.MaxNumBuffer = 100
-        Camera.LineSelector = "Line3"
-        Camera.LineMode = "Input"
-        Camera.TriggerSelector = "FrameStart"
-        Camera.TriggerSource = "Line3"
-        Camera.TriggerActivation = "RisingEdge"
-        Camera.TriggerDelay = 0
-        Camera.TriggerMode = "On"
-    else:
-        Camera.Open()
-        Camera.Width.SetValue(Camera.Width.GetMax())
-        Camera.Height.SetValue(Camera.Height.GetMax())
-        Camera.PgiMode.Value = "On"
-        Camera.NoiseReduction.Value = noise_reduction_value
-        Camera.SharpnessEnhancement.Value = sharpness
-        Camera.SensorReadoutMode.Value = "Fast"
-        Camera.ExposureTime = ExposureTime
-        Camera.LineSelector = "Line4"
-        Camera.LineMode = "Output"
-        Camera.LineInverter = False
-        Camera.LineSource = "ExposureActive"
-        Camera.Gain = Camera.Gain.Max
-        Camera.MaxNumBuffer = Buffer
-        Camera.LineSelector = "Line3"
-        Camera.LineMode = "Input"
-        Camera.TriggerSelector = "FrameStart"
-        Camera.TriggerSource = "Line3"
-        Camera.TriggerActivation = "RisingEdge"
-        Camera.TriggerDelay = 0
-        Camera.TriggerMode = "On"
+    Camera.Open()
+    Camera.Width.SetValue(Camera.Width.GetMax())
+    Camera.Height.SetValue(Camera.Height.GetMax())
+    Camera.PgiMode.Value = "On"
+    Camera.NoiseReduction.Value = noise_reduction_value
+    Camera.SharpnessEnhancement.Value = sharpness
+    Camera.SensorReadoutMode.Value = "Fast"
+    Camera.ExposureTime = ExposureTime
+    Camera.LineSelector = "Line4"
+    Camera.LineMode = "Output"
+    Camera.LineInverter = False
+    Camera.LineSource = "ExposureActive"
+    Camera.Gain = Camera.Gain.Max
+    Camera.MaxNumBuffer = Buffer
+    Camera.LineSelector = "Line3"
+    Camera.LineMode = "Input"
+    Camera.TriggerSelector = "FrameStart"
+    Camera.TriggerSource = "Line3"
+    Camera.TriggerActivation = "RisingEdge"
+    Camera.TriggerDelay = 0
+    Camera.TriggerMode = "On"
     return Camera
 """
 Close subprocess
@@ -286,16 +260,16 @@ Data_Folder_Path = r"C:\Users\agrawal-admin\Desktop\DataFolder"
 Experiment = "Optogenetics"
 
 # Specify the name of the group of the experiment
-Group_name = "GTACRx49541-Max"
+Group_name = "IavxChr-4mW"
 
 # Initialize the date of the experiment
 Date = datetime.datetime.now().date()
 
-# Initialize folder to store fly video
-Fly_Folder = ""
-
 # Use light?
 Use_Light = True
+
+# Initialize folder to store fly video
+Fly_Folder = ""
 
 # Initialize the needed data folder and metadata
 Experiment_meta_data_file, Cameras_Signal_metadata_file, Fly_num = \
@@ -339,7 +313,7 @@ camera6 = InitializeCamera(devices[5], ExposureTime=ExposureTime, sharpness=shar
 os.chdir(r"C:\Users\agrawal-admin\Desktop\Landing")
 
 # Set motor parameters
-Target_V = 2  # Motor stop position
+Target_V = 1  # Motor stop position
 Initial_V = 1  # Motor start position
 Trial_num = 30 # Number of trials
 Platform_stop_duration = 1  # Motor stop time
@@ -352,7 +326,7 @@ Continuous_recording = 2  # Recording mode, 2 = experiment, 1 = calibration
 # Randomize light on generation
 NL_trials = []
 if Use_Light:
-    NL_trials = sorted(random.sample(range(1, Trial_num), 15))
+    NL_trials = sorted(random.sample(range(1, Trial_num), int(Trial_num/2)))
     # NL_trials = []
 
 

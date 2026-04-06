@@ -65,7 +65,7 @@ def ExtractSingleFrames(Video_files, extract_frame_range, step):
     Videos.extend(ExtractFramesValue(Video_files))
 
     extracted_frame_ind = range(extract_frame_range[0], extract_frame_range[1], step)
-
+    extracted_frame_ind = list(extracted_frame_ind)
     Frames_output_directory = os.path.join(ExtractedFPath, "New folder")
 
     if not os.path.exists(Frames_output_directory):
@@ -76,27 +76,27 @@ def ExtractSingleFrames(Video_files, extract_frame_range, step):
         cv2.imwrite(output_file_path, Videos[extracted_frame_ind[i]])
 
 
-Vid_file = r"C:\Users\agrawal-admin\Desktop\Basler_acA800-510um__24524019__20250514_124401793.mp4"
+Vid_file = r"C:\Users\agrawal-admin\Desktop\Landing\vids\WT_F7_070325.mp4"
 Vid_Dir = r"C:\Users\agrawal-admin\Desktop\Landing\vids"
 ExtractedFPath = r"C:\Users\agrawal-admin\Desktop\Landing\frames"
-Total_frames_num = 1750
-extract_frame_range = [500, 900]
-step = 4
+Total_frames_num = 480
+extract_frame_range = [0, 280]
+step = 7
 remaining_files = []
 FolderName = ""
 Vid_By_Cam = dict()
 
 
-for file in os.listdir(Vid_Dir):
+r"""for file in os.listdir(Vid_Dir):
     cam_number = int(file.split("_Cam")[1].split(".")[0])
     # Add the file to the corresponding camera number key in the dictionary
     if str(cam_number) in Vid_By_Cam.keys():
         Vid_By_Cam[str(cam_number)].append(os.path.join(Vid_Dir, file))
     else:
-        Vid_By_Cam[str(cam_number)] = [os.path.join(Vid_Dir, file)]
+        Vid_By_Cam[str(cam_number)] = [os.path.join(Vid_Dir, file)]"""
 
 
-# Frames(Vid_By_Cam, ExtractedFPath, extract_frame_range, step)
-FilterFrames(ExtractedFPath)
+ExtractSingleFrames(Vid_file, extract_frame_range, step)
+# FilterFrames(ExtractedFPath)
 # Extrac
 

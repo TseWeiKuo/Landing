@@ -163,64 +163,36 @@ def ViewFly():
 Initialize the camera acquisition setting
 """
 def InitializeCamera(Device, ExposureTime, sharpness, noise_reduction_value, Buffer):
-    Cropped = False
     print("Camera: " + str(Device.GetSerialNumber()))
     Camera = py.InstantCamera(py.TlFactory.GetInstance().CreateDevice(Device))
-    if Cropped:
-        Camera.Open()
-        Camera.Width.SetValue(640)
-        Camera.Height.SetValue(550)
-        Camera.OffsetX = 128
-        Camera.OffsetY = 43
-        Camera.PgiMode.Value = "On"
-        Camera.NoiseReduction.Value = noise_reduction_value
-        Camera.SensorReadoutMode.Value = "Fast"
-        Camera.SharpnessEnhancement.Value = sharpness
-        Camera.ExposureTime = ExposureTime
-        Camera.LineSelector = "Line4"
-        Camera.LineMode = "Output"
-        Camera.LineInverter = False
-        Camera.LineSource = "FrameTriggerWait"
-        Camera.Gain = Camera.Gain.Max
-        Camera.MaxNumBuffer = 100
-        Camera.LineSelector = "Line3"
-        Camera.LineMode = "Input"
-        Camera.TriggerSelector = "FrameStart"
-        Camera.TriggerSource = "Line3"
-        Camera.TriggerActivation = "RisingEdge"
-        Camera.TriggerDelay = 0
-        Camera.TriggerMode = "On"
-    else:
-        Camera.Open()
-        Camera.Width.SetValue(Camera.Width.GetMax())
-        Camera.Height.SetValue(Camera.Height.GetMax())
-        Camera.PgiMode.Value = "On"
-        Camera.NoiseReduction.Value = noise_reduction_value
-        Camera.SharpnessEnhancement.Value = sharpness
-        Camera.SensorReadoutMode.Value = "Fast"
-        Camera.ExposureTime = ExposureTime
-        Camera.LineSelector = "Line4"
-        Camera.LineMode = "Output"
-        Camera.LineInverter = False
-        Camera.LineSource = "ExposureActive"
-        Camera.Gain = Camera.Gain.Max
-        Camera.MaxNumBuffer = Buffer
-        Camera.LineSelector = "Line3"
-        Camera.LineMode = "Input"
-        Camera.TriggerSelector = "FrameStart"
-        Camera.TriggerSource = "Line3"
-        Camera.TriggerActivation = "RisingEdge"
-        Camera.TriggerDelay = 0
-        Camera.TriggerMode = "On"
+    Camera.Open()
+    Camera.Width.SetValue(Camera.Width.GetMax())
+    Camera.Height.SetValue(Camera.Height.GetMax())
+    Camera.PgiMode.Value = "On"
+    Camera.NoiseReduction.Value = noise_reduction_value
+    Camera.SharpnessEnhancement.Value = sharpness
+    Camera.SensorReadoutMode.Value = "Fast"
+    Camera.ExposureTime = ExposureTime
+    Camera.LineSelector = "Line4"
+    Camera.LineMode = "Output"
+    Camera.LineInverter = False
+    Camera.LineSource = "ExposureActive"
+    Camera.Gain = Camera.Gain.Max
+    Camera.MaxNumBuffer = Buffer
+    Camera.LineSelector = "Line3"
+    Camera.LineMode = "Input"
+    Camera.TriggerSelector = "FrameStart"
+    Camera.TriggerSource = "Line3"
+    Camera.TriggerActivation = "RisingEdge"
+    Camera.TriggerDelay = 0
+    Camera.TriggerMode = "On"
     return Camera
 
-
-Cropped = False
 SideViewX = 11
 SideViewY = 9
 FrontViewX = 5
 FrontViewY = 12
-Continuous_recording = 1
+
 
 # Set the camera acquisition setting
 FPS = 40
@@ -255,6 +227,7 @@ camera6 = InitializeCamera(devices[5], ExposureTime=ExposureTime, sharpness=shar
 # Camera 7 initialization
 # camera7 = InitializeCamera(devices[6], ExposureTime=ExposureTime, sharpness=sharpness, noise_reduction_value=noise_reduction_value, Buffer=Buffer)
 
+Continuous_recording = 1
 placeholder_list = []
 Send_signal_process = Popen(['python', 'subprocess_daq_trigger.py', str(FPS), str(20), str(Continuous_recording), json.dumps(placeholder_list)], stdin=subprocess.PIPE, text=True)
 stopCam = False

@@ -1,14 +1,11 @@
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
-import statistics as st
+import matplotlib.cm as cm
+import os
 import numpy as np
 from sklearn.utils import resample
-import matplotlib.patches as mpatches
-import matplotlib.colors as mcolors
 from scipy.stats import kendalltau
-import colorsys
-# Apply the default theme
 from scipy.stats import ttest_ind, ttest_rel
 import warnings
 warnings.filterwarnings(action="ignore", category=RuntimeWarning)
@@ -41,9 +38,6 @@ def calculate_mean_diff(data1, data2):
     return np.mean(data1) - np.mean(data2)
 def calculate_median_diff(data1, data2):
     return np.median(data1) - np.median(data2)
-def brighten_color(color, factor=0.2):
-    # Add the factor to each channel, but ensure it's capped at 1
-    return tuple(min(1, c + factor) for c in color)
 def calculate_sem(data):
     # Calculate the mean
     mean = np.mean(data)
@@ -233,22 +227,12 @@ def TLLCluster(Original_Data, file_name):
     combined_df = pd.concat(Original_Data)
 
     # ax = sns.violinplot(x="Group_Name", y="TrialLandingLatency", data=combined_df, palette=Color_blind_palette)
-    ax = sns.stripplot(x="Group_Name", y="TrialLandingLatency", data=combined_df, jitter=0.2, size=20, alpha=0.4, marker="o", palette=Color_blind_palette)
-    """for i, group_data in enumerate(Original_Data, start=1):
-        if samejoint:
-            ax = sns.stripplot(x="Group_Name", y="TrialLandingLatency", data=group_data, jitter=0.2, size=20, alpha=0.75, marker=markers[i - 1], color=Color_blind_palette[0])
-        else:
-            #ax = sns.violinplot(x="Group_Name", y="TrialLandingLatency", data=group_data, color=Color_blind_palette[i-1],
-            #                    split=True, hue=0, hue_order=[1, 0], dodge=True, legend=False)
-            #ax = sns.stripplot(x="Group_Name", y="TrialLandingLatency", data=group_data, jitter=0.2, size=30, alpha=0.4,
-            #                   hue=0, hue_order=[2, 1, 0, -1, -2, -3, -4], dodge=True, legend=False,  marker=markers[i - 1],
-            #                   color=lightened_palette[i-1])
-            ax = sns.stripplot(x="Group_Name", y="TrialLandingLatency", data=group_data, jitter=0.2, size=30, alpha=0.4, dodge=True, legend=False,
-                               marker=markers[i - 1],
-                               color=lightened_palette[i - 1])"""
-
-    ax.spines['left'].set_linewidth(3)
-    ax.spines['bottom'].set_linewidth(3)
+    # ax = sns.stripplot(x="Group_Name", y="TrialLandingLatency", data=combined_df, jitter=0.2, size=20, alpha=0.2, marker=["o", ">"], palette=Color_blind_palette)
+    m = ["o", ">"]
+    for d, data in enumerate(Original_Data):
+        ax = sns.stripplot(x="Group_Name", y="TrialLandingLatency", data=data, jitter=0.2, size=20, alpha=0.2, marker=m[d], color=Color_blind_palette[d])
+        ax.spines['left'].set_linewidth(3)
+        ax.spines['bottom'].set_linewidth(3)
     group_stat = combined_df.groupby('Group_Name')["TrialLandingLatency"].agg(['mean', 'std', 'count']).reset_index()
     print(group_stat)
     group_stat['ci'] = 1.96 * group_stat['std'] / np.sqrt(group_stat['count'])
@@ -258,8 +242,8 @@ def TLLCluster(Original_Data, file_name):
     plt.ylabel("Trial Landing latency (s)", fontsize=25)
     plt.xlabel("Group", fontsize=25)
     if FilterHighLatency:
-        plt.ylim(-0.3, 1.1)
-        plt.yticks([0, 0.5, 1])
+        plt.ylim(-0.1, 0.9)
+        plt.yticks([0, 0.4, 0.8])
     else:
         plt.ylim(-0.3, 3)
         plt.yticks([0, 1.5, 3])
@@ -274,7 +258,7 @@ def TLLCluster(Original_Data, file_name):
     plt.show()
 def Bootstrapping_test(data1, data2):
 
-    num_bootstrap_samples = 10000
+    num_bootstrap_samples = 30000
 
     # Perform t-test on the original data
 
@@ -309,10 +293,9 @@ def Bootstrapping_test(data1, data2):
     Mean_diff_p_value = (np.sum(np.abs(bootstrap_mean_diffs) >= np.abs(original_mean_diff))) / (num_bootstrap_samples)
     Median_diff_p_value = (np.sum(np.abs(bootstrap_median_diffs) >= np.abs(original_median_diff))) / (num_bootstrap_samples)
 
-    print(f"Difference in mean's P-value = {Mean_diff_p_value}")
-    print(f"Original mean diff = {original_mean_diff}")
+    # print(f"Difference in mean's P-value = {Mean_diff_p_value}")
+    # print(f"Original mean diff = {original_mean_diff}")
     return Mean_diff_p_value
-
 def LPAcrossFlies(Data_to_plot, file_name):
     global Color_blind_palette
     global markers
@@ -334,8 +317,6 @@ def LPAcrossFlies(Data_to_plot, file_name):
         if not vio:
             for i, d in enumerate(Data_to_plot):
                 g = sns.stripplot(x="Group_Name", y="LandingProb", data=d, alpha=0.4, jitter=0.1, dodge=False, size=30, marker=markers[i], color=Color_blind_palette[i], zorder=10)
-                # g = sns.violinplot(x="Group_Name", y="LandingProb", data=d, color=Color_blind_palette[i])
-            # g = sns.stripplot(x="Group_Name", y="LandingProb", data=combined_df, alpha=0.75, jitter=0.2, dodge=False, size=20, hue="Group_Name", palette=Color_blind_palette)
         else:
             g = sns.violinplot(x="Group_Name", y="LandingProb", hue="Group_Name", data=combined_df, palette=Color_blind_palette)
     g.spines['left'].set_linewidth(3)
@@ -343,10 +324,10 @@ def LPAcrossFlies(Data_to_plot, file_name):
     g.set_ylim(-0.1, 1.1)
 
     group_stat = combined_df.groupby('Group_Name')['LandingProb'].agg(['mean', 'std', 'count']).reset_index()
-    group_stat['ci'] = 1.96 * group_stat['std'] / np.sqrt(group_stat['count'])
+    # group_stat['ci'] = 1.96 * group_stat['std'] / np.sqrt(group_stat['count'])
 
     sns.pointplot(x='Group_Name', y='mean', data=group_stat, color='black', linestyles=" ", markers="s", errorbar=None, scale=2, zorder=10)
-    plt.errorbar(x=group_stat['Group_Name'], y=group_stat['mean'], yerr=group_stat['ci'], fmt="none", color='black', capsize=10, zorder=10)
+    plt.errorbar(x=group_stat['Group_Name'], y=group_stat['mean'], yerr=group_stat['std'], fmt="none", color='black', capsize=10, zorder=10)
     # legend_elements = [plt.Line2D([0], [0], marker=markers[i], color='w', label=group_name[i], markerfacecolor=Color_blind_palette[i], markersize=10) for i in range(len(Data_to_plot))]
 
     # plt.legend(handles=legend_elements, loc='upper right', fontsize=20)
@@ -365,27 +346,37 @@ def LPAcrossLight(Data_to_plot, file_name, color):
     global markers
     global samejoint
     global vio
+
+    data_type = "LandingProb"
     combined_df = pd.concat(Data_to_plot, ignore_index=True)
-    plt.figure(figsize=(len(Data_to_plot) * 4, 10))
+    plt.figure(figsize=(len(Data_to_plot) * 3, 10))
 
     # Sort by Fly# to keep connection consistent
     combined_df = combined_df.sort_values(by=['Fly#', 'Group_Name'])
+    # print(combined_df)
 
-    g = sns.pointplot(data=combined_df, x='Group_Name', y='LandingProb', ci=None, dodge=True, color=color, join=False)
+    g = sns.pointplot(data=combined_df, x='Group_Name', y=data_type, ci=None, dodge=True, color=color, join=False)
 
     # Connect same flies with lines
     for fly_id, group in combined_df.groupby('Fly#'):
-        plt.plot(group['Group_Name'], group['LandingProb'], marker='o', markersize=20,  color="lightgrey", linewidth=5)
+        print(fly_id, group)
+        plt.plot(group['Group_Name'], group[data_type], marker='o', markersize=20,  color="lightgrey", linewidth=5)
 
-    mean_df = combined_df.groupby('Group_Name', as_index=False)['LandingProb'].mean()
-    plt.plot(mean_df['Group_Name'], mean_df['LandingProb'], color=color, marker='o', markersize=20, linewidth=5, label='Mean')
+    group_stat = combined_df.groupby('Group_Name')['LandingProb'].agg(['mean', 'std', 'count']).reset_index()
+    group_stat['ci'] = 1.96 * group_stat['std'] / np.sqrt(group_stat['count'])
+
+    sns.pointplot(x='Group_Name', y='mean', data=group_stat, color=color, linestyles=" ", markers="s", errorbar=None, scale=2, zorder=10)
+    plt.errorbar(x=group_stat['Group_Name'], y=group_stat['mean'], yerr=group_stat['std'], fmt="none", color=color, capsize=10, zorder=10)
+
+    mean_df = combined_df.groupby('Group_Name', as_index=False)[data_type].mean()
+    plt.plot(mean_df['Group_Name'], mean_df[data_type], color=color, marker='o', markersize=20, linewidth=5, label='Mean')
 
     plt.title('Change in Landing Probability Across Groups')
-    plt.ylabel('Landing Probability')
     plt.xlabel('Group')
     g.spines['left'].set_linewidth(3)
     g.spines['bottom'].set_linewidth(3)
     # plt.legend(handles=legend_elements, loc='upper right', fontsize=20)
+    # plt.ylabel("Mean Landing Latency", fontsize=25)
     plt.ylabel("Landing Probability", fontsize=25)
     plt.tick_params(axis="y", labelsize=25)
     plt.tick_params(axis="x", labelsize=25, rotation=45)
@@ -396,7 +387,7 @@ def LPAcrossLight(Data_to_plot, file_name, color):
     sns.despine(trim=True)
     plt.tight_layout()
     plt.savefig(f"{file_name}.pdf")
-    plt.show()
+    plt.close()
 def FlyingProbability(Data_to_plot, file_name):
     global Color_blind_palette
     global markers
@@ -430,6 +421,7 @@ def FlyingProbability(Data_to_plot, file_name):
     plt.show()
 def ReadAndFilterData(GroupName, Flies_to_pick, Landing_Data_path):
     global Trial_num
+    global Threshold
     Landing_Data = pd.read_excel(Landing_Data_path)
     Landing_Data = Landing_Data.iloc[Flies_to_pick[0] - 1:Flies_to_pick[1]]
     Valid_data_index = []
@@ -438,9 +430,11 @@ def ReadAndFilterData(GroupName, Flies_to_pick, Landing_Data_path):
         for data in row.values:
             if isinstance(data, str) or pd.isna(data):
                 str_nan_count += 1
-        if str_nan_count < (len(row.values) / 2):
+        if Threshold:
+            if str_nan_count < (len(row.values) / 2):
+                Valid_data_index.append(index)
+        else:
             Valid_data_index.append(index)
-
     Landing_Data = Landing_Data[Landing_Data.index.isin(Valid_data_index)]
     GroupNameCol = [GroupName] * len(Valid_data_index)
     Landing_Data["Group_Name"] = GroupNameCol
@@ -488,6 +482,8 @@ def ReadAndFilterOptogeneticData(GroupName, Flies_to_pick, Landing_Data_paths):
 def CalculateOptogeneticLPLL(GroupName, Landing_Data, fps):
     global FilterHighLatency
     global trial_offset
+
+    latency_threshold = 0.5
     LP_mLL_Data = dict()
     LP_mLL_Data["LandingProb"] = []
     LP_mLL_Data["MLandingLatency"] = []
@@ -496,9 +492,9 @@ def CalculateOptogeneticLPLL(GroupName, Landing_Data, fps):
     Landing_Data = Landing_Data[Trials]
     for index, row in Landing_Data.iterrows():
         if FilterHighLatency:
-            Landing_latency = [l / fps for l in row if not isinstance(l, str) and l > 0 and l < 1 * fps]
+            Landing_latency = [l / fps for l in row if not isinstance(l, str) and l > 0 and l < latency_threshold * fps]
             Nan_data = [n for n in row if pd.isna(n) or isinstance(n, str) or n < -1]
-            Flying = [f for f in row if not (isinstance(f, str) or pd.isna(f)) and (f == -1 or f >= 1 * fps)]
+            Flying = [f for f in row if not (isinstance(f, str) or pd.isna(f)) and (f == -1 or f >= latency_threshold * fps)]
         else:
             Landing_latency = [l / fps for l in row if not isinstance(l, str) and l > 0]
             Nan_data = [n for n in row if pd.isna(n) or isinstance(n, str)]
@@ -527,6 +523,7 @@ def ReadData(GroupName, Flies_to_pick, Landing_Data_path):
 def CalculateLPAndmLLAcrossFlies(GroupName, Landing_Data, fps):
     global FilterHighLatency
     global trial_offset
+    global latency_threshold
     LP_mLL_Data = dict()
     LP_mLL_Data["LandingProb"] = []
     LP_mLL_Data["MLandingLatency"] = []
@@ -535,9 +532,9 @@ def CalculateLPAndmLLAcrossFlies(GroupName, Landing_Data, fps):
     Landing_Data = Landing_Data[Trials]
     for index, row in Landing_Data.iterrows():
         if FilterHighLatency:
-            Landing_latency = [l / fps for l in row if not isinstance(l, str) and l > 0 and l < 1 * fps]
+            Landing_latency = [l / fps for l in row if not isinstance(l, str) and l > 0 and l < latency_threshold * fps]
             Nan_data = [n for n in row if pd.isna(n) or isinstance(n, str) or n < -1]
-            Flying = [f for f in row if not (isinstance(f, str) or pd.isna(f)) and (f == -1 or f >= 1 * fps)]
+            Flying = [f for f in row if not (isinstance(f, str) or pd.isna(f)) and (f == -1 or f >= latency_threshold * fps)]
         else:
             Landing_latency = [l / fps for l in row if not isinstance(l, str) and l > 0]
             Nan_data = [n for n in row if pd.isna(n) or isinstance(n, str)]
@@ -559,6 +556,7 @@ def GetTrial_Landing_Data(LandingData, group_name, fps):
     landing_data = []
     global trial_offset
     global FilterHighLatency
+    global latency_threshold
     Trials = ["Trial_" + str(i + 1 + trial_offset) for i in range(Trial_num - trial_offset)]
     LandingData = LandingData[Trials]
 
@@ -567,7 +565,7 @@ def GetTrial_Landing_Data(LandingData, group_name, fps):
         # print(row)
         for data in row.values:
             if FilterHighLatency:
-                if not (isinstance(data, str) or pd.isna(data) or float(data) == -1 or data > 1 * fps):
+                if not (isinstance(data, str) or pd.isna(data) or float(data) == -1 or data > latency_threshold * fps):
                     # print(group_name, index, t + trial_offset)
                     landing_data.append(data/fps)
                     t += 1
@@ -625,20 +623,25 @@ def Cumulative_Histplot_LL(Original_Data):
 def ecdfPlot(Original_Data, filename):
     global labels
     global lines
+    global latency_threshold
     from matplotlib.lines import Line2D
 
-    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10, 8))
+    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10, 10))
     legend_handles = []  # List to store legend handles
     legend_labels = []
+    # legend_labels = ["ON", "OFF"]
     # combined_df = pd.concat(Original_Data)
+
     for i, d in enumerate(Original_Data):
-        legend_labels.append(d["Group_Name"][0])
+        print(d)
         sns.ecdfplot(d["TrialLandingLatency"], alpha=0.8, color=Color_blind_palette[i], linestyle=lines[i], legend=True, linewidth=3)
         legend_handles.append(Line2D([0], [0], color=Color_blind_palette[i], linestyle=lines[i], lw=3))
+        # print(d["Group_Name"][0])
+        legend_labels.append(d["Group_Name"].iloc[2])
     if FilterHighLatency:
-        ax.set_xlim(-0.1, 1.1)
+        ax.set_xlim(-0.1, latency_threshold + 0.1)
         ax.set_ylim(-0.1, 1.1)
-        ax.set_xticks([0, 0.5, 1])
+        ax.set_xticks([0, latency_threshold])
         ax.set_yticks([0, 0.5, 1])
     else:
         ax.set_xlim(-0.1, 3.1)
@@ -659,42 +662,6 @@ def ecdfPlot(Original_Data, filename):
     plt.savefig(f"{filename}.pdf")
     plt.show()
     return None
-def ecdfPlotLP(Original_Data):
-    from matplotlib.lines import Line2D
-    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10, 8))
-    legend_handles = []  # List to store legend handles
-    legend_labels = ["G106 Manual", "G106 Predicted", "G107", "G115"]  #
-    # combined_df = pd.concat(Original_Data)
-    for i, d in enumerate(Original_Data):
-        sns.ecdfplot(d["LandingProb"], alpha=0.8, color=Color_blind_palette[i], legend=True, linewidth=3)
-        legend_handles.append(Line2D([0], [0], color=Color_blind_palette[i], lw=3))
-    ax.set_xlim(-0.1, 1.1)
-    ax.set_ylim(-0.02, 1.02)
-    ax.set_xticks([0, 0.5, 1])
-    ax.set_yticks([0, 0.5, 1])
-    plt.tick_params(axis="y", labelsize=25)
-    plt.tick_params(axis="x", labelsize=25)
-    plt.tick_params(width=3, length=10)
-    sns.despine(trim=True)
-    ax.spines["left"].set_linewidth(2)  # Top border
-    ax.spines["bottom"].set_linewidth(2)
-    ax.set_xlabel("Landing probability", fontsize=25)
-    ax.set_ylabel("Percentage (%)", fontsize=25)
-
-    ax.legend(legend_handles, legend_labels, fontsize=20, loc="lower right", frameon=True)
-    plt.tight_layout()
-    plt.show()
-    return None
-
-def cross_comparison(exp_groups):
-    names = []
-    p_values = []
-    for i in range(len(exp_groups)):
-        names.append(exp_groups[i][1])
-        p_values.append([])
-        for j in range(len(exp_groups)):
-            p_values[-1].append(Bootstrapping_test(exp_groups[i][0], exp_groups[j][0]))
-    make_group_table(p_values, group_names=names)
 def make_group_table(values, group_names=None):
     n = len(values)
 
@@ -705,298 +672,371 @@ def make_group_table(values, group_names=None):
     df.index.name = "Groups"
 
     return df
-
-group_name = ["WT-CTF",
-              "Kir Control CTF",
-              "Fe-Gal4 CTF",
-              "HP-Gal4 CTF"]
+def ReadLandingData(FileName, GroupName, FPS, FirstFly, LastFly):
+    FilterdData = ReadAndFilterData(GroupName, [FirstFly, LastFly], FileName)
+    LPData = CalculateLPAndmLLAcrossFlies(GroupName, FilterdData, FPS)
+    LLData = GetTrial_Landing_Data(FilterdData, GroupName, FPS)
+    return LPData, LLData
+def ReadOptogeneticData(ONFile, OFFFile, GroupName, FPS, FirstFly, LastFly):
+    ONFiltered, OFFFiltered = ReadAndFilterOptogeneticData(GroupName, [FirstFly, LastFly], [ONFile, OFFFile])
+    ONLPData = CalculateLPAndmLLAcrossFlies(GroupName + "-ON", ONFiltered, FPS)
+    ONLLData = GetTrial_Landing_Data(ONFiltered, GroupName + "-ON", FPS)
+    OFFLPData = CalculateLPAndmLLAcrossFlies(GroupName + "-OFF", OFFFiltered, FPS)
+    OFFLLData = GetTrial_Landing_Data(OFFFiltered, GroupName + "-OFF", FPS)
+    return ONLPData, ONLLData, OFFLPData, OFFLLData
 
 FilterHighLatency = True
 samejoint = False
+OPTO = True
 Trial_num = 15
-trial = [str(t+1) for t in range(Trial_num)]
-Trial = [f"Trial_{t + 1}" for t in range(Trial_num)]
-
-Color_blind_palette = sns.color_palette("Set2", n_colors=10)
-
-
-markers = ['o', 'o', 'o', '>', '>','>', 'o', 'o', 'o', 'o', 'o', 'o', 'o', 'o', 'o', 'o']
-
 vio = False
-# ReadData = True
+Threshold = True
 trial_offset = 0
-T1TTa_path = r"C:\Users\agrawal-admin\Desktop\DataFolder\DataWithNoVideos\WT-Others\T1-TiTaLP.xlsx"
-T1TTa_200FPS = ReadAndFilterData(r"WT-T1-TiTa", [1, 12], T1TTa_path)
-T1TTa_250FPS = ReadAndFilterData(r"WT-T1-TiTa", [13, 15], T1TTa_path)
-T1TTa_LP_200FPS = CalculateLPAndmLLAcrossFlies(r"WT-T1-TiTa", T1TTa_200FPS, 200)
-T1TTa_LL_200FPS = GetTrial_Landing_Data(T1TTa_200FPS, "WT-T1-TiTa", 200)
-T1TTa_LP_250FPS = CalculateLPAndmLLAcrossFlies(r"WT-T1-TiTa", T1TTa_250FPS, 250)
-T1TTa_LL_250FPS = GetTrial_Landing_Data(T1TTa_250FPS, "WT-T1-TiTa", 250)
-T1TTa_LP = pd.concat([T1TTa_LP_200FPS, T1TTa_LP_250FPS])
-T1TTa_LL = pd.concat([T1TTa_LL_200FPS, T1TTa_LL_250FPS])
+DataFolder = r"C:\Users\agrawal-admin\Desktop\LandingDataSummary"
 
+# latency_threshold = 0.5
+latency_threshold = 0.71
+T1CTF_path = os.path.join(DataFolder, r"6LegsLP\T1-CxTrLP.xlsx")
+T1CTF_LP, T1CTF_LL = ReadLandingData(T1CTF_path, r"WT-T1-CxTr", 250, 1, 15)
 
-T2TTa_path = r"C:\Users\agrawal-admin\Desktop\DataFolder\DataWithNoVideos\WT-T2-TiTaLP.xlsx"
-T2TTa_Filtered = ReadAndFilterData(r"WT", [1, 15], T2TTa_path)
-T2TTa_LP = CalculateLPAndmLLAcrossFlies(r"WT", T2TTa_Filtered, 200)
-T2TTa_LL = GetTrial_Landing_Data(T2TTa_Filtered, "WT", 200)
+T2CTF_path = os.path.join(DataFolder, r"6LegsLP\T2-CxTrLP.xlsx")
+T2CTF_LP, T2CTF_LL = ReadLandingData(T2CTF_path, r"WT-T2-CxTr", 250, 1, 18)
 
-T2TTa_SL_path = r"C:\Users\agrawal-admin\Desktop\DataFolder\DataWithNoVideos\Ablation\T2RightIntact_TTa_All.xlsx"
-T2TTa_SL = ReadAndFilterData(r"WT-SL-T2-TiTa", [1, 21], T2TTa_SL_path)
-T2TTa_SL_LP = CalculateLPAndmLLAcrossFlies(r"WT-SL-T2-TiTa", T2TTa_SL, 300)
-T2TTa_SL_LL = GetTrial_Landing_Data(T2TTa_SL, "WT-SL-T2-TiTa", 300)
+T1CTF_SL_path = os.path.join(DataFolder, r"Necessity\T1RightIntact_CTF_LL_All.xlsx")
+T1CTF_SL_LP, T1CTF_SL_LL = ReadLandingData(T1CTF_SL_path, r"WT-SL-T1-CxTr", 300, 1, 21)
 
-T2TTa_inward_path = r"C:\Users\agrawal-admin\Desktop\DataFolder\DataWithNoVideos\WT-Others\WT-T2-TiTa_inward_filtered.xlsx"
-T2TTa_inward_Filtered = ReadData(r"WT-In Touch", [1, 15], T2TTa_inward_path)
-T2TTa_inward_LP = CalculateLPAndmLLAcrossFlies(r"WT-In Touch", T2TTa_inward_Filtered, 200)
-T2TTa_inward_LL = GetTrial_Landing_Data(T2TTa_inward_Filtered, "WT-In Touch", 200)
-T2TTa_outward_path = r"C:\Users\agrawal-admin\Desktop\DataFolder\DataWithNoVideos\WT-Others\WT-T2-TiTa_outward_filtered.xlsx"
-T2TTa_outward_Filtered = ReadData(r"WT-Out Touch", [1, 15], T2TTa_outward_path)
-T2TTa_outward_LP = CalculateLPAndmLLAcrossFlies(r"WT-Out Touch", T2TTa_outward_Filtered, 200)
-T2TTa_outward_LL = GetTrial_Landing_Data(T2TTa_outward_Filtered, "WT-Ouy Touch", 200)
+T2CTF_SL_path = os.path.join(DataFolder, r"Necessity\T2RightIntact_CTF_LL_All.xlsx")
+T2CTF_SL_LP, T2CTF_SL_LL = ReadLandingData(T2CTF_SL_path, r"WT-SL-T2-CxTr", 300, 1, 20)
 
+T3CTF_path = os.path.join(DataFolder, r"6LegsLP\T3-CxTrLP.xlsx")
+T3CTF_LP, T3CTF_LL = ReadLandingData(T3CTF_path, r"WT-T3-CxTr", 250, 1, 17)
 
-T2CTF_path = r"C:\Users\agrawal-admin\Desktop\DataFolder\DataWithNoVideos\WT-Others\T2-CxTrLP.xlsx"
-T2CTF_Filtered = ReadAndFilterData(r"WT-T2-CxTr", [1, 18], T2CTF_path)
-T2CTF_LP = CalculateLPAndmLLAcrossFlies(r"WT-T2-CxTr", T2CTF_Filtered, 250)
-T2CTF_LL = GetTrial_Landing_Data(T2CTF_Filtered, r"WT-T2-CxTr", 250)
-T2CTF_SL_path = r"C:\Users\agrawal-admin\Desktop\DataFolder\DataWithNoVideos\Ablation\T2RightIntact_CTF_LL_All.xlsx"
-T2CTF_SL = ReadAndFilterData(r"WT-SL-T2-CxTr", [1, 20], T2CTF_SL_path)
-T2CTF_SL_LP = CalculateLPAndmLLAcrossFlies(r"WT-SL-T2-CxTr", T2CTF_SL, 300)
-T2CTF_SL_LL = GetTrial_Landing_Data(T2CTF_SL, r"WT-SL-T2-CxTr", 300)
-
-T3TTa_path = r"C:\Users\agrawal-admin\Desktop\DataFolder\DataWithNoVideos\WT-Others\T3-TiTaLP.xlsx"
-T3TTa_200FPS = ReadAndFilterData(r"WT-T3-TiTa", [1, 15], T3TTa_path)
-T3TTa_250FPS = ReadAndFilterData(r"WT-T3-TiTa", [16, 20], T3TTa_path)
-T3TTa_LP_200FPS = CalculateLPAndmLLAcrossFlies(r"WT-T3-TiTa", T3TTa_200FPS, 200)
-T3TTa_LL_200FPS = GetTrial_Landing_Data(T3TTa_200FPS, "WT-T3-TiTa", 200)
-T3TTa_LP_250FPS = CalculateLPAndmLLAcrossFlies(r"WT-T3-TiTa", T3TTa_250FPS, 250)
-T3TTa_LL_250FPS = GetTrial_Landing_Data(T3TTa_250FPS, "WT-T3-TiTa", 250)
-T3TTa_LP = pd.concat([T3TTa_LP_200FPS, T3TTa_LP_250FPS])
-T3TTa_LL = pd.concat([T3TTa_LL_200FPS, T3TTa_LL_250FPS])
-
-T3TTa_SL_path = r"C:\Users\agrawal-admin\Desktop\DataFolder\DataWithNoVideos\Ablation\T3RightIntact_TTa_All.xlsx"
-T3TTa_SL = ReadAndFilterData(r"WT-SL-T3-TiTa", [1, 17], T3TTa_SL_path)
-T3TTa_SL_LP = CalculateLPAndmLLAcrossFlies(r"WT-SL-T3-TiTa", T3TTa_SL, 300)
-T3TTa_SL_LL = GetTrial_Landing_Data(T3TTa_SL, r"WT-SL-T3-TiTa", 300)
-
-T1CTF_path = r"C:\Users\agrawal-admin\Desktop\DataFolder\DataWithNoVideos\WT-Others\T1-TiTa-Data_TarsusContact.xlsx"
-T1CTF = ReadAndFilterData(r"WT-T1-CxTr", [1, 15], T1CTF_path)
-T1CTF_LP = CalculateLPAndmLLAcrossFlies(r"WT-T1-CxTr", T1CTF, 250)
-T1CTF_LL = GetTrial_Landing_Data(T1CTF, r"WT-T1-CxTr", 250)
-
-T1CTF_SL_path = r"C:\Users\agrawal-admin\Desktop\DataFolder\DataWithNoVideos\Ablation\T1RightIntact_CTF_LL_All.xlsx"
-T1CTF_SL = ReadAndFilterData(r"WT-SL-T1-CxTr", [1, 21], T1CTF_SL_path)
-T1CTF_SL_LP = CalculateLPAndmLLAcrossFlies(r"WT-SL-T1-CxTr", T1CTF_SL, 300)
-T1CTF_SL_LL = GetTrial_Landing_Data(T1CTF_SL, r"WT-SL-T1-CxTr", 300)
-
-
-T3CTF_path = r"C:\Users\agrawal-admin\Desktop\DataFolder\DataWithNoVideos\WT-Others\T3-CxTrLP.xlsx"
-T3CTF_Filtered = ReadAndFilterData(r"WT-T3-CxTr", [1, 17], T3CTF_path)
-T3CTF_LP = CalculateLPAndmLLAcrossFlies(r"WT-T3-CxTr", T3CTF_Filtered, 250)
-T3CTF_LL = GetTrial_Landing_Data(T3CTF_Filtered, r"WT-T3-CxTr", 250)
-
-T3CTF_SL_path = r"C:\Users\agrawal-admin\Desktop\DataFolder\DataWithNoVideos\Ablation\T3RightIntact_CTF_LL_All.xlsx"
-T3CTF_SL = ReadAndFilterData(r"WT-SL-T3-CxTr", [1, 20], T3CTF_SL_path)
-T3CTF_SL_LP = CalculateLPAndmLLAcrossFlies(r"WT-SL-T3-CxTr", T3CTF_SL, 300)
-T3CTF_SL_LL = GetTrial_Landing_Data(T3CTF_SL, r"WT-SL-T3-CxTr", 300)
-
-
-T2_TTa_Ab_path = r"C:\Users\agrawal-admin\Desktop\DataFolder\DataWithNoVideos\WT-Others\WT-Ab.xlsx"
-T2_TTa_Ab = ReadAndFilterData(r"WT Abdomen", [1, 11], T2_TTa_Ab_path)
-T2_TTa_Ab_LP = CalculateLPAndmLLAcrossFlies(r"WT Abdomen", T2_TTa_Ab, 250)
-T2_TTa_Ab_LL = GetTrial_Landing_Data(T2_TTa_Ab, r"WT Abdomen", 250)
-
-T3Cut_path = r"C:\Users\agrawal-admin\Desktop\DataFolder\DataWithNoVideos\WT-Others\WTAbLegCut.xlsx"
-T3Cut = ReadAndFilterData(r"WT Ab T3CutOff", [1, 10], T3Cut_path)
-T3Cut_LP = CalculateLPAndmLLAcrossFlies(r"WT Ab T3CutOff", T3Cut, 250)
-T3Cut_LL = GetTrial_Landing_Data(T3Cut, r"WT Ab T3CutOff", 250)
-
-NoContact_path = r"C:\Users\agrawal-admin\Desktop\DataFolder\DataWithNoVideos\WT-Others\WTNoContact.xlsx"
-NoContact = ReadAndFilterData(r"No contact", [1, 10], NoContact_path)
-NoContact_LP = CalculateLPAndmLLAcrossFlies(r"No contact", NoContact, 300)
-NoContact_LL = GetTrial_Landing_Data(NoContact, r"No contact", 300)
-
-HP1_path = r"C:\Users\agrawal-admin\Desktop\DataFolder\DataWithNoVideos\HP1-T2-TiTaLP.xlsx"
-HP1_Filtered = ReadAndFilterData(r"HP-1", [1, 16], HP1_path)
-HP1_LP = CalculateLPAndmLLAcrossFlies(r"HP-1", HP1_Filtered, 250)
-HP1_LL = GetTrial_Landing_Data(HP1_Filtered, "HP-1", 250)
-
-HP2_path = r"C:\Users\agrawal-admin\Desktop\DataFolder\DataWithNoVideos\HP2-T2-TiTaLP.xlsx"
-HP2_Filtered = ReadAndFilterData(r"HP-2", [1, 14], HP2_path)
-HP2_LP = CalculateLPAndmLLAcrossFlies(r"HP-2", HP2_Filtered, 250)
-HP2_LL = GetTrial_Landing_Data(HP2_Filtered, "HP-2", 250)
-
-HP3_path = r"C:\Users\agrawal-admin\Desktop\DataFolder\DataWithNoVideos\HP3-T2-TiTaLP.xlsx"
-HP3_Filtered = ReadAndFilterData(r"HP-3", [1, 17], HP3_path)
-HP3_LP = CalculateLPAndmLLAcrossFlies(r"HP-3", HP3_Filtered, 250)
-HP3_LL = GetTrial_Landing_Data(HP3_Filtered, "HP-3", 250)
-
-ClFl_path = r"C:\Users\agrawal-admin\Desktop\DataFolder\DataWithNoVideos\ClFl-T2-TiTaLP.xlsx"
-ClFl_Filtered = ReadAndFilterData(r"CL-FL", [1, 16], ClFl_path)
-ClFl_LP = CalculateLPAndmLLAcrossFlies(r"CL-FL", ClFl_Filtered, 250)
-ClFl_LL = GetTrial_Landing_Data(ClFl_Filtered, "CL-FL", 250)
-
-ClEx_path = r"C:\Users\agrawal-admin\Desktop\DataFolder\DataWithNoVideos\ClEx-T2-TiTaLP.xlsx"
-ClEx_Filtered = ReadAndFilterData(r"CL-EX", [1, 18], ClEx_path)
-ClEx_LP = CalculateLPAndmLLAcrossFlies(r"CL-EX", ClEx_Filtered, 250)
-ClEx_LL = GetTrial_Landing_Data(ClEx_Filtered, "CL-EX", 250)
-
-HkFl_path = r"C:\Users\agrawal-admin\Desktop\DataFolder\DataWithNoVideos\HKFL-T2-TiTaLP.xlsx"
-HkFl_Filtered = ReadAndFilterData(r"HK-FL", [1, 18], HkFl_path)
-HkFl_LP = CalculateLPAndmLLAcrossFlies(r"HK-FL", HkFl_Filtered, 250)
-HkFl_LL = GetTrial_Landing_Data(HkFl_Filtered, "HK-FL", 250)
-
-HkEx_path = r"C:\Users\agrawal-admin\Desktop\DataFolder\DataWithNoVideos\HKEX-T2-TiTaLP.xlsx"
-HkEx_Filtered = ReadAndFilterData(r"HK-EX", [1, 15], HkEx_path)
-HkEx_LP = CalculateLPAndmLLAcrossFlies(r"HK-EX", HkEx_Filtered, 250)
-HkEx_LL = GetTrial_Landing_Data(HkEx_Filtered, "HK-EX", 250)
-
-Club_path = r"C:\Users\agrawal-admin\Desktop\DataFolder\DataWithNoVideos\CLUB-T2-TiTaLP.xlsx"
-Club_Filtered = ReadAndFilterData(r"Club", [1, 18], Club_path)
-Club_LP = CalculateLPAndmLLAcrossFlies(r"Club", Club_Filtered, 250)
-Club_LL = GetTrial_Landing_Data(Club_Filtered, "Club", 250)
-
-Iav_path = r"C:\Users\agrawal-admin\Desktop\DataFolder\DataWithNoVideos\Iav-T2-TiTaLP.xlsx"
-Iav_Filtered = ReadAndFilterData(r"Iav", [1, 16], Iav_path)
-Iav_LP = CalculateLPAndmLLAcrossFlies(r"Iav", Iav_Filtered, 250)
-Iav_LL = GetTrial_Landing_Data(Iav_Filtered, "Iav", 250)
+T3CTF_SL_path = os.path.join(DataFolder, r"Necessity\T3RightIntact_CTF_LL_All.xlsx")
+T3CTF_SL_LP, T3CTF_SL_LL = ReadLandingData(T3CTF_SL_path, r"WT-SL-T3-CxTr", 300, 1, 20)
 
 
 
+T1TTa_path = os.path.join(DataFolder, r"6LegsLP\T1-TiTaLP.xlsx")
+T1TTa_LP200FPS, T1TTa_LL200FPS = ReadLandingData(T1TTa_path, r"WT-T1-TiTa", 200, 1, 12)
+T1TTa_LP250FPS, T1TTa_LL250FPS = ReadLandingData(T1TTa_path, r"WT-T1-TiTa", 250, 13, 15)
+T1TTa_LP = pd.concat([T1TTa_LP200FPS, T1TTa_LP250FPS])
+T1TTa_LL = pd.concat([T1TTa_LL200FPS, T1TTa_LL250FPS])
 
 
-ANxGTACR_MAX_LO_path = r"C:\Users\agrawal-admin\Desktop\DataFolder\Optogenetics\ANxGTACR-Max\LO.xlsx"
-ANxGTACR_MAX_NL_path = r"C:\Users\agrawal-admin\Desktop\DataFolder\Optogenetics\ANxGTACR-Max\NL.xlsx"
-ANxGTACR_MAX_LO, ANxGTACR_MAX_NL = ReadAndFilterOptogeneticData(r"ANxGTACR-NATR-Max", [1, 14], [ANxGTACR_MAX_LO_path, ANxGTACR_MAX_NL_path])
-ANxGTACR_MAX_LO_LP = CalculateLPAndmLLAcrossFlies(r"AN-NATR-ON", ANxGTACR_MAX_LO, 250)
-ANxGTACR_MAX_LO_LL = GetTrial_Landing_Data(ANxGTACR_MAX_LO, r"AN-NATR-ON", 250)
-ANxGTACR_MAX_NL_LP = CalculateLPAndmLLAcrossFlies(r"AN-NATR-OFF", ANxGTACR_MAX_NL, 250)
-ANxGTACR_MAX_NL_LL = GetTrial_Landing_Data(ANxGTACR_MAX_NL, r"AN-NATR-OFF", 250)
+T2TTa_path = os.path.join(DataFolder, r"6LegsLP\T2-TiTaLP.xlsx")
+T2TTa_LP, T2TTa_LL = ReadLandingData(T2TTa_path, r"WT-T2-TiTa", 200, 1, 15)
+
+T2TTa_SL_path = os.path.join(DataFolder, r"Necessity\T2RightIntact_TTa_All.xlsx")
+T2TTa_SL_LP, T2TTa_SL_LL = ReadLandingData(T2TTa_SL_path, r"WT-SL-T2-TiTa", 300, 1, 21)
+
+T2TTa_inward_path = os.path.join(DataFolder, r"Others\WT-T2-TiTa_OT_filtered.xlsx")
+T2TTa_inward_LP, T2TTa_inward_LL = ReadLandingData(T2TTa_inward_path, r"WT-IN", 200, 1, 15)
+
+T2TTa_outward_path = os.path.join(DataFolder, r"Others\WT-T2-TiTa_IT_filtered.xlsx")
+T2TTa_outward_LP, T2TTa_outward_LL = ReadLandingData(T2TTa_outward_path, r"WT-OUT", 200, 1, 15)
+
+T3TTa_path = os.path.join(DataFolder, r"6LegsLP\T3-TiTaLP.xlsx")
+T3TTa_LP200FPS, T3TTa_LL200FPS = ReadLandingData(T3TTa_path, r"WT-T3-TiTa", 200, 1, 15)
+T3TTa_LP250FPS, T3TTa_LL250FPS = ReadLandingData(T3TTa_path, r"WT-T3-TiTa", 250, 16, 20)
+T3TTa_LP = pd.concat([T3TTa_LP200FPS, T3TTa_LP250FPS])
+T3TTa_LL = pd.concat([T3TTa_LL200FPS, T3TTa_LL250FPS])
+
+T3TTa_SL_path = os.path.join(DataFolder, r"Necessity\T3RightIntact_TTa_All.xlsx")
+T3TTa_SL_LP, T3TTa_SL_LL = ReadLandingData(T3TTa_SL_path, r"WT-SL-T3-TiTa", 300, 1, 17)
+
+T2_TTa_Ab_path = os.path.join(DataFolder, r"CONTROL\WT-Abdomen-ALL.xlsx")
+T2_TTa_Ab_LP, T2_TTa_Ab_LL = ReadLandingData(T2_TTa_Ab_path, r"WT Abdomen", 250, 1, 11)
+
+T3Cut_path = os.path.join(DataFolder, r"CONTROL\WT-Ab-LegCutOff-ALL.xlsx")
+T3Cut_LP, T3Cut_LL = ReadLandingData(T3Cut_path, r"WT Ab T3CutOff", 250, 1, 10)
+
+NoContact_path = os.path.join(DataFolder, r"CONTROL\IntactFly_Control.xlsx")
+NoContact_LP, NoContact_LL = ReadLandingData(NoContact_path, r"No contact", 300, 1, 10)
+
+CSS39_path = os.path.join(DataFolder, r"KIR\CSS-0039_T2-TiTa-ALL.xlsx")
+CSS39_LP, CSS39_LL = ReadLandingData(CSS39_path, r"CSS39", 250, 1, 15)
+
+CSS48_path = os.path.join(DataFolder, r"KIR\CSS-0048_T2-TiTa-ALL.xlsx")
+CSS48_LP, CSS48_LL = ReadLandingData(CSS48_path, r"CSS48", 250, 1, 17)
+
+HP1_path = os.path.join(DataFolder, r"KIR\G106-HP1_T2-TiTa-ALL.xlsx")
+HP1_LP, HP1_LL = ReadLandingData(HP1_path, r"HP-1", 250, 1, 16)
+
+HP2_path = os.path.join(DataFolder, r"KIR\G107-HP2_T2-TiTa-ALL.xlsx")
+HP2_LP, HP2_LL = ReadLandingData(HP2_path, r"HP-2", 250, 1, 14)
+
+HP3_path = os.path.join(DataFolder, r"KIR\G108-HP3_T2-TiTa-ALL.xlsx")
+HP3_LP, HP3_LL = ReadLandingData(HP3_path, r"HP-3", 250, 1, 17)
 
 
+ClFl_path = os.path.join(DataFolder, r"KIR\G114-ClFl_T2-TiTa-ALL.xlsx")
+ClFl_LP, ClFl_LL = ReadLandingData(ClFl_path, r"CL-FL", 250, 1, 16)
 
-ANxGTACRNATR_LO_path = r"C:\Users\agrawal-admin\Desktop\DataFolder\Optogenetics\ANxGTACR-NATR-Max\ANxGTACR-NATR-MaxAllLO.xlsx"
-ANxGTACRNATR_NL_path = r"C:\Users\agrawal-admin\Desktop\DataFolder\Optogenetics\ANxGTACR-NATR-Max\ANxGTACR-NATR-MaxAllNL.xlsx"
-ANxGTACRNATR_LO, ANxGTACRNATR_NL = ReadAndFilterOptogeneticData(r"ANxGTACR-NATR-Max", [1, 14], [ANxGTACRNATR_LO_path, ANxGTACRNATR_NL_path])
-ANxGTACRNATR_LO_LP = CalculateLPAndmLLAcrossFlies(r"AN-NATR-ON", ANxGTACRNATR_LO, 250)
-ANxGTACRNATR_LO_LL = GetTrial_Landing_Data(ANxGTACRNATR_LO, r"AN-NATR-ON", 250)
-ANxGTACRNATR_NL_LP = CalculateLPAndmLLAcrossFlies(r"AN-NATR-OFF", ANxGTACRNATR_NL, 250)
-ANxGTACRNATR_NL_LL = GetTrial_Landing_Data(ANxGTACRNATR_NL, r"AN-NATR-OFF", 250)
+ClFl_path = os.path.join(DataFolder, r"Others\G114-ClFl_outward_filtered.xlsx")
+ClFl_LP_inward, ClFl_LL_inward = ReadLandingData(ClFl_path, r"CL-FL-IN", 250, 1, 16)
 
-ANxGTACR4th_LO_path = r"C:\Users\agrawal-admin\Desktop\DataFolder\Optogenetics\ANxGTACR-4th\All_ON.xlsx"
-ANxGTACR4th_NL_path = r"C:\Users\agrawal-admin\Desktop\DataFolder\Optogenetics\ANxGTACR-4th\All_OFF.xlsx"
-ANxGTACR4th_LO, ANxGTACR4th_NL = ReadAndFilterOptogeneticData(r"ANxGTACR-Inter", [1, 5], [ANxGTACR4th_LO_path, ANxGTACR4th_NL_path])
-# print(ANxGTACR4th_LO)
-ANxGTACR4th_LO_LP = CalculateLPAndmLLAcrossFlies(r"ON", ANxGTACR4th_LO, 250)
-ANxGTACR4th_LO_LL = GetTrial_Landing_Data(ANxGTACR4th_LO, r"ON", 250)
-ANxGTACR4th_NL_LP = CalculateLPAndmLLAcrossFlies(r"OFF", ANxGTACR4th_NL, 250)
-ANxGTACR4th_NL_LL = GetTrial_Landing_Data(ANxGTACR4th_NL, r"OFF", 250)
-
-EmptyxGTACR_LO_path = r"C:\Users\agrawal-admin\Desktop\DataFolder\Optogenetics\GTACRxEmpty-Max\All_ON.xlsx"
-EmptyxGTACR_NL_path = r"C:\Users\agrawal-admin\Desktop\DataFolder\Optogenetics\GTACRxEmpty-Max\All_OFF.xlsx"
-EmptyxGTACR_LO, EmptyxGTACR_NL = ReadAndFilterOptogeneticData(r"EmptyxGTACR-Max", [1, 15], [EmptyxGTACR_LO_path, EmptyxGTACR_NL_path])
-EmptyxGTACR_LO_LP = CalculateLPAndmLLAcrossFlies(r"Empty-ON", EmptyxGTACR_LO, 250)
-EmptyxGTACR_LO_LL = GetTrial_Landing_Data(EmptyxGTACR_LO, r"Empty-ON", 250)
-EmptyxGTACR_NL_LP = CalculateLPAndmLLAcrossFlies(r"Empty-OFF", EmptyxGTACR_NL, 250)
-EmptyxGTACR_NL_LL = GetTrial_Landing_Data(EmptyxGTACR_NL, r"Empty-OFF", 250)
+ClFl_path = os.path.join(DataFolder, r"Others\G114-ClFl_inward_filtered.xlsx")
+ClFl_LP_outward, ClFl_LL_outward = ReadLandingData(ClFl_path, r"CL-FL-OUT", 250, 1, 16)
 
 
-EmptyxGTACR_NATR_LO_path = r"C:\Users\agrawal-admin\Desktop\DataFolder\Optogenetics\GTACRxEmpty-NATR-Max\ON.xlsx"
-EmptyxGTACR_NATR_NL_path = r"C:\Users\agrawal-admin\Desktop\DataFolder\Optogenetics\GTACRxEmpty-NATR-Max\OFF.xlsx"
-EmptyxGTACR_NATR_LO, EmptyxGTACR_NATR_NL = ReadAndFilterOptogeneticData(r"Empty-NATR-Max", [1, 8], [EmptyxGTACR_NATR_LO_path, EmptyxGTACR_NATR_NL_path])
-EmptyxGTACR_NATR_LO_LP = CalculateLPAndmLLAcrossFlies(r"Empty-NATR-ON", EmptyxGTACR_NATR_LO, 250)
-EmptyxGTACR_NATR_LO_LL = GetTrial_Landing_Data(EmptyxGTACR_NATR_LO, r"Empty-NATR-ON", 250)
-EmptyxGTACR_NATR_NL_LP = CalculateLPAndmLLAcrossFlies(r"Empty-NATR-OFF", EmptyxGTACR_NATR_NL, 250)
-EmptyxGTACR_NATR_NL_LL = GetTrial_Landing_Data(EmptyxGTACR_NATR_NL, r"Empty-NATR-OFF", 250)
+ClEx_path = os.path.join(DataFolder, r"KIR\G116-ClEx_T2-TiTa-ALL.xlsx")
+ClEx_LP, ClEx_LL = ReadLandingData(ClEx_path, r"CL-EX", 250, 1, 18)
+
+HkFl_path = os.path.join(DataFolder, r"KIR\G117-HkFl_T2-TiTa-ALL.xlsx")
+HkFl_LP, HkFl_LL = ReadLandingData(HkFl_path, r"HK-FL", 250, 1, 18)
+
+HkEx_path = os.path.join(DataFolder, r"KIR\G118-HkEx_T2-TiTa-ALL.xlsx")
+HkEx_LP, HkEx_LL = ReadLandingData(HkEx_path, r"HK-EX", 250, 1, 15)
+
+HkEx_path = os.path.join(DataFolder, r"Others\G118-HkEx_outward_filtered.xlsx")
+HkEx_LP_inward, HkEx_LL_inward = ReadLandingData(HkEx_path, r"HK-EX-IN", 250, 1, 15)
+
+HkEx_path = os.path.join(DataFolder, r"Others\G118-HkEx_inward_filtered.xlsx")
+HkEx_LP_outward, HkEx_LL_outward = ReadLandingData(HkEx_path, r"HK-EX-OUT", 250, 1, 15)
 
 
-CSS048xGTACR_LO_path = r"C:\Users\agrawal-admin\Desktop\DataFolder\Optogenetics\CSS048xGTACR-Max\ON.xlsx"
-CSS048xGTACR_NL_path = r"C:\Users\agrawal-admin\Desktop\DataFolder\Optogenetics\CSS048xGTACR-Max\OFF.xlsx"
-CSS048xGTACR_LO, CSS048xGTACR_NL = ReadAndFilterOptogeneticData(r"CSS048-GTACR-Max", [1, 22], [CSS048xGTACR_LO_path, CSS048xGTACR_NL_path])
-CSS048xGTACR_LO_LP = CalculateLPAndmLLAcrossFlies(r"CSS048-GTACR-ON", CSS048xGTACR_LO, 250)
-CSS048xGTACR_LO_LL = GetTrial_Landing_Data(CSS048xGTACR_LO, r"CSS048-GTACR-ON", 250)
-CSS048xGTACR_NL_LP = CalculateLPAndmLLAcrossFlies(r"CSS048-GTACR-OFF", CSS048xGTACR_NL, 250)
-CSS048xGTACR_NL_LL = GetTrial_Landing_Data(CSS048xGTACR_NL, r"CSS048-GTACR-OFF", 250)
+Club_path = os.path.join(DataFolder, r"KIR\G119-Club_T2-TiTa-ALL.xlsx")
+Club_LP, Club_LL = ReadLandingData(Club_path, r"Club", 250, 1, 18)
+
+Iav_path = os.path.join(DataFolder, r"KIR\G115-Iav_T2-TiTa-ALL.xlsx")
+Iav_LP, Iav_LL = ReadLandingData(T1TTa_path, r"Iav", 250, 1, 16)
 
 
-L006xL011_mid_LO_path = r"C:\Users\agrawal-admin\Desktop\DataFolder\Optogenetics\L006xL011-3mW\ON.xlsx"
-L006xL011_mid_NL_path = r"C:\Users\agrawal-admin\Desktop\DataFolder\Optogenetics\L006xL011-3mW\OFF.xlsx"
-L006xL011_mid_LO, L006xL011_mid_NL = ReadAndFilterOptogeneticData(r"Tarsal-Br-3mW", [1, 8], [L006xL011_mid_LO_path, L006xL011_mid_NL_path])
-L006xL011_mid_LO_LP = CalculateLPAndmLLAcrossFlies(r"Tarsal-Br-3mW-ON", L006xL011_mid_LO, 250)
-L006xL011_mid_LO_LL = GetTrial_Landing_Data(L006xL011_mid_LO, r"Tarsal-Br-3mW-ON", 250)
-L006xL011_mid_NL_LP = CalculateLPAndmLLAcrossFlies(r"Tarsal-Br-3mW-OFF", L006xL011_mid_NL, 250)
-L006xL011_mid_NL_LL = GetTrial_Landing_Data(L006xL011_mid_NL, r"Tarsal-Br-3mW-OFF", 250)
+if OPTO:
+    Trial_num = 15
+    trial_offset = 0
+    ANxGTACR_MAX_ON_path = os.path.join(DataFolder, r"OPTO\ANxGTACR-12mW-ON.xlsx")
+    ANxGTACR_MAX_OFF_path = os.path.join(DataFolder, r"OPTO\ANxGTACR-12mW-OFF.xlsx")
+    ANxGTACR_MAX_LO_LP, ANxGTACR_MAX_LO_LL, ANxGTACR_MAX_NL_LP, ANxGTACR_MAX_NL_LL = ReadOptogeneticData(ANxGTACR_MAX_ON_path, ANxGTACR_MAX_OFF_path, r"AN", 250, 1, 14)
 
+    EmptyxGTACR_LO_path = os.path.join(DataFolder, r"OPTO\MTGal4xGTACR-12mW-ON.xlsx")
+    EmptyxGTACR_NL_path = os.path.join(DataFolder, r"OPTO\MTGal4xGTACR-12mW-OFF.xlsx")
+    EmptyxGTACR_LO_LP, EmptyxGTACR_LO_LL, EmptyxGTACR_NL_LP, EmptyxGTACR_NL_LL = ReadOptogeneticData(EmptyxGTACR_LO_path, EmptyxGTACR_NL_path, r"EmptyGal4", 250, 1, 15)
 
-L006xL011_max_LO_path = r"C:\Users\agrawal-admin\Desktop\DataFolder\Optogenetics\L006xL011-Max\ON.xlsx"
-L006xL011_max_NL_path = r"C:\Users\agrawal-admin\Desktop\DataFolder\Optogenetics\L006xL011-Max\OFF.xlsx"
-L006xL011_max_LO, L006xL011_max_NL = ReadAndFilterOptogeneticData(r"LexA-Br", [1, 15], [L006xL011_max_LO_path, L006xL011_max_NL_path])
-L006xL011_max_LO_LP = CalculateLPAndmLLAcrossFlies(r"LexA-Br-ON", L006xL011_max_LO, 250)
-L006xL011_max_LO_LL = GetTrial_Landing_Data(L006xL011_max_LO, r"LexA-Br-ON", 250)
-L006xL011_max_NL_LP = CalculateLPAndmLLAcrossFlies(r"LexA-Br-OFF", L006xL011_max_NL, 250)
-L006xL011_max_NL_LL = GetTrial_Landing_Data(L006xL011_max_NL, r"LexA-Br-OFF", 250)
+    CSS048xGTACR_LO_path = os.path.join(DataFolder, r"OPTO\CS048xGTACR-12mW-ON.xlsx")
+    CSS048xGTACR_NL_path = os.path.join(DataFolder, r"OPTO\CS048xGTACR-12mW-OFF.xlsx")
+    CSS048xGTACR_LO_LP, CSS048xGTACR_LO_LL, CSS048xGTACR_NL_LP, CSS048xGTACR_NL_LL = ReadOptogeneticData(CSS048xGTACR_LO_path, CSS048xGTACR_NL_path, r"CSS48", 250, 1, 22)
 
+    L006xL011_max_LO_path = os.path.join(DataFolder, r"OPTO\TaBRIxLexAG-12mW-ON.xlsx")
+    L006xL011_max_NL_path = os.path.join(DataFolder, r"OPTO\TaBRIxLexAG-12mW-OFF.xlsx")
+    L006xL011_max_LO_LP, L006xL011_max_LO_LL, L006xL011_max_NL_LP, L006xL011_max_NL_LL = ReadOptogeneticData(L006xL011_max_LO_path, L006xL011_max_NL_path, r"Ta-Br", 250, 1, 15)
 
-L006xL011_max_NATR_LO_path = r"C:\Users\agrawal-admin\Desktop\DataFolder\Optogenetics\L006xL011-NATR-Max\ON.xlsx"
-L006xL011_max_NATR_NL_path = r"C:\Users\agrawal-admin\Desktop\DataFolder\Optogenetics\L006xL011-NATR-Max\OFF.xlsx"
-L006xL011_max_NATR_LO, L006xL011_max_NATR_NL = ReadAndFilterOptogeneticData(r"LexA-Br-NATR", [1, 5], [L006xL011_max_NATR_LO_path, L006xL011_max_NATR_NL_path])
-L006xL011_max_NATR_LO_LP = CalculateLPAndmLLAcrossFlies(r"LexA-Br-NATR-ON", L006xL011_max_NATR_LO, 250)
-L006xL011_max_NATR_LO_LL = GetTrial_Landing_Data(L006xL011_max_NATR_LO, r"LexA-Br-NATR-ON", 250)
-L006xL011_max_NATR_NL_LP = CalculateLPAndmLLAcrossFlies(r"LexA-Br-NATR-OFF", L006xL011_max_NATR_NL, 250)
-L006xL011_max_NATR_NL_LL = GetTrial_Landing_Data(L006xL011_max_NATR_NL, r"LexA-Br-NATR-OFF", 250)
+    GTACRxCSS21_max_LO_path = os.path.join(DataFolder, r"OPTO\CSS021xGTACR-12mW-ON.xlsx")
+    GTACRxCSS21_max_NL_path = os.path.join(DataFolder, r"OPTO\CSS021xGTACR-12mW-OFF.xlsx")
+    GTACRxCSS21_max_LO_LP, GTACRxCSS21_max_LO_LL, GTACRxCSS21_max_NL_LP, GTACRxCSS21_max_NL_LL = ReadOptogeneticData(GTACRxCSS21_max_LO_path, GTACRxCSS21_max_NL_path, r"CSS21", 250, 1, 19)
 
+    GTACRxIav_max_LO_path = os.path.join(DataFolder, r"OPTO\IAVxGTACR-12mW-ON.xlsx")
+    GTACRxIav_max_NL_path = os.path.join(DataFolder, r"OPTO\IAVxGTACR-12mW-OFF.xlsx")
+    GTACRxIav_max_LO_LP, GTACRxIav_max_LO_LL, GTACRxIav_max_NL_LP, GTACRxIav_max_NL_LL = ReadOptogeneticData(GTACRxIav_max_LO_path, GTACRxIav_max_NL_path, r"IAV", 250, 1, 17)
 
-GTACRx49541_max_LO_path = r"C:\Users\agrawal-admin\Desktop\DataFolder\Optogenetics\GTACRx49541-Max\ON.xlsx"
-GTACRx49541_max_NL_path = r"C:\Users\agrawal-admin\Desktop\DataFolder\Optogenetics\GTACRx49541-Max\OFF.xlsx"
-GTACRx49541_max_LO, GTACRx49541_max_NL = ReadAndFilterOptogeneticData(r"GTACRx49541-Max", [1, 13], [GTACRx49541_max_LO_path, GTACRx49541_max_NL_path])
-GTACRx49541_max_LO_LP = CalculateLPAndmLLAcrossFlies(r"GTACRx49541-ON", GTACRx49541_max_LO, 250)
-GTACRx49541_max_LO_LL = GetTrial_Landing_Data(GTACRx49541_max_LO, r"GTACRx49541-ON", 250)
-GTACRx49541_max_NL_LP = CalculateLPAndmLLAcrossFlies(r"GTACRx49541-OFF", GTACRx49541_max_NL, 250)
-GTACRx49541_max_NL_LL = GetTrial_Landing_Data(GTACRx49541_max_NL, r"GTACRx49541-OFF", 250)
+    WTMax_LO_path = os.path.join(DataFolder, r"OPTO\WTxGREEN-12mW-ON.xlsx")
+    WTMax_NL_path = os.path.join(DataFolder, r"OPTO\WTxGREEN-12mW-OFF.xlsx")
+    WTMax_LO_LP, WTMax_LO_LL, WTMax_NL_LP, WTMax_NL_LL = ReadOptogeneticData(WTMax_LO_path, WTMax_NL_path, r"WT", 250, 1, 9)
 
+# lines = ["dashed", "dashed", "dashed", "dashed", "dashed", "dashed", "dashed", "dashed", "dashed", "solid", "solid", "solid"]
+lines = ["solid", "solid", "solid", "solid", "solid", "solid", "solid", "solid", "solid","solid","solid","solid"]
+markers = ["o", "o", "o", "o", "o", "o", "o", "o", "o", "o", "o", "o", "o"]
 
-WTMax_LO_path = r"C:\Users\agrawal-admin\Desktop\DataFolder\Optogenetics\WT-Green-Max\WT-Green-Max_ON.xlsx"
-WTMax_NL_path = r"C:\Users\agrawal-admin\Desktop\DataFolder\Optogenetics\WT-Green-Max\WT-Green-Max_OFF.xlsx"
-WTMax_LO, WTMax_NL = ReadAndFilterOptogeneticData(r"WT-Green-Max", [1, 9], [WTMax_LO_path, WTMax_NL_path])
-WTMax_LO_LP = CalculateLPAndmLLAcrossFlies(r"WT-ON", WTMax_LO, 250)
-WTMax_LO_LL = GetTrial_Landing_Data(WTMax_LO, r"WT-ON", 250)
-WTMax_NL_LP = CalculateLPAndmLLAcrossFlies(r"WT-OFF", WTMax_NL, 250)
-WTMax_NL_LL = GetTrial_Landing_Data(WTMax_NL, r"WT-OFF", 250)
-
-lines = ["solid", "solid", "dashed", "solid", "solid", "solid", "solid", "solid", "solid", "solid", "solid", "solid"]
-
-import matplotlib.cm as cm
 # Choose a colormap (e.g., viridis, plasma, coolwarm, etc.)
-cmap = cm.get_cmap('viridis', 10)
+cmap = cm.get_cmap('viridis', 12)
 
 # Generate list of colors
-colors = [cmap(i) for i in range(10)]
-# Color_blind_palette = colors[:5]
-# LPAcrossFlies([T2TTa_LP, HP1_LP, HP2_LP, HP3_LP, ClFl_LP, ClEx_LP, HkFl_LP, HkEx_LP, Club_LP, Iav_LP], "KirExperiment")
-# ecdfPlot([T2TTa_LL, HP1_LL, HP2_LL, HP3_LL, ClFl_LL], "KirExperimentLL1")
+colors = [cmap(i) for i in range(12)]
+Color_blind_palette = ["blue", "green", "orange", "dodgerblue", "lawngreen", "orange"]
+Color_blind_palette = ["blue", "peru", "sandybrown", "olive", "darkkhaki", "gold", "darkgreen", "seagreen", "mediumseagreen", "mediumaquamarine", "lightseagreen", "teal"]
 
-
-Color_blind_palette =  ["red", "blue", "blue", "green", "orange", "blue", "orange"]
-
-WTnecessity = True
-WTInterleg = False
 LP_data_type = "LandingProb"
 LL_data_type = "TrialLandingLatency"
 
+Color_blind_palette = ["blue", "red", "green", "dodgerblue", "orange", "lawngreen", "orange"]
+# Color_blind_palette = ["indigo", "deepskyblue", "orangered"]
 
-# LPAcrossLight([GTACRx49541_max_LO_LP, GTACRx49541_max_NL_LP], "ChrimsonExpANLP", "green")
-# LPAcrossLight([GTACRx49541_max_LO_LP, L006xL011_max_LO_LP], "ChrimsonExpANLP", "green")
-# ecdfPlot([GTACRx49541_max_LO_LL, L006xL011_max_LO_LL], "ChrimsonExpANLP")
-Bootstrapping_test(GTACRx49541_max_LO_LP["LandingProb"], GTACRx49541_max_NL_LP["LandingProb"])
+"""
+Color_blind_palette = ["deepskyblue", "orangered", "indigo"]
+LPAcrossFlies([T2TTa_inward_LP, T2TTa_outward_LP],"INvsOUT-WT-LP")
+ecdfPlot([T2TTa_inward_LL, T2TTa_outward_LL], "INvsOUT-WT-LL")
+
+Data_type = "LandingProb"
+print("WT-IT vs OT LP", Bootstrapping_test(T2TTa_inward_LP[Data_type], T2TTa_outward_LP[Data_type]))
+Data_type = "TrialLandingLatency"
+print("WT-IT vs OT LP", Bootstrapping_test(T2TTa_inward_LL[Data_type], T2TTa_outward_LL[Data_type]))"""
+
+"""# Threshold = True
+Color_blind_palette = ["blue", "red", "green", "dodgerblue", "orange", "lawngreen", "orange"]
+LPAcrossFlies([T1TTa_LP, T2TTa_LP, T3TTa_LP, T1CTF_LP, T2CTF_LP, T3CTF_LP], "WT-LP")
+ecdfPlot([T1TTa_LL, T2TTa_LL, T3TTa_LL, T1CTF_LL, T2CTF_LL, T3CTF_LL], "WT-LL")
+
+Color_blind_palette = ["red", "green",  "dodgerblue", "orange", "lawngreen"]
+LPAcrossFlies([T2TTa_SL_LP, T3TTa_SL_LP, T1CTF_SL_LP, T2CTF_SL_LP, T3CTF_SL_LP], "Ablation-LP")
+ecdfPlot([T2TTa_SL_LL, T3TTa_SL_LL, T1CTF_SL_LL, T2CTF_SL_LL, T3CTF_SL_LL], "Ablation-LL")
+
+Color_blind_palette = colors[:7]
+LPAcrossFlies([T2TTa_LP, CSS39_LP, CSS48_LP, HP1_LP, HP2_LP, HP3_LP, Iav_LP], "KIR1-LP")
+ecdfPlot([T2TTa_LL, CSS39_LL, CSS48_LL, HP1_LL, HP2_LL, HP3_LL, Iav_LL], "KIR1-LL")
+
+Color_blind_palette = [colors[0]] + colors[7:]
+LPAcrossFlies([T2TTa_LP, ClFl_LP, ClEx_LP, HkFl_LP, HkEx_LP, Club_LP], "KIR2-LP")
+ecdfPlot([T2TTa_LL, ClFl_LL, ClEx_LL, HkFl_LL, HkEx_LL, Club_LL], "KIR2-LL")"""
 
 
-import scipy.stats as stats
-# t, p = stats.ttest_rel(CSS048xGTACR_LO_LP["LandingProb"], CSS048xGTACR_NL_LP["LandingProb"])
-t, p = stats.ttest_rel(GTACRx49541_max_LO_LP["LandingProb"], GTACRx49541_max_NL_LP["LandingProb"])
+c = "black"
+Color_blind_palette = [c, c]
+lines = ["dashed", "solid"]
+LPAcrossLight([WTMax_LO_LP, WTMax_NL_LP], "WT-Green-LP", c)
+ecdfPlot([WTMax_LO_LL, WTMax_NL_LL], "WT-Green-LL")
 
-print(t, p)
+c = "blue"
+Color_blind_palette = [c, c]
+LPAcrossLight([EmptyxGTACR_LO_LP, EmptyxGTACR_NL_LP], "Empty-Gal4-LP", c)
+ecdfPlot([EmptyxGTACR_LO_LL, EmptyxGTACR_NL_LL], "Empty-Gal4-LL")
+
+c = "red"
+Color_blind_palette = [c, c]
+LPAcrossLight([CSS048xGTACR_LO_LP, CSS048xGTACR_NL_LP], "CSS048-LP", c)
+ecdfPlot([CSS048xGTACR_LO_LL, CSS048xGTACR_NL_LL], "CSS048-LL")
+
+c = "brown"
+Color_blind_palette = [c, c]
+LPAcrossLight([GTACRxIav_max_LO_LP, GTACRxIav_max_NL_LP], "IavxGTACR-LP", c)
+ecdfPlot([GTACRxIav_max_LO_LL, GTACRxIav_max_NL_LL], "IavxGTACR-LL")
+
+c = "orange"
+Color_blind_palette = [c, c]
+LPAcrossLight([GTACRxCSS21_max_LO_LP, GTACRxCSS21_max_NL_LP], "CSS021-LP", c)
+ecdfPlot([GTACRxCSS21_max_LO_LL, GTACRxCSS21_max_NL_LL], "CSS021-LL")
+
+c = "magenta"
+Color_blind_palette = [c, c]
+LPAcrossLight([ANxGTACR_MAX_LO_LP, ANxGTACR_MAX_NL_LP], "ANxGTACR-LP", c)
+ecdfPlot([ANxGTACR_MAX_LO_LL, ANxGTACR_MAX_NL_LL], "ANxGTACR-LL")
+
+c = "green"
+Color_blind_palette = [c, c]
+LPAcrossLight([L006xL011_max_LO_LP, L006xL011_max_NL_LP], "LexA_Br-G-LP", c)
+ecdfPlot([L006xL011_max_LO_LL, L006xL011_max_NL_LL], "LexA_Br-G-LL")
+
+Data_type = "LandingProb"
+"""print("T1-TTa vs T2-TTa LP", Bootstrapping_test(T1TTa_LP[Data_type], T2TTa_LP[Data_type]))
+print("T1-TTa vs T3-TTa LP", Bootstrapping_test(T1TTa_LP[Data_type], T3TTa_LP[Data_type]))
+print("T2-TTa vs T3-TTa LP", Bootstrapping_test(T2TTa_LP[Data_type], T3TTa_LP[Data_type]))
+
+print("T1-CTF vs T2-CTF LP", Bootstrapping_test(T1CTF_LP[Data_type], T2CTF_LP[Data_type]))
+print("T1-CTF vs T3-CTF LP", Bootstrapping_test(T1CTF_LP[Data_type], T3CTF_LP[Data_type]))
+print("T2-CTF vs T3-CTF LP", Bootstrapping_test(T2CTF_LP[Data_type], T3CTF_LP[Data_type]))
+
+print("T1-TTa vs T1-CTF LP", Bootstrapping_test(T1TTa_LP[Data_type], T1CTF_LP[Data_type]))
+print("T2-TTa vs T2-CTF LP", Bootstrapping_test(T2TTa_LP[Data_type], T2CTF_LP[Data_type]))
+print("T3-TTa vs T3-CTF LP", Bootstrapping_test(T3TTa_LP[Data_type], T3CTF_LP[Data_type]))
 
 
+print("T2-TTa-SL vs T3-TTa-SL LP", Bootstrapping_test(T2TTa_SL_LP[Data_type], T3TTa_SL_LP[Data_type]))
+print("T2-TTa-SL vs T2-CTF-SL LP", Bootstrapping_test(T2TTa_SL_LP[Data_type], T2CTF_SL_LP[Data_type]))
+print("T3-TTa-SL vs T3-CTF-SL LP", Bootstrapping_test(T3TTa_SL_LP[Data_type], T3CTF_SL_LP[Data_type]))
+
+print("T1-CTF-SL vs T2-CTF-SL LP", Bootstrapping_test(T1CTF_SL_LP[Data_type], T2CTF_SL_LP[Data_type]))
+print("T1-CTF-SL vs T3-CTF-SL LP", Bootstrapping_test(T1CTF_SL_LP[Data_type], T3CTF_SL_LP[Data_type]))
+print("T2-CTF-SL vs T3-CTF-SL LP", Bootstrapping_test(T2CTF_SL_LP[Data_type], T3CTF_SL_LP[Data_type]))
 
 
+print("WT vs CS39 LP", Bootstrapping_test(T2TTa_LP[Data_type], CSS39_LP[Data_type]))
+print("WT vs CS48 LP", Bootstrapping_test(T2TTa_LP[Data_type], CSS48_LP[Data_type]))
+print("WT vs HP1 LP", Bootstrapping_test(T2TTa_LP[Data_type], HP1_LP[Data_type]))
+print("WT vs HP2 LP", Bootstrapping_test(T2TTa_LP[Data_type], HP2_LP[Data_type]))
+print("WT vs HP3 LP", Bootstrapping_test(T2TTa_LP[Data_type], HP3_LP[Data_type]))
+print("WT vs IAV LP", Bootstrapping_test(T2TTa_LP[Data_type], Iav_LP[Data_type]))
+print("WT vs ClFl LP", Bootstrapping_test(T2TTa_LP[Data_type], ClFl_LP[Data_type]))
+print("WT vs ClEx LP", Bootstrapping_test(T2TTa_LP[Data_type], ClEx_LP[Data_type]))
+print("WT vs HkFl LP", Bootstrapping_test(T2TTa_LP[Data_type], HkFl_LP[Data_type]))
+print("WT vs HkEx LP", Bootstrapping_test(T2TTa_LP[Data_type], HkEx_LP[Data_type]))
+print("WT vs Club LP", Bootstrapping_test(T2TTa_LP[Data_type], Club_LP[Data_type]))"""
+
+"""t_stat, p_value = ttest_rel(WTMax_LO_LP[Data_type], WTMax_NL_LP[Data_type])
+print("WT-ON vs OFF", p_value)
+
+t_stat, p_value = ttest_rel(EmptyxGTACR_LO_LP[Data_type], EmptyxGTACR_NL_LP[Data_type])
+print("MTGal4-ON vs OFF", p_value)
+
+t_stat, p_value = ttest_rel(CSS048xGTACR_LO_LP[Data_type], CSS048xGTACR_NL_LP[Data_type])
+print("CSS48-ON vs OFF", p_value)
+
+t_stat, p_value = ttest_rel(GTACRxIav_max_LO_LP[Data_type], GTACRxIav_max_NL_LP[Data_type])
+print("IAV-ON vs OFF", p_value)
+
+t_stat, p_value = ttest_rel(GTACRxCSS21_max_LO_LP[Data_type], GTACRxCSS21_max_NL_LP[Data_type])
+print("CSS21-ON vs OFF", p_value)
+
+t_stat, p_value = ttest_rel(ANxGTACR_MAX_LO_LP[Data_type], ANxGTACR_MAX_NL_LP[Data_type])
+print("AN-ON vs OFF", p_value)
+
+t_stat, p_value = ttest_rel(L006xL011_max_LO_LP[Data_type], L006xL011_max_NL_LP[Data_type])
+print("Tar bri-ON vs OFF", p_value)"""
+
+
+Data_type = "TrialLandingLatency"
+"""print("T1-TTa vs T2-TTa LP", Bootstrapping_test(T1TTa_LL[Data_type], T2TTa_LL[Data_type]))
+print("T1-TTa vs T3-TTa LP", Bootstrapping_test(T1TTa_LL[Data_type], T3TTa_LL[Data_type]))
+print("T2-TTa vs T3-TTa LP", Bootstrapping_test(T2TTa_LL[Data_type], T3TTa_LL[Data_type]))
+
+print("T1-CTF vs T2-CTF LP", Bootstrapping_test(T1CTF_LL[Data_type], T2CTF_LL[Data_type]))
+print("T1-CTF vs T3-CTF LP", Bootstrapping_test(T1CTF_LL[Data_type], T3CTF_LL[Data_type]))
+print("T2-CTF vs T3-CTF LP", Bootstrapping_test(T2CTF_LL[Data_type], T3CTF_LL[Data_type]))
+
+print("T1-TTa vs T1-CTF LP", Bootstrapping_test(T1TTa_LL[Data_type], T1CTF_LL[Data_type]))
+print("T2-TTa vs T2-CTF LP", Bootstrapping_test(T2TTa_LL[Data_type], T2CTF_LL[Data_type]))
+print("T3-TTa vs T3-CTF LP", Bootstrapping_test(T3TTa_LL[Data_type], T3CTF_LL[Data_type]))
+
+
+print("T2-TTa-SL vs T3-TTa-SL LP", Bootstrapping_test(T2TTa_SL_LL[Data_type], T3TTa_SL_LL[Data_type]))
+print("T2-TTa-SL vs T2-CTF-SL LP", Bootstrapping_test(T2TTa_SL_LL[Data_type], T2CTF_SL_LL[Data_type]))
+print("T3-TTa-SL vs T3-CTF-SL LP", Bootstrapping_test(T3TTa_SL_LL[Data_type], T3CTF_SL_LL[Data_type]))
+
+print("T1-CTF-SL vs T2-CTF-SL LP", Bootstrapping_test(T1CTF_SL_LL[Data_type], T2CTF_SL_LL[Data_type]))
+print("T1-CTF-SL vs T3-CTF-SL LP", Bootstrapping_test(T1CTF_SL_LL[Data_type], T3CTF_SL_LL[Data_type]))
+print("T2-CTF-SL vs T3-CTF-SL LP", Bootstrapping_test(T2CTF_SL_LL[Data_type], T3CTF_SL_LL[Data_type]))
+
+
+print("WT vs CS39 LP", Bootstrapping_test(T2TTa_LL[Data_type], CSS39_LL[Data_type]))
+print("WT vs CS48 LP", Bootstrapping_test(T2TTa_LL[Data_type], CSS48_LL[Data_type]))
+print("WT vs HP1 LP", Bootstrapping_test(T2TTa_LL[Data_type], HP1_LL[Data_type]))
+print("WT vs HP2 LP", Bootstrapping_test(T2TTa_LL[Data_type], HP2_LL[Data_type]))
+print("WT vs HP3 LP", Bootstrapping_test(T2TTa_LL[Data_type], HP3_LL[Data_type]))
+print("WT vs IAV LP", Bootstrapping_test(T2TTa_LL[Data_type], Iav_LL[Data_type]))
+print("WT vs ClFl LP", Bootstrapping_test(T2TTa_LL[Data_type], ClFl_LL[Data_type]))
+print("WT vs ClEx LP", Bootstrapping_test(T2TTa_LL[Data_type], ClEx_LL[Data_type]))
+print("WT vs HkFl LP", Bootstrapping_test(T2TTa_LL[Data_type], HkFl_LL[Data_type]))
+print("WT vs HkEx LP", Bootstrapping_test(T2TTa_LL[Data_type], HkEx_LL[Data_type]))
+print("WT vs Club LP", Bootstrapping_test(T2TTa_LL[Data_type], Club_LL[Data_type]))"""
+
+"""print("WT-ON vs OFF", Bootstrapping_test(WTMax_LO_LL[Data_type], WTMax_NL_LL[Data_type]))
+print("MTGal4-ON vs OFF", Bootstrapping_test(EmptyxGTACR_LO_LL[Data_type], EmptyxGTACR_NL_LL[Data_type]))
+print("CSS48-ON vs OFF", Bootstrapping_test(CSS048xGTACR_LO_LL[Data_type], CSS048xGTACR_NL_LL[Data_type]))
+print("IAV-ON vs OFF", Bootstrapping_test(GTACRxIav_max_LO_LL[Data_type], GTACRxIav_max_NL_LL[Data_type]))
+print("CSS21-ON vs OFF", Bootstrapping_test(GTACRxCSS21_max_LO_LL[Data_type], GTACRxCSS21_max_NL_LL[Data_type]))
+print("AN-ON vs OFF", Bootstrapping_test(ANxGTACR_MAX_LO_LL[Data_type], ANxGTACR_MAX_NL_LL[Data_type]))
+print("Tar bri-ON vs OFF", Bootstrapping_test(L006xL011_max_LO_LL[Data_type], L006xL011_max_NL_LL[Data_type]))"""
+"""def median_mad(x, scale=True):
+    x = np.asarray(x)
+    x = x[~np.isnan(x)]  # remove NaNs if needed
+
+    med = np.median(x)
+    mad = np.median(np.abs(x - med))
+
+    if scale:
+        mad *= 1.4826  # make comparable to std
+
+    return med, mad
+med, mad = median_mad(T2TTa_LL["TrialLandingLatency"])
+sns.histplot(T2TTa_LL["TrialLandingLatency"], bins=50, stat="probability")
+plt.axvline(med, color="red", label="median")
+plt.axvline(med - mad, color="blue", label="1MAD")
+plt.axvline(med + mad, color="blue")
+plt.axvline(med - 2 * mad, color="green", label="2MAD")
+plt.axvline(med + 2 * mad, color="green")
+plt.xticks([0, 0.5, 1, 1.5, 2])
+plt.yticks([0, 0.2])
+plt.legend()
+print(med)
+print(med + 2 * mad)
+print(med + mad)
+plt.savefig("T2-Landing latency distribution.pdf")
+plt.show()"""

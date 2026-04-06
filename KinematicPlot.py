@@ -1,18 +1,21 @@
 import os
+
 import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+from scipy.signal import find_peaks
+
 from kinematic_object import Group, Trial, Point
 import kinematic_utilities as ku
 from mpl_toolkits.mplot3d.art3d import Line3DCollection
 from matplotlib.colors import Normalize
 import matplotlib.cm as cm
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
-from scipy.signal import find_peaks
 import math
 from scipy.interpolate import interp1d
-from scipy.stats import linregress
+from scipy.stats import linregress, goodness_of_fit
+
 
 class PlotCreator:
     def __init__(self, platform_offset, platform_height, radius=0, fps=0):
@@ -32,44 +35,35 @@ class PlotCreator:
                                 ["L-fBC", "L-fCT", "L-fFT", "L-fTT", "L-fLT"],
                                 ["L-mBC", "L-mCT", "L-mFT", "L-mTT", "L-mLT"],
                                 ["L-hBC", "L-hCT", "L-hFT", "L-hTT", "L-hLT"]]
-        """self.angles = [["L-fBC", "L-fCT", "L-fFT"],
-                       ["L-fCT", "L-fFT", "L-fTT"],
-                       ["R-fBC", "R-fCT", "R-fFT"],
-                       ["R-fCT", "R-fFT", "R-fTT"],
-
-                       ["L-mBC", "L-mCT", "L-mFT"],
-                       ["L-mCT", "L-mFT", "L-mTT"],
+        self.bodyparts = ["R-fBC", "R-fCT", "R-fFT", "R-fTT", "R-fLT",
+                           "R-mBC", "R-mCT", "R-mFT", "R-mTT", "R-mLT",
+                           "R-hBC", "R-hCT", "R-hFT", "R-hTT", "R-hLT",
+                           "L-fBC", "L-fCT", "L-fFT", "L-fTT", "L-fLT",
+                           "L-mBC", "L-mCT", "L-mFT", "L-mTT", "L-mLT",
+                           "L-hBC", "L-hCT", "L-hFT", "L-hTT", "L-hLT"]
+        self.angles = [["R-fBC", "R-fCT", "R-fFT"],
                        ["R-mBC", "R-mCT", "R-mFT"],
                        ["R-mCT", "R-mFT", "R-mTT"],
                        ["R-mFT", "R-mTT", "R-mLT"],
-
-                       ["L-hBC", "L-hCT", "L-hFT"],
-                       ["L-hCT", "L-hFT", "L-hTT"],
                        ["R-hBC", "R-hCT", "R-hFT"],
-                       ["R-hCT", "R-hFT", "R-hTT"],
-
-                       ["R-hLT", "R-hBC", "platform-axis"],
-                       ["L-hLT", "L-hBC", "platform-axis"],
-
-                       ["L-wing", "L-wing-hinge", "R-wing"]]"""
-        self.angles = [["R-fBC", "R-fCT", "R-fFT"],
-                       ["R-mFT", "R-mTT", "R-mLT"],
-                       ["R-hBC", "R-hCT", "R-hFT"],
+                       ["platform-tip", "R-hBC", "R-hTT"],
 
                        ["L-fBC", "L-fCT", "L-fFT"],
                        ["L-fCT", "L-fFT", "L-fTT"],
 
                        ["L-mBC", "L-mCT", "L-mFT"],
                        ["L-mCT", "L-mFT", "L-mTT"],
+                       ["platform-tip", "L-hBC", "L-hTT"],
 
                        ["L-hBC", "L-hCT", "L-hFT"],
-                       ["L-hCT", "L-hFT", "L-hTT"]]
+                       ["L-hCT", "L-hFT", "L-hTT"],
+                       ["L-wing", "L-wing-hinge", "R-wing"]]
         self.colors = ["#FF0000", "#008000", "#0000FF", "#FFFF00", "#00FFFF", "#FF00FF",
                        "#000000", "#808080", "#A9A9A9", "#D3D3D3", "#FFA500", "#800080",
                        "#A52A2A", "#FFC0CB", "#ADD8E6", "#00FF00", "#4B0082", "#EE82EE",
                        "#FFD700", "#C0C0C0", "#D2B48C", "#FF7F50", "#006400", "#00008B",
                        "#8B0000", "#FF8C00", "#8B008B", "#708090", "#FF6347", "#008080"]
-    def plot_flying_posture_over_trial(self, group_info:Group):
+    r""" def plot_flying_posture_over_trial(self, group_info:Group, filename):
 
         self.analyzer.Determine_all_flying_posture(group_info)
 
@@ -85,174 +79,39 @@ class PlotCreator:
             collected_joint_angle_L.append(ft_angle_l)
             collected_joint_angle_R.append(ft_angle_r)
 
-
+        # print(collected_joint_angle_R)
         fig, ax = plt.subplots()
-        sns.lineplot(collected_joint_angle_R, legend=False)
-        ax.set_xlabel("Trial", fontsize=25)
-        ax.set_ylabel("R FT joint angle", fontsize=25)
-        plt.tick_params(axis="both", width=3, length=10)
-        plt.xticks([0, 9, 19], ["1", "10", "20"], fontsize=25)
-        plt.yticks([0, 45, 90], fontsize=25)
-        for spine in ax.spines.values():
-            spine.set_linewidth(2)
-        sns.despine(trim=True)
-        plt.savefig("FT angle R")
-        plt.tight_layout()
-        plt.show()
+        # sns.lineplot(collected_joint_angle_R, linestyle="solid", color="grey", legend=False)
+        for trace in collected_joint_angle_R:
+            # ax.plot(trace, color="grey", alpha=0.3, linewidth=1)
+            pass
 
-        fig, ax = plt.subplots()
-        sns.lineplot(collected_joint_angle_L, legend=False)
-        ax.set_xlabel("Trial", fontsize=25)
-        ax.set_ylabel("L FT joint angle", fontsize=25)
-        plt.tick_params(axis="both", width=3, length=10)
-        plt.xticks([0, 9, 19], ["1", "10", "20"], fontsize=25)
-        plt.yticks([0, 45, 90], fontsize=25)
-        sns.despine(trim=True)
-        for spine in ax.spines.values():
-            spine.set_linewidth(2)
-        plt.savefig("FT angle L")
-        plt.tight_layout()
-        plt.show()
-
-        collected_joint_angle_L = pd.DataFrame(collected_joint_angle_L)
         collected_joint_angle_R = pd.DataFrame(collected_joint_angle_R)
 
         mean_values_R = collected_joint_angle_R.mean(axis=0, skipna=True)  # Compute mean for each trial (column)
         sem_values_R = collected_joint_angle_R.sem(axis=0, skipna=True)  # Compute SEM for each trial (column)
 
-        mean_values_L = collected_joint_angle_L.mean(axis=0, skipna=True)  # Compute mean for each trial (column)
-        sem_values_L = collected_joint_angle_L.sem(axis=0, skipna=True)
 
-        fig, ax = plt.subplots()
+        sns.lineplot(x=mean_values_R.index, y=mean_values_R, errorbar=("ci", 0), ax=ax, label="Mean", color="Navy", legend=False, linewidth=2)
 
-        sns.lineplot(x=mean_values_R.index + 1, y=mean_values_R,
-                     errorbar=("ci", 0),  # Disables default CI
-                     ax=ax, label="Mean", color="Navy")
-
-        sns.lineplot(x=mean_values_L.index + 1, y=mean_values_L,
-                     errorbar=("ci", 0),  # Disables default CI
-                     ax=ax, label="Mean", color="skyblue")
+        ax.fill_between(mean_values_R.index, mean_values_R - sem_values_R, mean_values_R + sem_values_R, color="navy", alpha=0.25, linewidth=0)
 
         # Add error bars manually
-        ax.errorbar(mean_values_R.index + 1, mean_values_R, yerr=sem_values_R, fmt='o', color="Navy", capsize=5)
-        ax.errorbar(mean_values_L.index + 1, mean_values_L, yerr=sem_values_L, fmt='o', color="skyblue", capsize=5)
+        # ax.errorbar(mean_values_R.index + 1, mean_values_R, yerr=sem_values_R, fmt='o', color="Navy", capsize=5)
 
         ax.set_xlabel("Trial", fontsize=25)
-        ax.set_ylabel("FT joint angle", fontsize=25)
-        plt.xticks([1, 10, 20], fontsize=25)
-        plt.yticks([0, 45, 90], fontsize=25)
+        ax.set_ylabel("R-Femur Tibia angle", fontsize=25)
         plt.tick_params(axis="both", width=3, length=10)
+        plt.xticks([0, 9, 19], ["1", "10", "20"], fontsize=25)
+        plt.yticks([20, 50, 80], fontsize=25)
         for spine in ax.spines.values():
             spine.set_linewidth(2)
-        plt.savefig("FT angle mean")
+
+        sns.despine(trim=True)
+        plt.savefig(f"{filename}.pdf")
         plt.tight_layout()
         plt.show()
-    def plot_tarsus_contact_vs_latency(self, group_info:Group):
-
-        Contact_relative_position, Latency = self.analyzer.TiTa_relative_contact(group_info=group_info)
-
-        df = {
-            "ContactPoints": Contact_relative_position,
-            "Latency": Latency
-        }
-        df = pd.DataFrame(df)
-        fig, ax = plt.subplots()
-
-        sns.scatterplot(x="ContactPoints", y="Latency", data=df, markers="o", s=100, alpha=0.8, legend=False)
-
-        ax.set_xlabel("Ti-Ta relative contact point", fontsize=25)
-        ax.set_ylabel("Latency (s)", fontsize=25)
-        plt.xticks([0, 1], fontsize=25)
-        plt.yticks([0, 1], fontsize=25)
-        for spine in ax.spines.values():
-            spine.set_linewidth(2)
-        plt.tick_params(axis="both", width=3, length=10)
-        plt.title(f"{group_info.group_name}", fontsize=25)
-        plt.ylim([-0.1, 1.1])
-        plt.xlim([-0.1, 1.1])
-        plt.tight_layout()
-        plt.show()
-    def MakePlot(self, group_info:Group):
-        start = 0
-        end = int(group_info.video_duration * group_info.fps)
-
-        for fly in range(group_info.total_fly_number):
-            fig, axs = plt.subplots(nrows=5, ncols=4, figsize=(20, 16))
-            i = 0
-            j = 0
-            t = 0
-            for trial in range(20):
-                if f"F{fly + 1}T{trial + 1}" not in group_info.fly_kinematic_data:
-                    plt.tight_layout()  # Adjust subplot layout
-                    plt.savefig(f"{group_info.group_name} Fly {fly + 1}.png")
-                    break
-                Data = group_info.fly_kinematic_data[f"F{fly + 1}T{trial + 1}"]
-                if i % 5 == 0:
-                    j += 1
-                    i = 1
-                else:
-                    i += 1
-
-                trial_type, MOL = self.analyzer.CategorizeTrial(Data)
-                WingAbTipAngle = self.calculator.Calculate_joint_angle(Data, [["R-wing", "R-wing-hinge", "abdomen-tip"], ["L-wing", "L-wing-hinge", "abdomen-tip"]])
-                WingAbTipAngle["R-wing-hinge"] = list(WingAbTipAngle["R-wing-hinge"])
-                WingAbTipAngle["L-wing-hinge"] = list(WingAbTipAngle["L-wing-hinge"])
-                R_mol, RL = self.detector.detect_moment_of_landing_WingAngle(WingAbTipAngle["R-wing-hinge"], 50, 4, 2)
-                L_mol, LL = self.detector.detect_moment_of_landing_WingAngle(WingAbTipAngle["L-wing-hinge"], 50, 4, 2)
-
-                print(f"Fly {fly + 1} Trial {trial + 1}")
-                seconds = [f for f in range(end - start)]
-
-                plot_df = pd.DataFrame({
-                    "seconds": seconds,
-                    "R": list(WingAbTipAngle["R-wing-hinge"]),
-                    "L": list(WingAbTipAngle["L-wing-hinge"])
-                })
-                try:
-                    if trial_type == 0:
-                        print("NF")
-                        sns.lineplot(x=seconds, y=WingAbTipAngle["R-wing-hinge"][start:end], ax=axs[i - 1, j - 1], color="blue")
-                        sns.lineplot(x=seconds, y=WingAbTipAngle["L-wing-hinge"][start:end], ax=axs[i - 1, j - 1], color="navy")
-                    elif trial_type == 1:
-                        moc, leg, contact_point = self.analyzer.DetermineTiTaMOC(Data)
-                        if contact_point == "NoContact" or contact_point == "L":
-                            print("N/A")
-                            sns.lineplot(x=seconds, y=WingAbTipAngle["R-wing-hinge"][start:end], ax=axs[i - 1, j - 1], color="red")
-                            sns.lineplot(x=seconds, y=WingAbTipAngle["L-wing-hinge"][start:end], ax=axs[i - 1, j - 1], color="maroon")
-                        else:
-                            print("Landing")
-                            sns.lineplot(x=seconds, y=WingAbTipAngle["R-wing-hinge"][start:end], ax=axs[i - 1, j - 1], color="yellow")
-                            sns.lineplot(x=seconds, y=WingAbTipAngle["L-wing-hinge"][start:end], ax=axs[i - 1, j - 1], color="gold")
-                            axs[i - 1, j - 1].axvline(R_mol - start, color="black")
-                            axs[i - 1, j - 1].axvline(L_mol - start, color="grey")
-                            axs[i - 1, j - 1].axvline(moc - start, color="red")
-                    elif trial_type == -1:
-                        moc, leg, contact_point = self.analyzer.DetermineTiTaMOC(Data)
-                        if contact_point == "NoContact" or contact_point == "L":
-                            print("N/A")
-                            sns.lineplot(x=seconds, y=WingAbTipAngle["R-wing-hinge"][start:end], ax=axs[i - 1, j - 1], color="red")
-                            sns.lineplot(x=seconds, y=WingAbTipAngle["L-wing-hinge"][start:end], ax=axs[i - 1, j - 1], color="maroon")
-                        else:
-                            print("Flying")
-                            nan_count = sum(math.isnan(x) for x in WingAbTipAngle["R-wing-hinge"][start:end])
-                            print(nan_count)
-                            sns.lineplot(x=seconds, y=WingAbTipAngle["R-wing-hinge"][start:end], ax=axs[i - 1, j - 1], color="darkorange")
-                            sns.lineplot(x=seconds, y=WingAbTipAngle["L-wing-hinge"][start:end], ax=axs[i - 1, j - 1], color="orange")
-                except:
-                    continue
-
-                axs[i - 1, j - 1].set_xlabel("Frames")
-                axs[i - 1, j - 1].set_yticks([0, 90, 180])
-                axs[i - 1, j - 1].set_ylim(-5, 185)
-                axs[i - 1, j - 1].set_ylabel("Distance (mm)")
-                axs[i - 1, j - 1].set_title(f"Trial {t + 1}")
-                t += 1
-            print(f"Plotting {fly + 1}'s data")
-            plt.suptitle(str(fly + 1), fontsize=20)
-            plt.tight_layout()  # Adjust subplot layout
-            # plt.show()
-            plt.savefig(f"{group_info.group_name} Fly {fly + 1}.png")  # Save the figure
-            # plt.close()
+        """
     def plot_motion_vector_with_plane(self, kinematic_data:Trial, frame):
 
 
@@ -265,7 +124,7 @@ class PlotCreator:
         coords = self.detector.ReadCoordsAll(kinematic_data, frame)
 
         center_points = self.calculator.ReadAndTranspose("platform-tip", kinematic_data)
-        platform_ctr_pts_traces = np.array(center_points[300:350])
+        platform_ctr_pts_traces = np.array(center_points[200:250])
 
         # Create color gradient based on the order of the points
         num_points = len(platform_ctr_pts_traces)
@@ -283,13 +142,16 @@ class PlotCreator:
 
                 # Plot a line between p1 and p2
                 ax.plot([p1[0], p2[0]], [p1[1], p2[1]], [p1[2], p2[2]], linewidth=5, marker='o', color=self.colors[g])
+            if len(group) == 1:
+                p1 = coords[group[0]]
+                # ax.plot([p1[0]], [p1[1]], [p1[2]], marker='o', color=self.colors[g], markersize=8, linestyle='None')  # important: no line
 
         # ax.quiver(*platform_ctr_pts_traces[-1], *perp_vector1, color='r', arrow_length_ratio=0.1)
         # ax.quiver(*platform_ctr_pts_traces[-1], *perp_vector2, color='r', arrow_length_ratio=0.1)
 
         # Add the side surface to the plot
         side_surface = Poly3DCollection(verts, alpha=0.3, facecolor='gray', edgecolor='none')
-        # ax.add_collection3d(side_surface)
+        ax.add_collection3d(side_surface)
 
         # Plot the trajectory with color gradient
         for i in range(num_points - 1):
@@ -299,17 +161,35 @@ class PlotCreator:
         # Plot the best-fit line
         # ax.quiver(*platform_ctr_pts_traces[-1], *direction, color='r', arrow_length_ratio=0.1)
         # Plot the normal plane
-        # ax.plot_trisurf(plane_points[:, 0], plane_points[:, 1], plane_points[:, 2], color='cyan', alpha=0.5)
+        ax.plot_trisurf(plane_points[:, 0], plane_points[:, 1], plane_points[:, 2], color='cyan', alpha=0.5)
 
         # Labels and legend
         ax.set_xlabel("X")
         ax.set_ylabel("Y")
         ax.set_zlabel("Z")
-        ax.set_title("3D Motion with Normal Plane")
+        # ax.set_title("3D Motion with Normal Plane")
         axis_limit = 1.5  # Adjust this value based on your data range
         ax.set_xlim([-axis_limit, axis_limit])
         ax.set_ylim([-axis_limit, axis_limit])
         ax.set_zlim([-axis_limit, axis_limit])
+
+        x_axis = np.array([1, 0, 0])
+        y_axis = np.array([0, 1, 0])
+        z_axis = np.array([0, 0, 1])
+        origin = [-1.5, -1.5, -2]  # shape (3,)
+        axis_len = 0.5  # adjust for visibility
+        ax.quiver(*origin, *(axis_len * x_axis), color='r', linewidth=2)  # X (red)
+        ax.quiver(*origin, *(axis_len * y_axis), color='g', linewidth=2)  # Y (green)
+        ax.quiver(*origin, *(axis_len * z_axis), color='b', linewidth=2)  # Z (blue)
+
+        x_tip = origin + 0.9 * np.array([1, 0, 0])
+        y_tip = origin + 0.7 * np.array([0, 1, 0])
+        z_tip = origin + 0.7 * np.array([0, 0, 1])
+
+        ax.text(*x_tip, 'x', color='r', fontsize=20)
+        ax.text(*y_tip, 'y', color='g', fontsize=20)
+        ax.text(*z_tip, 'z', color='b', fontsize=20)
+
         ax.legend()
 
         # azim = np.arctan2(normal_vector[1], normal_vector[0]) * 180 / np.pi
@@ -326,1617 +206,73 @@ class PlotCreator:
         ax.yaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
         ax.zaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
         ax.set_axis_off()  # This removes everything including the frame
-        # plt.show(block=True)
         plt.savefig("Kinematic.pdf")
-    def plot_posture_angle_change(self, trial_info:Trial):
-        angles = [["L-fBC", "L-fCT", "L-fFT"], ["L-fCT", "L-fFT", "L-fTT"], ["R-fBC", "R-fCT", "R-fFT"], ["R-fCT", "R-fFT", "R-fTT"],
-                  ["L-mBC", "L-mCT", "L-mFT"], ["L-mCT", "L-mFT", "L-mTT"], ["R-mBC", "R-mCT", "R-mFT"], ["R-mCT", "R-mFT", "R-mTT"],
-                  ["L-hBC", "L-hCT", "L-hFT"], ["L-hCT", "L-hFT", "L-hTT"], ["R-hBC", "R-hCT", "R-hFT"], ["R-hCT", "R-hFT", "R-hTT"]]
-        Angles = self.calculator.Calculate_joint_angle(trial_info, angles)
-
-        duration = 7
-        alpha = 1
-        fig, ax = plt.subplots(figsize=(10, 8))
-        ax1 = ax.twinx()
-
-        for k in Angles.keys():
-            postureData = self.calculator.exponential_moving_average(Angles[k][:duration * self.fps], alpha)
-            x = np.asarray(range(len(postureData))) / self.fps
-            sns.lineplot(x=x, y=postureData, ax=ax)
-            sns.lineplot(x=x[1:], y=self.calculator.Calculate_derivative(postureData), ax=ax1)
-        ax.set_ylim(-5, 200)
-        ax.set_xlim(-0.1, duration + 0.1)
-        ax1.set_ylim(-0.5, 21)
-        ax.set_xlabel("Second (s)", fontsize=25)
-        ax.set_ylabel("Joints angle", fontsize=25)
-        ax1.set_ylabel("Change of angle", fontsize=25)
-        ax.set_xticks([0, duration / 2 , duration])
-        ax.set_yticks([0, 90, 180])
-        ax1.set_yticks([0, 10, 20])
-        ax.tick_params(axis='x', labelsize=25)
-        ax.tick_params(axis='y', labelsize=25)
-        ax.tick_params(axis="both", width=3, length=10)
-        ax1.tick_params(axis='y', width=3, length=10, labelsize=25)
-        for spine in ax.spines.values():
-            spine.set_linewidth(2)
-        plt.tight_layout()
-        plt.show()
-    def plot_FT_ang_ll(self, group_info:Group, mean=False):
-        ft_angle = []
-        trial_latency = []
-        self.analyzer.Determine_all_flying_posture(group_info)
-        for index, r in group_info.ll_data.iloc[:group_info.total_fly_number].iterrows():
-            fly_ft = []
-            fly_trial_latency = []
-            na = 0
-            nf = 0
-            for i, ll in enumerate(r):
-                # low latency landing trial
-                if not isinstance(ll, str) and ll > -1 and not pd.isna(ll) and (ll / self.fps) < 1:
-                    fly_ft.append(group_info.fly_kinematic_data[f"F{index + 1}T{i + 1}"].R_stable_FT_angle)
-                    fly_trial_latency.append(ll / self.fps)
-                # nan trial
-                elif pd.isna(ll):
-                    na += 1
-                # not flying trial
-                elif isinstance(ll, str):
-                    nf += 1
-            if na + nf <= 10:
-                if mean:
-                    ft_angle.append(np.mean(fly_ft))
-                    trial_latency.append(np.mean(fly_trial_latency))
-                else:
-                    ft_angle.extend(fly_ft)
-                    trial_latency.extend(fly_trial_latency)
-        # return ft_angle
-        # print(trial_latency, ft_angle)
-        ax = sns.scatterplot(x=trial_latency, y=ft_angle, s=200, alpha=0.3, color="blue")
-        ax.set_xlabel("Landing latency", fontsize=25)
-        ax.set_ylabel("R-mFT angle", fontsize=25)
-        plt.xticks([0, 1], fontsize=25)
-        plt.yticks([0, 90, 180], fontsize=25)
-        for spine in ax.spines.values():
-            spine.set_linewidth(2)
-        sns.despine(trim=True)
-        plt.tick_params(axis="both", width=3, length=10)
-        plt.title(f"{group_info.group_name}", fontsize=25)
-        plt.ylim([-5, 185])
-        plt.xlim([-0.1, 1.1])
-        plt.tight_layout()
-        plt.show()
+        plt.show(block=True)
     def plot_CT_FT_angle_space(self, group_info:Group):
-        for i in range(group_info.total_fly_number):
-            fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10, 8))
-            for t in range(20):
-                if f"F{i + 1}T{t + 1}" in group_info.fly_kinematic_data:
-                    if not isinstance(group_info.mol_data.iloc[i][t], str) and not pd.isna(group_info.mol_data.iloc[i][t]) and not group_info.mol_data.iloc[i][t] < 0:
-                        start = int(group_info.moc_data.iloc[i][t])
-                        end = int(group_info.mol_data.iloc[i][t])
-                        print(f"Fly: {i + 1} Trial: {t + 1}")
-                        kinematic_data = group_info.fly_kinematic_data[f"F{i + 1}T{t + 1}"]
+        self.angles = [["L-fBC", "L-fCT", "L-fFT"],
+                       ["L-mBC", "L-mCT", "L-mFT"],
+                       ["L-hBC", "L-hCT", "L-hFT"],
 
-                        joint = "L-fCT"
-                        joint2 = "L-fFT"
-                        angs = self.calculator.Calculate_joint_angle(kinematic_data, self.angles)
-                        signal = np.asarray(angs[joint][start:end])
-                        peaks, troughs = self.detector.detect_peaks_troughs(signal=signal, leg=joint[:3])
-
-                        t = np.asarray(range(len(peaks)))
-                        norm = Normalize(vmin=t.min(), vmax=int(t.max() - 1))
-                        cmap = cm.plasma
-                        for p in range(len(peaks) - 1):
-                            sns.lineplot(x=angs[joint][troughs[p]:peaks[p] + 1], y=angs[joint2][troughs[p]:peaks[p] + 1], color=cmap(norm(p)), linewidth=5, alpha=0.4)
-                            sns.lineplot(x=angs[joint][peaks[p]:troughs[p + 1]], y=angs[joint2][peaks[p]:troughs[p + 1]], color=cmap(norm(p)), linewidth=5, alpha=0.4)
-
-            ax.tick_params(axis="y", labelsize=25)
-            ax.tick_params(axis="x", labelsize=25)
-            ax.tick_params(width=3, length=20)
-            ax.spines["left"].set_linewidth(2)  # Top border
-            ax.spines["bottom"].set_linewidth(2)
-            ax.set_ylabel("L-hFT angle", fontsize=25)
-            ax.set_xlabel("L-hCT angle", fontsize=25)
-            ax.set_yticks([0, 90, 180])
-            ax.set_ylim(-5, 185)
-            ax.set_xticks([0, 90, 180])
-            ax.set_xlim(-5, 185)
-            sns.despine(trim=True)
-            plt.tight_layout()
-            plt.savefig(f"Fly{i}AngleSpace")
-            plt.show()
-    def plot_IndiLegContactPointWithPlatform(self, kinematic_data:Trial, frame):
-
-        center_points = self.calculator.ReadAndTranspose("platform-tip", kinematic_data)
-        platform_ctr_pts_traces = np.array(center_points[300:350])
-
-        line_points, plane_points, verts, cylinder_top, cylinder_bottom, direction, perp_vector1, perp_vector2 = (
-            self.calculator.calculate_platform_surfaces(platform_traces=platform_ctr_pts_traces,
-                                                        platform_center=center_points[frame],
-                                                        platform_offset=self.platform_offset,
-                                                        radius=self.radius, height=self.platform_height))
-
-        segs = [["R-fTT", "R-fLT"], ["L-fTT", "L-fLT"], ["L-mTT", "L-mLT"], ["R-hTT", "R-hLT"], ["L-hTT", "L-hLT"]]
-
-
-
-        start = kinematic_data.moc
-        end = kinematic_data.mol
-        print(start, end)
-
-        for point in segs:
-            fig = plt.figure()
-            ax = fig.add_subplot(111, projection='3d')
-            ax.plot_trisurf(plane_points[:, 0], plane_points[:, 1], plane_points[:, 2], color='cyan', alpha=0.5)
-            for f in range(start, end):
-                A = [kinematic_data.trial_data[f"{point[0]}"].x_coord[f],
-                     kinematic_data.trial_data[f"{point[0]}"].y_coord[f],
-                     kinematic_data.trial_data[f"{point[0]}"].z_coord[f]]
-                B = [kinematic_data.trial_data[f"{point[1]}"].x_coord[f],
-                     kinematic_data.trial_data[f"{point[1]}"].y_coord[f],
-                     kinematic_data.trial_data[f"{point[1]}"].z_coord[f]]
-                P0 = cylinder_bottom
-                d = direction
-                r = self.radius
-                h = self.platform_height
-                intersects, pt = self.calculator.check_cylinder_side_intersection(A, B, P0, d, r, h)
-                print(intersects)
-                if intersects:
-                    coords = self.detector.ReadCoordsAll(kinematic_data, f)
-                    ax.scatter(*pt, color='magenta', s=50, label='Side Contact')
-
-                    Colors = ["#FF0000", "#008000", "#0000FF", "#FFFF00", "#00FFFF", "#FF00FF", "#000000",
-                              "#808080", "#A9A9A9", "#D3D3D3", "#FFA500", "#800080", "#A52A2A", "#FFC0CB",
-                              "#ADD8E6", "#00FF00", "#4B0082", "#EE82EE", "#FFD700", "#C0C0C0", "#D2B48C",
-                              "#FF7F50", "#006400", "#00008B", "#8B0000", "#FF8C00", "#8B008B", "#708090",
-                              "#FF6347", "#008080"]
-
-                    for g, group in enumerate(self.key_point_pairs):
-                        for i in range(len(group) - 1):  # Connect points in the group
-                            p1 = coords[group[i]]
-                            p2 = coords[group[i + 1]]
-                            # Plot a line between p1 and p2
-                            ax.plot([p1[0], p2[0]], [p1[1], p2[1]], [p1[2], p2[2]], marker='o', color=Colors[g])
-
-                    # ax.plot(line_points[:, 0], line_points[:, 1], line_points[:, 2], 'r--', label="Best-Fit Line")
-                    ax.plot_trisurf(plane_points[:, 0], plane_points[:, 1], plane_points[:, 2], color='cyan', alpha=0.5)
-                    side_surface = Poly3DCollection(verts, alpha=0.3, facecolor='gray', edgecolor='none')
-                    ax.add_collection3d(side_surface)
-                    plt.gca().set_aspect('equal')
-                    ax.xaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))  # Make panes transparent
-                    ax.yaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
-                    ax.zaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
-                    ax.set_axis_off()  # This removes everything including the frame
-                    ax.grid(False)
-                    plt.savefig(f"Segment {point[0]}_{point[1]} intersect at frame {f}")
-                    # plt.show()
-                    break
-    def plot_IndividualLegLatency(self, group_info:Group):
-
-        segs = [["L-fTT", "L-fLT"], ["L-mTT", "L-mLT"], ["L-hTT", "L-hLT"]]
-
-        individual_leg_contact = dict()
-        individual_leg_contact["Leg"] = []
-        individual_leg_contact["ContactLatency"] = []
-        individual_leg_contact["LegContactOrder"] = []
-        num_of_leg_contact_pertrial = []
-        for index in group_info.landing_trial_index:
-            print(f"Fly: {index[0]} Trial: {index[1]}")
-            pose_data = group_info.fly_kinematic_data[f"F{index[0]}T{index[1]}"]
-            start = int(pose_data.moc)
-            end = int(pose_data.mol)
-
-            center_points = self.calculator.ReadAndTranspose("platform-tip", pose_data)
-            platform_ctr_pts_traces = np.array(center_points[300:350])
-            l = 0
-            intersects_moment = dict()
-            for f in range(start, end):
-                line_points, plane_points, verts, cylinder_top, cylinder_bottom, direction, perp_vector1, perp_vector2 = (
-                    self.calculator.calculate_platform_surfaces(platform_traces=platform_ctr_pts_traces,
-                                                                platform_center=center_points[f],
-                                                                platform_offset=self.platform_offset,
-                                                                radius=self.radius, height=self.platform_height))
-                for point in segs:
-                    if point[0][0:3] not in intersects_moment:
-                        A = [pose_data.trial_data[f"{point[0]}"].x_coord[f],
-                             pose_data.trial_data[f"{point[0]}"].y_coord[f],
-                             pose_data.trial_data[f"{point[0]}"].z_coord[f]]
-                        B = [pose_data.trial_data[f"{point[1]}"].x_coord[f],
-                             pose_data.trial_data[f"{point[1]}"].y_coord[f],
-                             pose_data.trial_data[f"{point[1]}"].z_coord[f]]
-
-                        P0 = cylinder_bottom
-                        d = direction
-                        r = self.radius
-                        h = self.platform_height
-                        intersects, pt = self.calculator.check_cylinder_side_intersection(A, B, P0, d, r, h)
-                        if intersects:
-                            l += 1
-                            # print(point)
-                            print(f)
-                            individual_leg_contact["Leg"].append(point[0][0:3])
-                            individual_leg_contact["ContactLatency"].append((f - start) / self.fps)
-                            intersects_moment[point[0][0:3]] = (f - start) / self.fps
-                            break
-            if l != 0:
-                num_of_leg_contact_pertrial.append(l)
-            for point in segs:
-                if point[0][0:3] in intersects_moment:
-                    larger = 0
-                    for k in intersects_moment.keys():
-                        if intersects_moment[k] < intersects_moment[point[0][0:3]] and k != point[0][0:3]:
-                            larger += 1
-                    individual_leg_contact["LegContactOrder"].append(larger + 1)
-                    # print(f"Leg {point[0][0:3]}, Rank {larger + 1}, Latency {intersects_moment[point[0][0:3]]}")
-
-        individual_leg_contact = pd.DataFrame(individual_leg_contact)
-        print(individual_leg_contact)
-
-        fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10, 8))
-        ax = sns.stripplot(data=individual_leg_contact, x='Leg', y='ContactLatency', jitter=0.3, alpha=0)
-
-        for i, artist in enumerate(ax.collections):
-            # Skip empty collections from alpha=0 trick
-            if len(artist.get_offsets()) == 0:
-                continue
-            # Get the original group label
-            group = individual_leg_contact['Leg'].unique()[i]
-            # Get the subset
-            sub = individual_leg_contact[individual_leg_contact['Leg'] == group]
-            # Get jittered x positions from the original stripplot
-            xy = artist.get_offsets()
-            # Plot with actual sizes
-            plt.scatter(xy[:, 0], xy[:, 1], s=(8 / sub['LegContactOrder']) * 30, alpha=0.4, edgecolors=None)
-
-        ax.tick_params(axis="y", labelsize=25)
-        ax.tick_params(axis="x", labelsize=25)
-        ax.tick_params(width=3, length=20)
-        ax.spines["left"].set_linewidth(2)  # Top border
-        ax.spines["bottom"].set_linewidth(2)
-        ax.set_ylabel("Leg contact latency (s)", fontsize=25)
-        ax.set_xlabel("", fontsize=25)
-        ax.set_yticks([0, 0.5, 1])
-        ax.set_ylim(-0.1, 1.1)
-        sns.despine(trim=True)
-        plt.title("Ranking individual leg's contact with the contact latency")
-        plt.tight_layout()
-        plt.show()
-    def plot_IndiLeg3DTrajectory(self, kinematic_data:Trial):
-
-        J = ["BC", "CT", "FT", "TT", "LT"]
-
-        joint = "L-fCT"
-        start = int(kinematic_data.moc)
-        end = int(kinematic_data.mol)
-        side = joint[0]
-        Leg = joint[2]
-
-        angs = self.calculator.Calculate_joint_angle(kinematic_data, self.angles)
-        signal = np.asarray(angs[joint][start:end])
-        peaks, troughs = self.detector.detect_peaks_troughs(signal=signal, leg=Leg)
-
-        center_points = self.calculator.ReadAndTranspose("platform-tip", kinematic_data)
-        platform_ctr_pts_traces = np.array(center_points[300:350])
-        line_points, plane_points, verts, cylinder_top, cylinder_bottom, direction, perp_vector1, perp_vector2 = (
-            self.calculator.calculate_platform_surfaces(platform_traces=platform_ctr_pts_traces,
-                                                        platform_center=center_points[start],
-                                                        platform_offset=self.platform_offset,
-                                                        radius=self.radius,
-                                                        height=self.platform_height))
-
-        s = 0
-        for i in range(len(troughs) - 1):
-
-            fig = plt.figure()
-            ax = fig.add_subplot(111, projection='3d')
-            ax.plot_trisurf(plane_points[:, 0], plane_points[:, 1], plane_points[:, 2], color='cyan', alpha=0.5)
-            side_surface = Poly3DCollection(verts, alpha=0.3, facecolor='gray', edgecolor='none')
-            ax.add_collection3d(side_surface)
-            s += 1
-
-            search_start = troughs[i]
-            search_end = troughs[i + 1]
-            # search_end = peaks[i]
-
-            segment_starts = []
-            segment_ends = []
-
-            for j in range(len(J) - 1):
-                segment_starts.append(np.array([kinematic_data.trial_data[f"{side}-{Leg}{J[j]}"].x_coord[search_start:search_end],
-                                                kinematic_data.trial_data[f"{side}-{Leg}{J[j]}"].y_coord[search_start:search_end],
-                                                kinematic_data.trial_data[f"{side}-{Leg}{J[j]}"].z_coord[search_start:search_end]]).T)
-                segment_ends.append(np.array([kinematic_data.trial_data[f"{side}-{Leg}{J[j + 1]}"].x_coord[search_start:search_end],
-                                              kinematic_data.trial_data[f"{side}-{Leg}{J[j + 1]}"].y_coord[search_start:search_end],
-                                              kinematic_data.trial_data[f"{side}-{Leg}{J[j + 1]}"].z_coord[search_start:search_end]]).T)
-
-            t = np.asarray(range(search_end - search_start))
-            norm = Normalize(vmin=t.min(), vmax=int(t.max()))
-            cmap = cm.plasma
-
-            for s in range(len(segment_starts)):
-                for f in range(len(t)):
-
-                    xs1 = [segment_starts[s][f, 0], segment_ends[s][f, 0]]
-                    ys1 = [segment_starts[s][f, 1], segment_ends[s][f, 1]]
-                    zs1 = [segment_starts[s][f, 2], segment_ends[s][f, 2]]
-                    ax.plot(xs1, ys1, zs1, color=cmap(norm(f)), linewidth=4, alpha=0.6)
-
-            ax.set_xlim(-2, 2)
-            ax.set_ylim(-2, 2)
-            ax.set_zlim(-2, 2)
-
-            ax.set_xlabel('X')
-            ax.set_ylabel('Y')
-            ax.set_zlabel('Z')
-            plt.gca().set_aspect('equal')
-            ax.grid(False)
-            sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
-            sm.set_array([])
-            ax.xaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))  # Make panes transparent
-            ax.yaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
-            ax.zaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
-            ax.set_axis_off()  # This removes everything including the frame
-            fig.colorbar(sm, ax=ax, label='Time (Frame)')
-            plt.show(block=True)
-    def plot_leg_search_cycle(self, trial_info:Trial):
-        start = int(trial_info.moc)
-        end = int(trial_info.mol)
-        angs = self.calculator.Calculate_joint_angle(trial_info, self.angles)
-
-        Joint1 = "L-fCT"
-        Joint2 = "L-mCT"
-        Joint3 = "L-hFT"
-        Joint4 = "L-fFT"
-        L_f_CT = np.asarray(angs[Joint1][start:end])
-        L_f_FT = np.asarray(angs[Joint4][start:end])
-
-        L_m_CT = np.asarray(angs[Joint2][start:end])
-        L_h_CT = np.asarray(angs[Joint3][start:end])
-
-        def psd_plot(data1, data2, data3):
-            from scipy.signal import periodogram
-            Hz = 51
-            fig, ax = plt.subplots(nrows=3, ncols=1, figsize=(10, 8))
-            # Periodogram
-            f_periodo, Pxx = periodogram(data1, trial_info.fps, nfft=trial_info.fps)
-            f_periodo = f_periodo[:Hz]
-            Pxx = Pxx[:Hz]
-            ax[0].plot(f_periodo, Pxx, linewidth=5)
-            f_periodo, Pxx = periodogram(data2, trial_info.fps, nfft=trial_info.fps)
-            f_periodo = f_periodo[:Hz]
-            Pxx = Pxx[:Hz]
-            ax[1].plot(f_periodo, Pxx, linewidth=5)
-            f_periodo, Pxx = periodogram(data3, trial_info.fps, nfft=trial_info.fps)
-            f_periodo = f_periodo[:Hz]
-            Pxx = Pxx[:Hz]
-            ax[2].plot(f_periodo, Pxx, linewidth=5)
-
-            def formatting(ax, yl, xl):
-                ax.tick_params(axis="y", labelsize=15)
-                ax.tick_params(axis="x", labelsize=15)
-                ax.tick_params(width=3, length=10)
-                ax.spines["left"].set_linewidth(2)  # Top border
-                ax.spines["bottom"].set_linewidth(2)
-                ax.set_yticks([0, yl / 2, yl])
-                ax.set_ylim(-50, yl)
-                ax.set_xticks([x for x in range(0, xl, 5)])
-
-            formatting(ax[0], 500, Hz)
-            formatting(ax[1], 100, Hz)
-            formatting(ax[2], 100, Hz)
-            fig.supylabel("Periodogram (PSD)", fontsize=25)
-            fig.supxlabel("Frequency (Hz)", fontsize=25)
-            sns.despine(trim=True)
-
-            plt.tight_layout()
-            plt.show()
-
-        sig_to_plot = L_f_CT
-        peaks, troughs = self.detector.detect_peaks_troughs(sig_to_plot, leg="L-f")
-        psd_plot(L_f_CT, L_m_CT, L_h_CT)
-        print(len(troughs))
-        fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10, 8))
-        trough_val = sig_to_plot[troughs]
-        peaks_val = sig_to_plot[peaks]
-        seconds = [s/trial_info.fps for s in range(len(sig_to_plot))]
-        sns.lineplot(x=seconds, y=sig_to_plot, linewidth=5, ax=ax, color="blue")
-        sns.scatterplot(x=troughs / trial_info.fps, y=trough_val, s=150, color="green", zorder=10, ax=ax)
-        # sns.scatterplot(x=peaks / trial_info.fps, y=peaks_val, s=150, color="green", zorder=10, ax=ax)
-
-        """peaks, troughs = self.detector.detect_peaks_troughs(L_f_FT, leg=leg)
-        trough_val = L_f_FT[troughs]
-        peaks_val = L_f_FT[peaks]
-        sns.lineplot(x=seconds, y=L_f_FT, linewidth=5, ax=ax, color="orange")
-        sns.scatterplot(x=troughs / trial_info.fps, y=trough_val, s=150, color="red", zorder=10, ax=ax)
-        sns.scatterplot(x=peaks / trial_info.fps, y=peaks_val, s=150, color="red", zorder=10, ax=ax)"""
-
-
-
-        ax.tick_params(axis="y", labelsize=25)
-        ax.tick_params(axis="x", labelsize=25)
-        ax.tick_params(width=3, length=20)
-        ax.spines["left"].set_linewidth(2)  # Top border
-        ax.spines["bottom"].set_linewidth(2)
-        ax.set_ylabel("L-fCT angle", fontsize=25)
-        ax.set_xlabel("Landing transition duration (s)", fontsize=25)
-        ax.set_yticks([0, 30, 60, 90, 120, 150, 180])
-        ax.set_ylim(-5, 185)
-        ax.set_xticks([0, 0.5, 1])
-        ax.set_xlim(-0.1, 1.1)
-        sns.despine(trim=True)
-        plt.tight_layout()
-        plt.savefig("LegAngleTrace.pdf")
-        plt.show()
-    def plot_leg_search_trace(self, group_info:Group, standardized=False):
-
-        fig, ax = plt.subplots(nrows=3, ncols=1, figsize=(10, 8))
+                       ["L-fCT", "L-fFT", "L-fTT"],
+                       ["L-mCT", "L-mFT", "L-mTT"],
+                       ["L-hCT", "L-hFT", "L-hTT"]]
+        fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8, 8))
         for index in group_info.get_targeted_trials(["Landing"]):
             trial_info = group_info.fly_kinematic_data[f"F{index[0]}T{index[1]}"]
-            print(f"Reading F{index[0]} T{index[1]} data")
-            start = int(trial_info.moc)
-            end = int(trial_info.mol)
+            # fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8, 8))
+            start = trial_info.moc
+            end = trial_info.mol
+            print(f"Fly: {index[0]} Trial: {index[1]}")
 
-            ags = self.calculator.Calculate_joint_angle(trial_info, self.angles)
-            x = [i for i in range(trial_info.mol - trial_info.moc)]
-            sns.lineplot(x=x, y=ags["L-fCT"][start:end], color="blue", alpha=0.5, linewidth=3, ax=ax[0])
-            sns.lineplot(x=x, y=ags["L-mCT"][start:end], color="green", alpha=0.5, linewidth=3, ax=ax[1])
-            sns.lineplot(x=x, y=ags["L-hCT"][start:end], color="red", alpha=0.5, linewidth=3, ax=ax[2])
-            # sns.lineplot(x=x, y=ags["L-hCT"])
-            # sns.lineplot(x=x, y=ags["R-fCT"])
-            # sns.lineplot(x=x, y=ags["R-hCT"])
-            ax[0].set_ylim(0, 180)
-            ax[1].set_ylim(0, 180)
-            ax[2].set_ylim(0, 180)
-        plt.show()
-    def plot_trajectory(self, trial_info:Trial, joints):
-
-        start = int(trial_info.moc)
-        end = int(trial_info.mol)
-        # print(end - start)
-
-        line_points, plane_points, verts, cylinder_top, cylinder_bottom, direction, perp_vector1, perp_vector2 = (
-            self.calculator.transform_coords_and_calculate_platform_data(trial_info=trial_info,
-                                                                         platform_offset=self.platform_offset,
-                                                                         platform_height=self.platform_height,
-                                                                         radius=self.radius))
-        center_points = self.calculator.ReadAndTranspose("platform-tip", trial_info)
-        platform_ctr_pts_traces = np.array(center_points[start:end])
-
-        num_points = len(platform_ctr_pts_traces)
-
-
-
-        x = dict()
-        y = dict()
-        z = dict()
-
-        t = np.linspace(0, 15, 15)
-        # Step 2: Create color map based on time
-        norm = Normalize(vmin=t.min(), vmax=t.max())
-        Colors = cm.viridis(norm(t))
-        p = 0
-        for j in joints:
-
-            joint = j[0:3] + "CT"
-
-            x[j] = []
-            y[j] = []
-            z[j] = []
+            joint = "L-fCT"
+            joint2 = "L-fFT"
             angs = self.calculator.Calculate_joint_angle(trial_info, self.angles)
-            for s in range(end - start):
-                A = [trial_info.trial_data[f"{j[0:3]}TT"].x_coord[s + start],
-                     trial_info.trial_data[f"{j[0:3]}TT"].y_coord[s + start],
-                     trial_info.trial_data[f"{j[0:3]}TT"].z_coord[s + start]]
-                B = [trial_info.trial_data[j].x_coord[s + start],
-                     trial_info.trial_data[j].y_coord[s + start],
-                     trial_info.trial_data[j].z_coord[s + start]]
-
-                P1 = platform_ctr_pts_traces[s]
-                d = direction
-                r = self.radius
-                h = self.platform_height
-                intersects_side, pt_side = self.calculator.check_cylinder_side_intersection(A, B, P1, d, r, h)
-                intersects_top, pt_top = self.detector.check_leg_platform_intersection(A, B, d, P1, self.platform_offset)
-                if intersects_top or intersects_side:
-                    end = s + start
-                    print("Intersect")
-                    print(end - start)
-                    break
-
-            CT_signal = angs[joint][start:end]
-
-            from scipy.fft import fft, fftfreq
-            from scipy.signal import periodogram
-
-            f = fftfreq(len(CT_signal), 1 / self.fps)
-            mask = f > 0
-
-            # Periodogram
-            f_periodo, Pxx = periodogram(CT_signal, self.fps)
-            noisiness = 0
-            if j[0:3] == "L-f" or j[0:3] == "R-f":
-                noisiness = 20
-            if j[0:3] == "L-m" or j[0:3] == "L-h" or j[0:3] == "R-h":
-                noisiness = 10
-            if len([f for f in f_periodo if f < 20]) <= noisiness:
-
-                peaks, troughs = self.detector.detect_peaks_troughs(CT_signal, j[0:3])
-                troughs = np.sort(troughs)
-                if len(troughs) <= 1:
-                    continue
-                peaks = []
-                for t in range(len(troughs) - 1):
-                    peaks.append(list(CT_signal).index(max(CT_signal[troughs[t]:troughs[t + 1]])))
-                peaks = np.array(peaks)
-
-                """plt.show()
-                sns.lineplot(CT_signal)
-                plt.scatter(troughs, CT_signal[troughs])
-                plt.scatter(peaks, CT_signal[peaks])
-                plt.show()"""
-
-                troughs = troughs + start
-                peaks = peaks + start
-
-                fig = plt.figure()
-                ax = fig.add_subplot(111, projection='3d')
-
-                coords = self.detector.ReadCoordsAll(trial_info, start)
-                for g, group in enumerate(self.key_point_pairs):
-                    for i in range(len(group) - 1):  # Connect points in the group
-                        p1 = coords[group[i]]
-                        p2 = coords[group[i + 1]]
-
-                        # Plot a line between p1 and p2
-                        ax.plot([p1[0], p2[0]], [p1[1], p2[1]], [p1[2], p2[2]], marker='o', color=self.colors[g])
-
-                if p == 0:
-                    side_surface = Poly3DCollection(verts, alpha=0.3, facecolor='gray', edgecolor='none')
-                    ax.add_collection3d(side_surface)
-
-                    ax.quiver(*platform_ctr_pts_traces[-1], *perp_vector1, color='r', arrow_length_ratio=0.1)
-                    ax.quiver(*platform_ctr_pts_traces[-1], *perp_vector2, color='r', arrow_length_ratio=0.1)
-
-                    for i in range(num_points):
-                        ax.plot(platform_ctr_pts_traces[i:i + 2, 0], platform_ctr_pts_traces[i:i + 2, 1],
-                                platform_ctr_pts_traces[i:i + 2, 2], color="grey", linewidth=6)
-
-                    # Plot the best-fit line
-                    # ax.plot(line_points[:, 0], line_points[:, 1], line_points[:, 2], 'r--', label="Best-Fit Line")
-                    # Plot the normal plane
-                    ax.plot_trisurf(plane_points[:, 0], plane_points[:, 1], plane_points[:, 2], color='cyan', alpha=0.5)
-
-                from scipy.spatial import ConvexHull
-
-                  # Choose any colormap you like
-                t = np.linspace(0, len(troughs) - 1, len(troughs) - 1)
-                t = np.linspace(0, troughs[-1] - start, troughs[-1] - start)
-                # Step 2: Create color map based on time
-                norm = Normalize(vmin=t.min(), vmax=t.max())
-                Colors = cm.viridis(norm(t))
-                n = 0
-                for tr in range(len(troughs) - 1):
-                    x[j].append(trial_info.trial_data[j].x_coord[troughs[tr]:troughs[tr + 1]])
-                    y[j].append(trial_info.trial_data[j].y_coord[troughs[tr]:troughs[tr + 1]])
-                    z[j].append(trial_info.trial_data[j].z_coord[troughs[tr]:troughs[tr + 1]])
-
-                    # x[j].append(trial_info.trial_data[j].x_coord[troughs[tr]:troughs[tr + 1]])
-                    # y[j].append(trial_info.trial_data[j].y_coord[troughs[tr]:troughs[tr + 1]])
-                    # z[j].append(trial_info.trial_data[j].z_coord[troughs[tr]:troughs[tr + 1]])
-
-                    # Step 1: Create line segments between consecutive points
-                    points = np.array([x[j][-1], y[j][-1], z[j][-1]]).T.reshape(-1, 1, 3)
-                    segments = np.concatenate([points[:-1], points[1:]], axis=1)
-
-
-                    lc = Line3DCollection(segments, colors=Colors[tr], linewidth=2)
-                    centroid_x = trial_info.trial_data[j].x_coord[troughs[tr]:troughs[tr + 1]]
-                    centroid_y = trial_info.trial_data[j].y_coord[troughs[tr]:troughs[tr + 1]]
-                    centroid_z = trial_info.trial_data[j].z_coord[troughs[tr]:troughs[tr + 1]]
-
-                    points = np.array([centroid_x, centroid_y, centroid_z]).T
-                    hull = ConvexHull(points)
-                    ax.scatter(*points.T, alpha=0)
-
-                    # Plot hull
-                    for simplex in hull.simplices:
-                        triangle = points[simplex]
-                        # ax.add_collection3d(Poly3DCollection([triangle], color=Colors[tr], alpha=0.2, edgecolor='none'))
-
-                    for k in range(troughs[tr + 1] - troughs[tr]):
-                        # pass
-                        ax.scatter(centroid_x[k], centroid_y[k], centroid_z[k], color=Colors[n], s=50, alpha=0.5)
-                        n += 1
-                    # ax.scatter(np.mean(centroid_x), np.mean(centroid_y), np.mean(centroid_z), color=Colors[tr], s=100, alpha=0.5)
-                    # ax.add_collection3d(lc)
-                    # Step 5: Add colorbar
-            sm = plt.cm.ScalarMappable(cmap=cm.viridis, norm=norm)
-            sm.set_array([])
-
-            fig.colorbar(sm, ax=ax, label='Time (frame)')
-
-
-            # Step 4: Set axes limits
-            ax.set_xlim(-2, 2)
-            ax.set_ylim(-2, 2)
-            ax.set_zlim(-2, 2)
-            ax.set_xlabel('X')
-            ax.set_ylabel('Y')
-            ax.set_zlabel('Z')
-
-
-
-            plt.gca().set_aspect('equal')
-            # ax.view_init(elev=90, azim=0)
-            # ax.grid(False)
-            # ax.set_xticks([])
-            # ax.set_yticks([])
-            # ax.set_zticks([])
-
-            ax.xaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))  # Make panes transparent
-            ax.yaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
-            ax.zaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
-            # ax.set_axis_off()  # This removes everything including the frame
-            ax.view_init(elev=90, azim=270)
-            plt.show(block=True)
-            p += 1
-
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
-        for j in joints:
-              # time values from 0 to 1
-            for s, (points1, points2) in enumerate(zip(x[j], y[j])):
-                # plt.scatter(points1, points2, color=Colors[s], s=5)
-
-                for i in range(len(points1) - 1):
-                    plt.plot(points1[i: i + 2], points2[i:i + 2], linewidth=4, alpha=0.5, color=Colors[s])  # light path underneath
-        plt.xlabel("x")
-        plt.ylabel("y")
-
-        # plt.colorbar(label='Time (Frame)')
-        plt.title("2D Trajectory (Color-coded by Time)")
-        plt.axis('equal')
-        plt.xlim(-2.5, 2.5)
-        plt.ylim(-2.5, 2.5)
-        plt.show()
-    def plot_IndividualLegContactProbability(self, group_info:Group):
-        segs = [["R-fTT", "R-fLT"], ["L-fTT", "L-fLT"], ["L-mTT", "L-mLT"], ["R-hTT", "R-hLT"], ["L-hTT", "L-hLT"]]
-
-        individual_leg_contact = dict()
-        individual_leg_contact["L-f"] = dict()
-        individual_leg_contact["L-m"] = dict()
-        individual_leg_contact["L-h"] = dict()
-        individual_leg_contact["R-f"] = dict()
-        individual_leg_contact["R-h"] = dict()
-        num_of_leg_contact_pertrial = []
-
-        for fly in range(group_info.total_fly_number):
-            fly_index = [ind for ind in group_info.landing_trial_index if ind[0] == fly + 1]
-            individual_leg_contact["L-f"][f"F{fly + 1}"] = []
-            individual_leg_contact["L-m"][f"F{fly + 1}"] = []
-            individual_leg_contact["L-h"][f"F{fly + 1}"] = []
-            individual_leg_contact["R-f"][f"F{fly + 1}"] = []
-            individual_leg_contact["R-h"][f"F{fly + 1}"] = []
-            for trial_index in fly_index:
-
-                pose_data = group_info.fly_kinematic_data[f"F{trial_index[0]}T{trial_index[1]}"]
-                start = int(pose_data.moc)
-                end = int(pose_data.mol)
-
-                center_points = self.calculator.ReadAndTranspose("platform-tip", pose_data)
-                platform_ctr_pts_traces = np.array(center_points[300:350])
-                intersects_moment = dict()
-
-                for f in range(start, end):
-                    line_points, plane_points, verts, cylinder_top, cylinder_bottom, direction, perp_vector1, perp_vector2 = (
-                        self.calculator.calculate_platform_surfaces(platform_traces=platform_ctr_pts_traces,
-                                                                    platform_center=center_points[f],
-                                                                    platform_offset=self.platform_offset,
-                                                                    radius=self.radius, height=self.platform_height))
-                    for point in segs:
-                        if point[0][0:3] not in intersects_moment:
-                            A = [pose_data.trial_data[f"{point[0]}"].x_coord[f],
-                                 pose_data.trial_data[f"{point[0]}"].y_coord[f],
-                                 pose_data.trial_data[f"{point[0]}"].z_coord[f]]
-                            B = [pose_data.trial_data[f"{point[1]}"].x_coord[f],
-                                 pose_data.trial_data[f"{point[1]}"].y_coord[f],
-                                 pose_data.trial_data[f"{point[1]}"].z_coord[f]]
-
-                            P0 = cylinder_bottom
-                            d = direction
-                            r = self.radius
-                            h = self.platform_height
-                            intersects, pt = self.calculator.check_cylinder_side_intersection(A, B, P0, d, r, h)
-                            if intersects:
-                                individual_leg_contact[point[0][0:3]][f"F{fly + 1}"].append((f - start) / self.fps)
-                                intersects_moment[point[0][0:3]] = (f - start) / self.fps
-                                break
-                for point in segs:
-                    if point[0][0:3] not in intersects_moment:
-                        individual_leg_contact[point[0][0:3]][f"F{fly + 1}"].append(np.nan)
-        import pprint
-        pprint.pprint(individual_leg_contact)
-
-        # Compute probabilities relative to total array length (including NaNs)
-        result = {}
-        max_subgroups = 0
-
-        for group, subgroups in individual_leg_contact.items():
-            probs = []
-            for subgroup, values in subgroups.items():
-                values = np.array(values)
-                total_len = len(values)
-                num_positive = np.sum(values > 0)
-                prob = num_positive / total_len if total_len > 0 else np.nan
-                probs.append(prob)
-            result[group] = probs
-            max_subgroups = max(max_subgroups, len(probs))
-
-        # Convert to DataFrame
-        df = pd.DataFrame(result)
-
-
-        ax = sns.stripplot(data=df, alpha=0.5, size=20, jitter=0.2)
-
-        ax.tick_params(axis="y", labelsize=25)
-        ax.tick_params(axis="x", labelsize=25)
-        ax.tick_params(width=3, length=20)
-        ax.spines["left"].set_linewidth(2)  # Top border
-        ax.spines["bottom"].set_linewidth(2)
-        ax.set_ylabel("Contact probability", fontsize=25)
-        ax.set_yticks([0, 0.5, 1])
-        ax.set_ylim(-0.1, 1.1)
-        sns.despine(trim=True)
-        plt.tight_layout()
-        print(f"Save {group_info.group_name} contact probability")
-        plt.savefig(f"{group_info.group_name} contact probability")
-        plt.close()
-        # plt.show()
-
-        # Initialize output structure with np.nan
-        ranked_data = {
-            group: {
-                subgroup: [np.nan] * len(values)
-                for subgroup, values in subgroups.items()
-            }
-            for group, subgroups in individual_leg_contact.items()
-        }
-
-        # Get list of groups and subgroups
-        groups = list(individual_leg_contact.keys())
-        subgroups = list(next(iter(individual_leg_contact.values())).keys())  # assume all groups share same subgroups
-
-        # Iterate over subgroups
-        for subgroup in subgroups:
-            max_len = max(len(individual_leg_contact[group][subgroup]) for group in groups)
-
-            # For each index i in subgroup arrays
-            for i in range(max_len):
-                indexed_values = []
-                for group in groups:
-                    arr = individual_leg_contact[group][subgroup]
-                    value = arr[i] if i < len(arr) else np.nan
-                    if not np.isnan(value):
-                        indexed_values.append((value, group))
-
-                # Sort valid (non-nan) values
-                sorted_values = sorted(indexed_values, key=lambda x: x[0])
-
-                # Assign rank only to non-nan entries
-                for rank, (value, group_name) in enumerate(sorted_values):
-                    ranked_data[group_name][subgroup][i] = rank
-
-        # Example output
-        pprint.pprint(ranked_data)
-        from collections import Counter
-
-        records = []
-
-        for group, subgroups in ranked_data.items():
-            for subgroup, rank_list in subgroups.items():
-                rank_series = pd.Series(rank_list)
-                total_len = len(rank_series)
-                # Count valid rank values
-                rank_counts = rank_series.value_counts(dropna=True).sort_index()
-                for rank in range(5):  # ranks 0 to 4
-                    count = rank_counts.get(rank, 0)
-                    if total_len == 0:
-                        break
-                    prob = count / total_len  # ← includes NaNs in denominator
-                    records.append({
-                        "group": group,
-                        "subgroup": subgroup,
-                        "rank": rank + 1,
-                        "probability": prob
-                    })
-
-
-        # Step 2: Create DataFrame
-        df = pd.DataFrame(records)
-        # pprint.pprint(df)
-
-        # Step 3: Plot
-        plt.figure(figsize=(10, 6))
-        ax = sns.stripplot(data=df, x="group", y="probability", hue="rank", dodge=True, jitter=True, s=15, alpha=0.5)
-
-        ax.tick_params(axis="y", labelsize=25)
-        ax.tick_params(axis="x", labelsize=25)
-        ax.tick_params(width=3, length=20)
-
-        plt.xlabel("Group")
-        plt.ylabel("Probability")
-        plt.legend(title="Leg contact order")
-        ax.spines["left"].set_linewidth(2)  # Top border
-        ax.spines["bottom"].set_linewidth(2)
-        ax.set_ylabel("Probability", fontsize=25)
-        ax.set_yticks([0, 0.5, 1])
-        ax.set_ylim(-0.1, 1.1)
-        sns.despine(trim=True)
-        plt.tight_layout()
-        plt.savefig(f"{group_info.group_name} leg order probability")
-        plt.close()
-        # plt.show()
-
-        # Map legs to assigned numbers
-        leg_order = {'L-f': 1, 'L-m': 2, 'L-h': 3, 'R-f': 4, 'R-h': 5}
-
-        # Store sequences
-        sequence_list = []
-
-        # Loop through each subgroup (F1, F2, etc.)
-        subgroup_names = next(iter(ranked_data.values())).keys()
-
-        for subgroup in subgroup_names:
-            # Get max number of time points in this subgroup
-            max_len = max(len(ranked_data[leg][subgroup]) for leg in leg_order)
-
-            for i in range(max_len):
-                # Gather all ranks at this time point
-                ranks = []
-                for leg, leg_id in leg_order.items():
-                    leg_ranks = ranked_data[leg].get(subgroup, [])
-                    if i < len(leg_ranks):
-                        rank = leg_ranks[i]
-                        if not pd.isna(rank):
-                            ranks.append((rank, leg_id))  # (rank value, leg number)
-
-                # Sort by rank and collect leg numbers
-                sorted_legs = [str(leg_id) for rank_val, leg_id in sorted(ranks)]
-                if sorted_legs:
-                    sequence = ''.join(sorted_legs)
-                    sequence_list.append(sequence)
-
-        # Count occurrences
-        sequence_counts = Counter(sequence_list)
-
-        # Convert to DataFrame for plotting
-        df_seq = pd.DataFrame(sequence_counts.items(), columns=["sequence", "count"]).sort_values("count",
-                                                                                                  ascending=False)
-
-        top_n = 10
-        df_top_seq = df_seq.head(top_n)
-
-        fig, ax = plt.subplots(figsize=(10, 5))
-        ax.bar(df_top_seq["sequence"], df_top_seq["count"], color="skyblue", edgecolor="black")
-        ax.set_xticklabels(df_top_seq["sequence"], rotation=45)
-        ax.tick_params(axis="y", labelsize=25)
-        ax.tick_params(axis="x", labelsize=25)
-        ax.tick_params(width=3, length=20)
-        ax.set_xlabel("Leg Sequence (ordered by rank)")
-        ax.set_ylabel("Count")
-        ax.set_title("Top 10 Most Frequent Leg Rank Sequences")
-        plt.title(f"Top {top_n} Most Frequent Leg Rank Sequences")
-        ax.spines["left"].set_linewidth(2)  # Top border
-        ax.spines["bottom"].set_linewidth(2)
-
-        sns.despine(trim=True)
-        plt.tight_layout()
-        plt.savefig(f"{group_info.group_name} leg sequence")
-        plt.close()
-        # plt.show()
-    def plot_angle_change_psd(self, group_info:Group):
-        # fig, ax = plt.subplots(nrows=3, ncols=1, figsize=(5, 8), sharex=True)
-        One_search_CT_psd = []
-        Many_searches_CT_psd = []
-        No_search_CT_psd = []
-
-        One_search_FT_psd = []
-        Many_searches_FT_psd = []
-        No_search_FT_psd = []
-
-        f_psd_data = []
-        m_psd_data = []
-        h_psd_data = []
-
-        Joint1 = "R-fCT"
-        Color = "mediumpurple"
-        Hz = 21
-
-        for index in group_info.landing_trial_index:
-            print(f"F{index[0]}T{index[1]}")
-            trial_info = group_info.fly_kinematic_data[f"F{index[0]}T{index[1]}"]
-            start = int(trial_info.moc)
-            end = int(trial_info.mol)
-
-            line_points, plane_points, verts, cylinder_top, cylinder_bottom, direction, perp_vector1, perp_vector2 = (
-                self.calculator.transform_coords_and_calculate_platform_data(trial_info=trial_info,
-                                                                             platform_offset=self.platform_offset,
-                                                                             platform_height=self.platform_height,
-                                                                             radius=self.radius))
-            perp_vector1[1] = -1
-            BC = self.calculator.ReadAndTranspose(Joint1, trial_info)
-            TT = self.calculator.ReadAndTranspose(Joint1[0:3] + "TT", trial_info)
-            L_h_BC = self.calculator.calculate_BC_platform_angle(BC, TT, perp_vector1)[start:end]
-
-            angs = self.calculator.Calculate_joint_angle(trial_info, self.angles)
-            L_f_CT = np.asarray(angs[Joint1][start:end])
-
-            sig_to_use = L_f_CT
-            searches = "0"
-            CT_psd_collector = []
-            peaks, troughs = self.detector.detect_peaks_troughs(sig_to_use, leg=Joint1[0:3])
-            first_trough = 0
-            last_trough = 0
-            if len(troughs) - 1 <= 0:
-                CT_psd_collector = No_search_CT_psd
-                troughs = self.detector.find_first_trough_CT_ang(sig_to_use)
-                first_trough = troughs
-                last_trough = len(sig_to_use) - 1
-                print("No search CT")
-            elif len(troughs) - 1 == 1:
-                CT_psd_collector = One_search_CT_psd
-                first_trough = troughs[0]
-                last_trough = troughs[-1]
-                searches = "1"
-                print("One search CT")
-            else:
-                CT_psd_collector = Many_searches_CT_psd
-                first_trough = troughs[0]
-                last_trough = troughs[-1]
-                searches = "n"
-                print("Many search CT")
-
-
-
-            from scipy.signal import periodogram
-            from scipy.interpolate import interp1d
-            # Periodogram
-
-
-            troughs = troughs - first_trough
-            print(first_trough, last_trough + 1, len(sig_to_use))
-            # sig_to_use = sig_to_use[first_trough:last_trough]
-            sig_to_use = sig_to_use[first_trough:]
-
-            x_old = np.linspace(0, 1, len(sig_to_use))
-            x_new = np.linspace(0, 1, trial_info.fps)
-            f = interp1d(x_old, sig_to_use, kind='linear')
-            sig_to_use = f(x_new)
-
-            f_periodo, Pxx = periodogram(sig_to_use, trial_info.fps, nfft=trial_info.fps)
-            f_periodo = f_periodo[:Hz]
-            Pxx = Pxx[:Hz]
-            CT_psd_collector.append((f_periodo, Pxx))
-
-
-            fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(10, 8))
-            seconds = np.array([s / trial_info.fps for s in range(len(sig_to_use))])
-            sns.lineplot(x=seconds, y=sig_to_use, linewidth=5, ax=ax[0], color="blue")
-
-            ax[0].tick_params(axis="y", labelsize=25)
-            ax[0].tick_params(axis="x", labelsize=25)
-            ax[0].tick_params(width=3, length=20)
-            ax[0].spines["left"].set_linewidth(2)  # Top border
-            ax[0].spines["bottom"].set_linewidth(2)
-            ax[0].set_ylabel(f"{Joint1} angle", fontsize=25)
-            ax[0].set_xlabel("Landing transition duration (s)", fontsize=25)
-            ax[0].set_yticks([0, 30, 60, 90, 120, 150, 180])
-            ax[0].set_ylim(-5, 185)
-            ax[0].set_xticks([0, 1])
-
-            # fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10, 8))
-            ax[1].plot(f_periodo, Pxx, linewidth=5)
-            ax[1].tick_params(axis="y", labelsize=15)
-            ax[1].tick_params(axis="x", labelsize=15)
-            ax[1].tick_params(width=3, length=10)
-            ax[1].spines["left"].set_linewidth(2)  # Top border
-            ax[1].spines["bottom"].set_linewidth(2)
-            ax[1].set_yticks([0, 250, 500])
-            ax[1].set_ylim(-10, 510)
-            ax[1].set_xticks([0, (Hz - 1)/ 2, Hz - 1])
-            ax[1].set_xlabel("Hz", fontsize=25)
-            plt.suptitle(f"Fly{index[0]}_Trial{index[1]}_search_{searches}_angle_psd")
-            sns.despine(trim=True)
-            plt.tight_layout()
-            plt.savefig(f"Fly{index[0]}_Trial{index[1]}_angle_psd")
+            signal = np.asarray(angs[joint][start:end])
+            peaks, troughs = self.detector.detect_peaks_troughs(signal=signal, leg=joint[:3])
+
+            # plt.plot(signal)
+            # plt.scatter(peaks, signal[peaks])
+            # plt.scatter(troughs, signal[troughs])
             # plt.show()
-            plt.close()
+            # fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8, 8))
+            # t = np.asarray(range(len(peaks)))
+            print(len(troughs))
+            if len(troughs) != 0:
+                colors = plt.cm.plasma(np.linspace(0, 1, len(troughs) - 1))
+            # norm = Normalize(vmin=t.min(), vmax=int(t.max() - 1))
+            # cmap = cm.plasma
+            for p in range(len(troughs) - 1):
+                sns.lineplot(x=angs[joint][troughs[p] + start:troughs[p + 1] + start], y=angs[joint2][troughs[p] + start:troughs[p + 1] + start], sort=False, color=colors[p], linewidth=2, alpha=0.4)
+                """plt.scatter(x=np.mean(angs[joint][troughs[p] + start:troughs[p + 1] + start]),
+                            y=np.mean(angs[joint2][troughs[p] + start:troughs[p + 1] + start]),
+                            color=colors[p],
+                            alpha=0.4, s=100)"""
+                """if p == len(troughs) - 2:
+                    # sns.lineplot(x=angs[joint][troughs[p + 1] + start:end], y=angs[joint2][troughs[p + 1] + start:end], sort=False, color=colors[p + 1], linewidth=5, alpha=0.4)
+                    plt.scatter(x=np.mean(angs[joint][troughs[p + 1] + start:end]),
+                                y=np.mean(angs[joint2][troughs[p + 1] + start:end]),
+                                color=colors[p + 1],
+                                alpha=0.4,
+                                s=100)"""
 
-        fig, ax = plt.subplots(nrows=3, ncols=1, figsize=(5, 8), sharex=True)
 
-        def formating(ax, psd_data,  color, linestyle, hatch_style):
-            if len(psd_data) > 0:
-                psd_data = np.asarray(psd_data)
-                frequencies = psd_data[:, 0, :]  # shape: (3, 21)
-                powers = psd_data[:, 1, :]  # shape: (3, 21)
-                # Ensure all frequency axes are identical (optional sanity check)
-                if not np.allclose(frequencies[0], frequencies):
-                    raise ValueError("Mismatch in frequency axes!")
-
-                # Use the first frequency axis (they are assumed the same)
-                f = frequencies[0]
-                mean_pxx = powers.mean(axis=0)
-
-                for data in psd_data:
-                    # ax.plot(data[0], data[1], color="grey", linewidth=1, linestyle="solid")
-                    pass
-                print(np.shape(powers))
-                std_pxx = powers.std(axis=0)   # SEM
-                ax.plot(f, mean_pxx, color=color, linewidth=4, linestyle=linestyle)
-
-                if len(hatch_style) != 0:
-                    ax.fill_between(f, mean_pxx - std_pxx, mean_pxx + std_pxx, color="none", alpha=0.4, hatch=hatch_style, edgecolor=color)
-                else:
-                    ax.fill_between(f, mean_pxx - std_pxx, mean_pxx + std_pxx, color=color, alpha=0.4)
-
-                yl = 500
-                ax.set_ylim([-20, yl])
-                ax.set_yticks([0, yl])
-                ax.spines["left"].set_bounds(0, yl)
-
-            ax.get_xaxis().set_visible(False)
-            ax.tick_params(labelbottom=False)  # Hide x-axis labels
-            ax.set_xlabel("")
-            ax.tick_params(axis="y", labelsize=15)
-            ax.tick_params(width=3, length=5)
-            ax.spines["left"].set_linewidth(2)  # Top border
-            ax.spines["bottom"].set_linewidth(0)
-
-        fig.supylabel("Periodogram (PSD)", fontsize=15)
-        fig.supxlabel("Frequency (Hz)", fontsize=15)
-        ax[0].set_title(f"{Joint1} 1 search (n = {len(One_search_CT_psd)})", fontsize=15)
-        ax[1].set_title(f"{Joint1} > 1 searches (n = {len(Many_searches_CT_psd)})", fontsize=15)
-        ax[2].set_title(f"{Joint1} 0 search (n = {len(No_search_CT_psd)})", fontsize=15)
-
-
-        formating(ax[0], One_search_CT_psd, Color, "solid", "")
-        formating(ax[1], Many_searches_CT_psd, Color, "dashed", "//")
-        formating(ax[2], No_search_CT_psd, Color, "dotted", "|")
-        ax[-1].get_xaxis().set_visible(True)
-        ax[-1].tick_params(labelbottom=True)
-        ax[-1].set_xticks([0, (Hz - 1) / 2, Hz - 1])
-        ax[-1].set_xlim(-2, Hz + 1)
-        ax[-1].tick_params(axis="x", labelsize=15)
-        ax[-1].tick_params(width=3, length=5)
-        ax[-1].spines["bottom"].set_linewidth(2)
-
-        sns.despine(trim=True)
-        plt.tight_layout()
-        plt.savefig(f"{group_info.group_name} leg psd")
-        plt.show()
-
-        # plt.show()
-    def plot_InidividualLegContactDistribution(self, group_info:Group):
-        segs = [["R-fTT", "R-fLT"],
-                ["R-hTT", "R-hLT"],
-                ["L-fTT", "L-fLT"],
-                ["L-mTT", "L-mLT"],
-                ["L-hTT", "L-hLT"]]  # T3
-        L_f = [np.nan, np.nan, 303]
-        L_m = [551, np.nan, 302]
-        L_h = [550, 295, 304]
-        R_f = [547, 293, 312]
-        R_h = [538, 294, 301]
-        individual_leg_contact = dict()
-        individual_leg_contact["Leg"] = []
-        individual_leg_contact["ContactLatency"] = []
-        individual_leg_contact["LegContactOrder"] = []
-        individual_leg_contact["NormalizedLatency"] = []
-        individual_leg_contact["ContactToMOL"] = []
-        num_of_leg_contact_pertrial = []
-        index_to_iterate = group_info.get_targeted_trials(["Landing"])
-        index_to_iterate = [(1, 1), (1, 2), (1, 3)]
-        for index in index_to_iterate:
-            # print(f"Fly: {index[0]} Trial: {index[1]}")
-            pose_data = group_info.fly_kinematic_data[f"F{index[0]}T{index[1]}"]
-            start = int(pose_data.moc)
-            end = int(pose_data.mol)
-
-
-            line_points, plane_points, verts, cylinder_top, cylinder_bottom, direction, perp_vector1, perp_vector2 = (
-                self.calculator.transform_coords_and_calculate_platform_data(trial_info=pose_data,
-                                                                             platform_offset=self.platform_offset,
-                                                                             platform_height=self.platform_height,
-                                                                             radius=self.radius))
-
-            center_points = self.calculator.ReadAndTranspose("platform-tip", pose_data)
-            l = 0
-            intersects_moment = dict()
-            dist_trace = []
-            found = False
-            contact = 0
-            for current_frame in range(start, end):
-                for point in segs:
-                    if point[0][0:3] not in intersects_moment:
-                        A = [pose_data.trial_data[f"{point[0]}"].x_coord[current_frame],
-                             pose_data.trial_data[f"{point[0]}"].y_coord[current_frame],
-                             pose_data.trial_data[f"{point[0]}"].z_coord[current_frame]]
-                        B = [pose_data.trial_data[f"{point[1]}"].x_coord[current_frame],
-                             pose_data.trial_data[f"{point[1]}"].y_coord[current_frame],
-                             pose_data.trial_data[f"{point[1]}"].z_coord[current_frame]]
-
-                        P1 = center_points[current_frame]
-                        d = direction
-                        r = self.radius
-                        h = self.platform_height
-                        intersects_side, pt_side, min_dist = self.calculator.check_cylinder_side_intersection(A, B, P1, d, r, h)
-                        intersects_top, pt_top = self.detector.check_leg_platform_intersection(A, B, d, center_points[current_frame], self.platform_offset)
-                        if intersects_side or intersects_top:
-                            l += 1
-                            if index[1] < 10:
-                                print(f"Fly: {index[0]} Trial: {index[1]}   Leg: {point[0][0:3]} Contact latency: {(current_frame - start) / pose_data.fps:.5f}  Normalized latency: {(current_frame - start) / (end - start):.5f}  Frame ind: {current_frame}")
-                            else:
-                                print(f"Fly: {index[0]} Trial: {index[1]}  Leg: {point[0][0:3]} Contact latency: {(current_frame - start) / pose_data.fps:.5f}  Normalized latency: {(current_frame - start) / (end - start):.5f}  Frame ind: {current_frame}")
-
-                            # self.plot_motion_vector_with_plane(pose_data, current_frame)
-                            individual_leg_contact["Leg"].append(point[0][0:3])
-                            individual_leg_contact["ContactLatency"].append((current_frame - start) / pose_data.fps)
-                            individual_leg_contact["NormalizedLatency"].append((current_frame - start) / (end - start))
-                            individual_leg_contact["ContactToMOL"].append((end - current_frame)/(end - start))
-                            intersects_moment[point[0][0:3]] = (current_frame - start) / pose_data.fps
-
-                            # print(point[0][0:3], (f - start) / self.fps, (f - start) / (end - start), f, start, end)
-                            break
-            plt.plot(dist_trace)
-            plt.show()
-            segments_length = self.calculator.Calculate_segment_length(trial_info=pose_data, skeletons=[["L-mTT", "platform-tip"], ["L-mTT", "R-platform-tip"], ["L-mTT", "L-platform-tip"]])
-
-
-            if l != 0:
-                num_of_leg_contact_pertrial.append(l)
-            for point in segs:
-                if point[0][0:3] in intersects_moment:
-                    larger = 0
-                    for k in intersects_moment.keys():
-                        if intersects_moment[k] < intersects_moment[point[0][0:3]] and k != point[0][0:3]:
-                            larger += 1
-                    individual_leg_contact["LegContactOrder"].append(larger + 1)
-                    # print(f"Leg {point[0][0:3]}, Rank {larger + 1}, Latency {intersects_moment[point[0][0:3]]}")
-
-        Colors = ["blue", "orange", "green", "red", "cyan"]
-        individual_leg_contact = pd.DataFrame(individual_leg_contact)
-        print(individual_leg_contact)
-        r"""fig, ax = plt.subplots(nrows=len(segs), ncols=1, figsize=(10, 8))
-        for i in range(len(segs)):
-            filtered_df = individual_leg_contact[individual_leg_contact['Leg'] == segs[i][0][0:3]]
-            if len(filtered_df["NormalizedLatency"]) > 1:
-
-                sns.kdeplot(filtered_df["NormalizedLatency"], bw_adjust=0.3, color=Colors[i], ax=ax[i])
-                sns.histplot(filtered_df["NormalizedLatency"], alpha=0.5, binwidth=0.02, color=Colors[i], ax=ax[i])
-
-            ax[i].tick_params(axis="y", labelsize=15)
-            ax[i].tick_params(axis="x", labelsize=15)
-            ax[i].tick_params(width=3, length=5)
-            ax[i].spines["left"].set_linewidth(2)  # Top border
-            ax[i].spines["bottom"].set_linewidth(2)
-            ax[i].set_title(segs[i][0][0:3], fontsize=10)
-            ax[i].set_xlabel("")
-            # ax[i].set_xlabel("Normalized landing transition", fontsize=15)
-            ax[i].set_xticks([0, 0.5, 1], labels=["0\nmoc", "0.5", "1\nmol"])
-            ax[i].set_xlim(-0.1, 1.1)
-            ax[i].set_yticks([0, 15])
-            ax[i].set_ylim(-0.1, 15.1)
-        sns.despine(trim=True)
-        plt.suptitle(f"Leg contact latency {group_info.group_name}")
-        plt.tight_layout()
-        # plt.show()
-        plt.savefig(f"{group_info.group_name} contact latency")
-        plt.close()"""
-
-
-        fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10, 8))
-        sns.stripplot(x="Leg", y="ContactToMOL", hue="Leg", data=individual_leg_contact, size=10, alpha=0.4)
-
-        sns.despine(trim=True)
-        plt.suptitle(f"Leg contact latency {group_info.group_name}")
-        plt.tight_layout()
-        plt.savefig(f"{group_info.group_name} contact latency")
-        # plt.close()
-        plt.show()
-    def plotting_exp(self, group_info:Group):
-        angles_to_plane = []
-        aziumths = []
-        for index in group_info.get_targeted_trials(["Landing", "Flying"]):
-            fig = plt.figure(figsize=(10, 8))
-            ax = fig.add_subplot(111, projection='3d')
-            trial_info = group_info.fly_kinematic_data[f"F{index[0]}T{index[1]}"]
-            line_points, plane_points, verts, cylinder_top, cylinder_bottom, direction, perp_vector1, perp_vector2 = (
-                self.calculator.transform_coords_and_calculate_platform_data(trial_info=trial_info,
-                                                                             platform_offset=self.platform_offset,
-                                                                             platform_height=self.platform_height,
-                                                                             radius=self.radius))
-
-            start = trial_info.moc
-            end = trial_info.mol
-            tita_points = self.calculator.ReadAndTranspose("R-mTT", trial_info)
-            lt_points = self.calculator.ReadAndTranspose("R-mLT", trial_info)
-            tita_points = np.mean(tita_points[start - 20:start], axis=0)
-            lt_points = np.mean(lt_points[start - 20:start], axis=0)
-            angle_to_plane, azimuth, v, v_proj, n, ref = self.calculator.angle_with_plane_and_azimuth(tita_points,
-                                                                                                      lt_points,
-                                                                                                      direction,
-                                                                                                      np.array([0, 1, 0]))
-            aziumths.append(azimuth)
-            angles_to_plane.append((90 - angle_to_plane) / 90)
-
-            origin = np.array([0, 0, 0])
-            normal_tip = n / np.linalg.norm(n)
-
-            # Plot the normal vector from the origin
-            ax.quiver(*origin, *n, color='g', length=1, normalize=True)
-
-            # Plot the segment vector from the tip of the normal vector (repositioned for visualization)
-            ax.quiver(*normal_tip, *v, color='r', length=1, normalize=True)
-
-            # Plot the projected vector also from the normal tip
-            ax.quiver(*origin, *v_proj, color='b', length=1, normalize=True)
-
-            # Plot the reference direction from the origin
-            ax.quiver(*origin, *ref, color='orange', linestyle='dashed', length=1,
-                      normalize=True)
-            print(self.calculator.angle_between_vectors_360(origin - np.array([0, 1, 0]), origin - v_proj, True))
-            # Plane surface (XY plane)
-
-            plane_size = 1.5
-            xx, yy = np.meshgrid(np.linspace(-plane_size, plane_size, 10), np.linspace(-plane_size, plane_size, 10))
-            zz = np.zeros_like(xx)
-            ax.plot_surface(xx, yy, zz, alpha=0.2, color='gray')
-
-            ax.set_xlabel('X')
-            ax.set_ylabel('Y')
-            ax.set_zlabel('Z')
-            # ax.set_title(f"Angle to Plane: {angle_to_plane:.2f}°, Azimuth: {azimuth:.2f}°")
-            ax.legend()
-
-            plt.gca().set_aspect('equal')
-            plt.tight_layout()
-            plt.show()
-            self.plot_motion_vector_with_plane(trial_info, start)
-
-        fig = plt.figure()
-        ax = fig.add_subplot(111, polar=True)
-
-        azimuths_rad = np.radians(aziumths)
-
-
-        for theta, r in zip(azimuths_rad, angles_to_plane):
-            ax.annotate('', xy=(theta, r), xytext=(0, 0), arrowprops=dict(arrowstyle="->", color='crimson', lw=2))
-        # ax.plot(angles_to_plane, aziumths, 'o-', label="Vectors")
-
-        # Optional: Add labels and grid
-        ax.set_theta_zero_location("N")  # 0° is at the top (north)
-        ax.set_theta_direction(-1)  # Clockwise
-
-        ax.set_title("Vector Azimuths", va='bottom')
-        ax.legend()
-        plt.show()
-    def plot_FTCT_characteristic(self, group_info:Group):
-        inward_data = pd.read_excel(r"C:\Users\agrawal-admin\Desktop\Landing\Graph\Others\WT-T2-TiTa_outward_filtered.xlsx")
-        outward_data = pd.read_excel(r"C:\Users\agrawal-admin\Desktop\Landing\Graph\Others\WT-T2-TiTa_inward_filtered.xlsx")
-        index_to_iterate = group_info.get_targeted_trials(["Landing", "Flying"])
-        out_sig = []
-        in_sig = []
-        combined_sig = []
-
-        FT = True
-        CT = False
-
-        outward_color = ""
-        inward_color = ""
-        if FT:
-            outward_color = "orangered"
-            inward_color = "deepskyblue"
-        if CT:
-            outward_color = "orange"
-            inward_color = "blue"
-
-        fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10, 8))
-        total = 0
-        out = 0
-        IT_index = []
-        OT_index = []
-        for index in index_to_iterate:
-            # fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10, 8))
-            total += 1
-            trial_info = group_info.fly_kinematic_data[f"F{index[0]}T{index[1]}"]
-
-            line_points, plane_points, verts, cylinder_top, cylinder_bottom, direction, perp_vector1, perp_vector2 = (
-                self.calculator.transform_coords_and_calculate_platform_data(trial_info=trial_info,
-                                                                             platform_offset=self.platform_offset,
-                                                                             platform_height=self.platform_height,
-                                                                             radius=self.radius))
-
-            start = trial_info.moc
-            end = trial_info.mol
-            tita_points = self.calculator.ReadAndTranspose("R-mTT", trial_info)
-            lt_points = self.calculator.ReadAndTranspose("R-mLT", trial_info)
-            tita_points = np.mean(tita_points[start - 20:start], axis=0)
-            lt_points = np.mean(lt_points[start - 20:start], axis=0)
-            angle_to_plane, azimuth, v, v_proj, n, ref = self.calculator.angle_with_plane_and_azimuth(tita_points, lt_points, direction, np.array([0, 1, 0]))
-            tita_contact_angle = self.calculator.angle_between_vectors_360(np.array([0, 0, 0]) - np.array([0, 1, 0]), np.array([0, 0, 0]) - v_proj, True)
-
-
-            angs = self.calculator.Calculate_joint_angle(trial_info, self.angles)
-            output_ll = end - start
-            if start < 0:
-                start, leg, position = self.analyzer.DetermineTiTaMOC(trial_info)
-                end = start + trial_info.fps
-                output_ll = -1
-
-            seconds = [s / (end - start) for s in range(end - start)]
-            FT_posture = np.mean(angs["R-mFT"][start - 20:start])
-            CT_signal = angs["R-mCT"][start:end]
-            FT_signal = angs["R-mFT"][start:end]
-
-            signal_to_use = FT_signal
-            signal_to_display = None
-            if FT:
-                signal_to_display = FT_signal
-            elif CT:
-                signal_to_display = CT_signal
-
-            analysis_duration = int((end - start) * 0.8)
-            trend_duration = int((end - start) * 0.8)
-            slope_outward, extreme_counts = self.detector.MOC_touch_type_classifier("TiTa", "slopes", signal_to_use,
-                                                                                    analysis_duration=analysis_duration)
-            trend_outward, general_trend = self.detector.MOC_touch_type_classifier("TiTa", "trend", signal_to_use,
-                                                                                    trend_duration=trend_duration)
-            inward_proj = (tita_contact_angle > 100 and tita_contact_angle < 170)
-
-            # Manual data
-            if isinstance(outward_data.iloc[index[0] - 1][index[1]], int) or isinstance(outward_data.iloc[index[0] - 1][index[1]], float):
-                out_sig.append(signal_to_display)
-            if isinstance(inward_data.iloc[index[0] - 1][index[1]], int) or isinstance(inward_data.iloc[index[0] - 1][index[1]], float):
-                in_sig.append(signal_to_display)
-
-            combined_sig.append(signal_to_display)
-
-            if trend_outward or slope_outward or FT_posture < 30:
-                # sns.lineplot(x=seconds, y=signal_to_display, color=outward_color, ax=ax[0], linewidth=1, alpha=0.5)
-                # out_sig.append(signal_to_display)
-                group_info.predicted_data[f"F{index[0]}T{index[1]}"] = output_ll
-                # print(f"Fly {index[0]} Trial {index[1]}: Outward touch, start: {start}, trend:{general_trend}, extreme:{extreme_counts}, FT posture {FT_posture}")
-                out += 1
-                IT_index.append(index)
-            else:
-                # sns.lineplot(x=seconds, y=signal_to_display, color=inward_color, ax=ax[1], linewidth=1, alpha=0.5)
-                group_info.predicted_data[f"F{index[0]}T{index[1]}"] = "OT"
-                # print(f"Fly {index[0]} Trial {index[1]}, Inward touch,  start: {start}, trend:{general_trend}, extreme:{extreme_counts}, FT posture {FT_posture}")
-                # in_sig.append(signal_to_display)
-                OT_index.append(index)
-
-        r"""top_graph_tick_value = [0, 180]
-        ax.tick_params(axis="y", labelsize=15)
-        ax.tick_params(axis="x", labelsize=15)
-        ax.tick_params(width=3, length=5)
-        ax.spines["left"].set_linewidth(2)  # Top border
-        ax.spines["bottom"].set_linewidth(2)
-        ax.set_xticks([0, 0.5, 1], labels=["0\nmoc", "0.5", "1\nmol"])
-        ax.set_xlim(-0.1, 1.1)
-        ax.set_yticks([top_graph_tick_value[0], (top_graph_tick_value[0] + top_graph_tick_value[1]) / 2, top_graph_tick_value[1]])
-        ax.set_ylim(top_graph_tick_value[0] - 5, top_graph_tick_value[1] + 5)
-        ax.set_title("Outward bending contact", fontsize=15)"""
-        r"""ax[1].set_title("Normal contact", fontsize=15)
-        ax[1].tick_params(axis="y", labelsize=15)
-        ax[1].tick_params(axis="x", labelsize=15)
-        ax[1].tick_params(width=3, length=5)
-        ax[1].spines["left"].set_linewidth(2)  # Top border
-        ax[1].spines["bottom"].set_linewidth(2)
-        ax[1].set_xticks([0, 0.5, 1], labels=["0\nmoc", "0.5", "1\nmol"])
-        ax[1].set_xlim(-0.1, 1.1)
-        ax[1].set_yticks([bottom_graph_tick_value[0], (bottom_graph_tick_value[0] + bottom_graph_tick_value[1]) / 2,bottom_graph_tick_value[1]])
-        ax[1].set_ylim(bottom_graph_tick_value[0] - 5, bottom_graph_tick_value[1] + 5)"""
-
-        print(out / total)
-
-        # group_info.convert_to_output_data()
-
-        # self.manipulator.OutptuPrediction(group_info.convert_to_output_data(), f"{group_info.group_name}")
-
-
-        common_len = group_info.fps[0]  # any length you want
-        resampled_in = []
-        resampled_out = []
-        resampled_combined = []
-
-        # fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(10, 8))
-
-        from scipy.interpolate import interp1d
-        for s in in_sig:
-            x_old = np.linspace(0, 1, len(s))
-            x_new = np.linspace(0, 1, common_len)
-            f = interp1d(x_old, s, kind='linear')
-            resampled_in.append(f(x_new))
-
-        for s in out_sig:
-            x_old = np.linspace(0, 1, len(s))
-            x_new = np.linspace(0, 1, common_len)
-            f = interp1d(x_old, s, kind='linear')
-            resampled_out.append(f(x_new))
-
-        for s in combined_sig:
-            x_old = np.linspace(0, 1, len(s))
-            x_new = np.linspace(0, 1, common_len)
-            f = interp1d(x_old, s, kind='linear')
-            resampled_combined.append(f(x_new))
-
-        resampled_out = np.array(resampled_out)
-        mean = resampled_out.mean(axis=0)
-        sem = resampled_out.std(axis=0) / np.sqrt(len(resampled_out))
-
-        top_graph_tick_value = [30, 90]
-        x = np.linspace(0, 1, common_len)
-        ax.plot(x, mean, linewidth=5, color=outward_color)
-        ax.fill_between(x, mean - sem, mean + sem, alpha=0.3, label='SEM', color=outward_color)
-        ax.tick_params(axis="y", labelsize=15)
-        ax.tick_params(axis="x", labelsize=15)
-        ax.tick_params(width=3, length=5)
-        ax.spines["left"].set_linewidth(2)  # Top border
-        ax.spines["bottom"].set_linewidth(2)
-        ax.set_xticks([0, 0.5, 1], labels=["0\nmoc", "0.5", "1\nmol"])
-        ax.set_xlim(-0.1, 1.1)
-        ax.set_yticks([top_graph_tick_value[0], (top_graph_tick_value[0] + top_graph_tick_value[1]) / 2, top_graph_tick_value[1]])
-        ax.set_ylim(top_graph_tick_value[0] - 5, top_graph_tick_value[1] + 5)
-
-        resampled_in = np.array(resampled_in)
-        mean = resampled_in.mean(axis=0)
-        sem = resampled_in.std(axis=0) / np.sqrt(len(resampled_in))
-        x = np.linspace(0, 1, common_len)
-        ax.plot(x, mean,  linewidth=5, color=inward_color)
-        ax.fill_between(x, mean - sem, mean + sem, alpha=0.3, label='SEM', color=inward_color)
-
-        resampled_combined = np.array(resampled_combined)
-        mean = resampled_combined.mean(axis=0)
-        sem = resampled_combined.std(axis=0) / np.sqrt(len(resampled_combined))
-        ax.plot(x, mean,  linewidth=5, color="indigo")
-        ax.fill_between(x, mean - sem, mean + sem, alpha=0.3, label='SEM', color="indigo")
-
-
-        fig.supylabel('T2 Right FT angle', fontsize=20)
-        sns.despine(trim=True)
-        plt.xlabel("Standardized landing transition", fontsize=20)
-
-        plt.tight_layout()
-        plt.savefig(f"IT-OT-FT angle change.pdf")
-        plt.show()
-
-        IT_LL = []
-        IT_posture = []
-        OT_LL = []
-        OT_posture = []
-        for index in IT_index:
-            trial_info = group_info.fly_kinematic_data[f"F{index[0]}T{index[1]}"]
-            if trial_info.moc > 0 and (trial_info.mol - trial_info.moc) <= trial_info.fps:
-                IT_LL.append((trial_info.mol - trial_info.moc) / trial_info.fps)
-                angs = self.calculator.Calculate_joint_angle(trial_info, self.angles)
-                IT_posture.append(np.mean(angs["R-mFT"][:trial_info.fps]))
-        for index in OT_index:
-            trial_info = group_info.fly_kinematic_data[f"F{index[0]}T{index[1]}"]
-            if trial_info.moc > 0 and (trial_info.mol - trial_info.moc) <= trial_info.fps:
-                OT_LL.append((trial_info.mol - trial_info.moc) / trial_info.fps)
-                angs = self.calculator.Calculate_joint_angle(trial_info, self.angles)
-                OT_posture.append(np.mean(angs["R-mFT"][:trial_info.fps]))
-
-        fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10, 8))
-        plt.scatter(x=IT_posture, y=IT_LL, color="blue", alpha=0.5, s=100)
-        plt.scatter(x=OT_posture, y=OT_LL, color="red", alpha=0.5, s=100)
-
-        ax.spines["left"].set_linewidth(2)  # Top border
-        ax.spines["bottom"].set_linewidth(2)
-        ax.set_xticks([0, 45, 90])
-        ax.set_xlim(-5, 95)
-        ax.set_xlabel("R-mFT angle", fontsize=25)
-        ax.set_yticks([0, 0.5, 1])
-        ax.set_ylim(-0.1, 1.1)
-        ax.set_ylabel("Landing latency", fontsize=25)
         ax.tick_params(axis="y", labelsize=25)
         ax.tick_params(axis="x", labelsize=25)
-        ax.tick_params(width=3, length=5)
+        ax.tick_params(width=3, length=20)
+        ax.spines["left"].set_linewidth(2)  # Top border
+        ax.spines["bottom"].set_linewidth(2)
+        ax.set_ylabel("L-hFT angle", fontsize=25)
+        ax.set_xlabel("L-hCT angle", fontsize=25)
+        ax.set_yticks([0, 90, 180])
+        ax.set_ylim(-5, 185)
+        ax.set_xticks([0, 90, 180])
+        ax.set_xlim(-5, 185)
         sns.despine(trim=True)
-
+        plt.tight_layout()
+        # plt.savefig(f"Fly{index[0]}AngleSpace")
         plt.show()
-    def plot_FTCT_manual(self, group_info:Group):
-
-        index_to_iterate = [(12, 13, 1), (1, 1, 1), (1, 2, 1), (1, 3, 1), (1, 4, 1), (1, 5, 1), (1, 6, 1), (1, 7, 1), (1, 8, 1), (1, 9, 1), (1, 10, 1),
-                            (1, 12, 0), (1, 14, 1), (1, 15, 1), (1, 16, 1), (1, 17, 1), (1, 18, 1), (1, 20, 1), (2, 1, 0), (2, 3, 0), (2, 6, 0),
-                            (2, 11, 0), (2, 16, 0), (4, 5, 1), (4, 6, 1), (5, 5, 0)]
-        out_sig = []
-        in_sig = []
-
-        FT = False
-        CT = True
-
-        outward_color = ""
-        inward_color = ""
-        if FT:
-            outward_color = "orangered"
-            inward_color = "deepskyblue"
-        if CT:
-            outward_color = "orange"
-            inward_color = "blue"
-
-        # fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(10, 8))
-        total = 0
-        out = 0
-        for index in index_to_iterate:
-            fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(10, 8))
-            total += 1
-            trial_info = group_info.fly_kinematic_data[f"F{index[0]}T{index[1]}"]
-
-            angs = self.calculator.Calculate_joint_angle(trial_info, self.angles)
-            start = trial_info.moc
-            end = trial_info.mol
-            output_ll = end - start
-            if start < 0:
-                start, leg, position = self.analyzer.DetermineTiTaMOC(trial_info)
-                end = start + trial_info.fps
-                output_ll = -1
 
 
-            seconds = [s / (end - start) for s in range(end - start)]
-            CT_signal = angs["R-mCT"][start:end]
-            FT_signal = angs["R-mFT"][start:end]
-
-            signal_to_use = FT_signal
-            signal_to_display = None
-            if FT:
-                signal_to_display = FT_signal
-            elif CT:
-                signal_to_display = CT_signal
-
-            analysis_duration = int((end - start) * 0.5)
-            x = np.arange(analysis_duration)
-            general_trend, _, _, _, _ = linregress(x, signal_to_use[:analysis_duration])
-
-            if index[2] == 1:
-                sns.lineplot(x=seconds, y=signal_to_display, color=outward_color, ax=ax[0], linewidth=1, alpha=0.5)
-                out_sig.append(signal_to_display)
-                group_info.predicted_data[f"F{index[0]}T{index[1]}"] = -1
-                print(f"Fly {index[0]} Trial {index[1]}: Outward touch, start: {start}, general trend:{general_trend}")
-                out += 1
-            else:
-                sns.lineplot(x=seconds, y=signal_to_display, color=inward_color, ax=ax[1], linewidth=1, alpha=0.5)
-                group_info.predicted_data[f"F{index[0]}T{index[1]}"] = output_ll
-                print(f"Fly {index[0]} Trial {index[1]}, Inward touch,  start: {start}, general trend:{general_trend}")
-                in_sig.append(signal_to_display)
-
-            top_graph_tick_value = [0, 90]
-            bottom_graph_tick_value = [0, 90]
-            ax[0].tick_params(axis="y", labelsize=15)
-            ax[0].tick_params(axis="x", labelsize=15)
-            ax[0].tick_params(width=3, length=5)
-            ax[0].spines["left"].set_linewidth(2)  # Top border
-            ax[0].spines["bottom"].set_linewidth(2)
-            ax[0].set_xticks([0, 0.5, 1], labels=["0\nmoc", "0.5", "1\nmol"])
-            ax[0].set_xlim(-0.1, 1.1)
-            ax[0].set_yticks([top_graph_tick_value[0], (top_graph_tick_value[0] + top_graph_tick_value[1]) / 2, top_graph_tick_value[1]])
-            ax[0].set_ylim(top_graph_tick_value[0] - 5, top_graph_tick_value[1] + 5)
-            ax[0].set_title("Outward bending contact", fontsize=15)
-            ax[1].set_title("Normal contact", fontsize=15)
-            ax[1].tick_params(axis="y", labelsize=15)
-            ax[1].tick_params(axis="x", labelsize=15)
-            ax[1].tick_params(width=3, length=5)
-            ax[1].spines["left"].set_linewidth(2)  # Top border
-            ax[1].spines["bottom"].set_linewidth(2)
-            ax[1].set_xticks([0, 0.5, 1], labels=["0\nmoc", "0.5", "1\nmol"])
-            ax[1].set_xlim(-0.1, 1.1)
-            ax[1].set_yticks([bottom_graph_tick_value[0], (bottom_graph_tick_value[0] + bottom_graph_tick_value[1]) / 2,bottom_graph_tick_value[1]])
-            ax[1].set_ylim(bottom_graph_tick_value[0] - 5, bottom_graph_tick_value[1] + 5)
-            fig.supylabel('FT angle upon moc', fontsize=20)
-            sns.despine(trim=True)
-            plt.xlabel("Standardized landing transition duration", fontsize=20)
-            plt.tight_layout()
-            plt.show()
-
-        # plt.show()
     def plot_CTF_MOC(self, group_info:Group):
 
         index_to_iterate = group_info.get_targeted_trials(["Landing", "Flying"])
@@ -2089,276 +425,76 @@ class PlotCreator:
         plt.xlabel("Standardized landing transition duration", fontsize=20)
         sns.despine(trim=True)
         plt.show()
-    def plot_angle_change_traces(self, group_info:Group):
 
-        Joint1 = "R-mCT"
-        Joint4 = "R-mFT"
-
-        fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(10, 8))
-
-        collected_angle_1 = []
-        collected_angle_2 = []
-        seconds = np.asarray([s / group_info.fps[0] for s in range(group_info.fps[0])])
-        for index in group_info.get_targeted_trials(["Landing"]):
-            print(f"F{index[0]}T{index[1]}")
-            trial_info = group_info.fly_kinematic_data[f"F{index[0]}T{index[1]}"]
-            start = int(trial_info.moc)
-            end = int(trial_info.mol)
-            angs = self.calculator.Calculate_joint_angle(trial_info, self.angles)
-
-
-            L_f_CT = np.asarray(angs[Joint1][start:end])
-            x_old = np.linspace(0, 1, len(L_f_CT))
-            x_new = np.linspace(0, 1, trial_info.fps)
-            f = interp1d(x_old, L_f_CT, kind='linear')
-            L_f_CT = f(x_new)
-            # L_f_CT = self.calculator.normalize_list(L_f_CT)
-            # sns.lineplot(x=seconds, y=L_f_CT, linewidth=1, ax=ax[0], color="grey")
-            collected_angle_1.append(L_f_CT)
-
-
-            L_f_FT = np.asarray(angs[Joint4][start:end])
-            x_old = np.linspace(0, 1, len(L_f_FT))
-            x_new = np.linspace(0, 1, trial_info.fps)
-            f = interp1d(x_old, L_f_FT, kind='linear')
-            L_f_FT = f(x_new)
-            # L_f_FT = self.calculator.normalize_list(L_f_FT)
-            # sns.lineplot(x=seconds, y=L_f_FT, linewidth=1, ax=ax[1], color="grey")
-            collected_angle_2.append(L_f_FT)
-
-        collected_angle_1 = np.asarray(collected_angle_1)
-        mean_angle_1 = collected_angle_1.mean(axis=0)
-        sem = collected_angle_1.std(axis=0) / np.sqrt(len(collected_angle_1))
-        print(np.shape(sem))
-        ax[0].fill_between(seconds, mean_angle_1 - sem, mean_angle_1 + sem, color="blue", alpha=0.4)
-        sns.lineplot(x=seconds, y=mean_angle_1, linewidth=5, ax=ax[0], color="blue")
-
-
-        collected_angle_2 = np.asarray(collected_angle_2)
-        mean_angle_2 = collected_angle_2.mean(axis=0)
-        sem = collected_angle_2.std(axis=0) / np.sqrt(len(collected_angle_2))
-        ax[1].fill_between(seconds, mean_angle_2 - sem, mean_angle_2 + sem, color="orange", alpha=0.4)
-        sns.lineplot(x=seconds, y=mean_angle_2, linewidth=5, ax=ax[1], color="orange")
-
-        ax[0].tick_params(axis="y", labelsize=15)
-        ax[0].tick_params(axis="x", labelsize=15)
-        ax[0].tick_params(width=3, length=10)
-        ax[0].spines["left"].set_linewidth(2)  # Top border
-        ax[0].spines["bottom"].set_linewidth(2)
-        ax[0].set_ylabel(f"{Joint1} angle", fontsize=25)
-        ax[0].set_xlabel("Landing transition duration (s)", fontsize=25)
-        # ax[0].set_yticks([0, 0.5, 1])
-        # ax[0].set_ylim(-0.1, 1.1)
-        ax[0].set_yticks([50, 70, 90])
-        ax[0].set_ylim(45, 95)
-
-        ax[1].tick_params(axis="y", labelsize=15)
-        ax[1].tick_params(axis="x", labelsize=15)
-        ax[1].tick_params(width=3, length=10)
-        ax[1].spines["left"].set_linewidth(2)  # Top border
-        ax[1].spines["bottom"].set_linewidth(2)
-        ax[1].set_ylabel(f"{Joint4} angle", fontsize=25)
-        ax[1].set_xlabel("Landing transition duration (s)", fontsize=25)
-        ax[1].set_yticks([20, 40, 60])
-        ax[1].set_ylim(15, 65)
-        # ax[1].set_yticks([0, 0.5, 1])
-        # ax[1].set_ylim(-0.1, 1.1)
-        sns.despine(trim=True)
-        plt.tight_layout()
-        plt.savefig(f"{group_info.group_name}_angle_traces")
-        plt.show()
-    def normalized_leg_angle_change_trace(self, group_info:Group):
-        fig, ax = plt.subplots(nrows=3, ncols=1, figsize=(5, 8), sharex=True)
-        One_search_CT = []
-        Many_searches_CT = []
-        No_search_CT = []
-
-        Joint = "R-hBC"
-
-        for index in group_info.landing_trial_index:
-            print(f"F{index[0]}T{index[1]}")
-            trial_info = group_info.fly_kinematic_data[f"F{index[0]}T{index[1]}"]
-            start = int(trial_info.moc)
-            end = int(trial_info.mol)
-
-            line_points, plane_points, verts, cylinder_top, cylinder_bottom, direction, perp_vector1, perp_vector2 = (
-                self.calculator.transform_coords_and_calculate_platform_data(trial_info=trial_info,
-                                                                             platform_offset=self.platform_offset,
-                                                                             platform_height=self.platform_height,
-                                                                             radius=self.radius))
-            perp_vector1[1] = -1
-            BC = self.calculator.ReadAndTranspose(Joint, trial_info)
-            TT = self.calculator.ReadAndTranspose(Joint[0:3] + "TT", trial_info)
-            L_h_BC = self.calculator.calculate_BC_platform_angle(BC, TT, perp_vector1)[start:end]
-
-            angs = self.calculator.Calculate_joint_angle(trial_info, self.angles)
-            f_m_CT = np.asarray(angs[Joint][start:end])
-            sig_to_use = f_m_CT
-
-            peaks, troughs = self.detector.detect_peaks_troughs(sig_to_use, leg=Joint[0:3])
-
-            if len(troughs) - 1 <= 0:
-                No_search_CT.append(sig_to_use[self.detector.find_first_trough_CT_ang(sig_to_use):])
-            elif len(troughs) - 1 == 1:
-                One_search_CT.append(sig_to_use[troughs[0]:])
-            else:
-                Many_searches_CT.append(sig_to_use[troughs[0]:])
-
-        def plot_standardized_trace(ax, collected_data, color, linestyle):
-            for data in collected_data:
-                # seconds = [x / len(data) for x in range(len(data))]
-                seconds = [x / trial_info.fps for x in range(len(data))]
-                ax.plot(seconds, data, color="grey", linestyle=linestyle, linewidth=1)
-
-            ax.set_ylim([-5, 185])
-            ax.set_yticks([0, 90, 180])
-            # ax.spines["left"].set_bounds(0, yl)
-
-            common_len = group_info.fps[0]
-            resampled = []
-
-            from scipy.interpolate import interp1d
-            for s in collected_data:
-                x_old = np.linspace(0, 1, len(s))
-                x_new = np.linspace(0, 1, common_len)
-                f = interp1d(x_old, s, kind='linear')
-                resampled.append(f(x_new))
-
-
-            resampled = np.array(resampled)
-            mean = resampled.mean(axis=0)
-            sem = resampled.std(axis=0) / np.sqrt(len(resampled))
-
-            x = np.linspace(0, 1, common_len)
-            if not isinstance(mean, np.float64):
-                # ax.plot(x, mean, label='Mean', color=color, linestyle=linestyle, linewidth=5)
-                pass
-
-
-            ax.get_xaxis().set_visible(False)
-            ax.tick_params(labelbottom=False)  # Hide x-axis labels
-            ax.set_xlabel("")
-            ax.tick_params(axis="y", labelsize=15)
-            ax.tick_params(width=3, length=5)
-            ax.spines["left"].set_linewidth(2)  # Top border
-            ax.spines["bottom"].set_linewidth(0)
-
-        fig.supylabel("Joint angle", fontsize=15)
-        fig.supxlabel("Landing transition duration (moc - mol)", fontsize=15)
-        ax[0].set_title(f"{Joint} 1 search (n = {len(One_search_CT)})", fontsize=15)
-        ax[1].set_title(f"{Joint} > 1 searches (n = {len(Many_searches_CT)})", fontsize=15)
-        ax[2].set_title(f"{Joint} 0 search (n = {len(No_search_CT)})", fontsize=15)
-
-        Color = "mediumpurple"
-        plot_standardized_trace(ax[0], One_search_CT, Color, "solid")
-        plot_standardized_trace(ax[1], Many_searches_CT, Color, "dashed")
-        plot_standardized_trace(ax[2], No_search_CT, Color, "dotted")
-        ax[-1].get_xaxis().set_visible(True)
-        ax[-1].tick_params(labelbottom=True)
-        ax[-1].set_xticks([0, 0.5, 1])
-        ax[-1].set_xlim(-0.1, 1.1)
-        ax[-1].tick_params(axis="x", labelsize=15)
-        ax[-1].tick_params(width=3, length=5)
-        ax[-1].spines["bottom"].set_linewidth(2)
-
-        sns.despine(trim=True)
-        plt.tight_layout()
-        plt.show()
-        # plt.savefig(f"{group_info.group_name} leg psd")
-    def plot_angle_change_traces_groups(self, groups):
-
-        Joint = "R-mCT"
-
-
-        colors = ["blue", "red", "orange", "green", "deepskyblue", "cyan", "olive", "indigo"]
-        fig, ax = plt.subplots(nrows=len(groups), ncols=1, figsize=(5, 8))
-
-        for g, group_info in enumerate(groups):
-            collected_angle_1 = []
-            group_info.read_all_data()
-            group_info.filter_nan_fly()
-            seconds = np.asarray([s / group_info.fps[0] for s in range(group_info.fps[0])])
-            for index in group_info.get_targeted_trials(["Landing"]):
-                print(f"G{group_info.group_name} F{index[0]} T{index[1]}")
-                trial_info = group_info.fly_kinematic_data[f"F{index[0]}T{index[1]}"]
-                start = int(trial_info.moc)
-                end = int(trial_info.mol)
-                angs = self.calculator.Calculate_joint_angle(trial_info, self.angles)
-
-
-                L_f_CT = np.asarray(angs[Joint][start:end])
-                x_old = np.linspace(0, 1, len(L_f_CT))
-                x_new = np.linspace(0, 1, group_info.fps[0])
-                f = interp1d(x_old, L_f_CT, kind='linear')
-                L_f_CT = f(x_new)
-                L_f_CT = self.calculator.normalize_list(L_f_CT)
-                sns.lineplot(x=seconds, y=L_f_CT, linewidth=1, ax=ax[g], color="grey")
-                collected_angle_1.append(L_f_CT)
-
-
-            collected_angle_1 = np.asarray(collected_angle_1)
-            mean_angle_1 = collected_angle_1.mean(axis=0)
-            sem = collected_angle_1.std(axis=0) / np.sqrt(len(collected_angle_1))
-            print(np.shape(sem))
-            # ax[g].fill_between(seconds, mean_angle_1 - sem, mean_angle_1 + sem, color=colors[g], alpha=0.4)
-            sns.lineplot(x=seconds, y=mean_angle_1, linewidth=5, ax=ax[g], color=colors[g], linestyle="dashed")
-
-            ax[g].set_title(f"{group_info.group_name}", fontsize=10)
-            ax[g].tick_params(axis="y", labelsize=15)
-            ax[g].tick_params(width=3, length=10)
-            ax[g].spines["left"].set_linewidth(2)  # Top border
-            ax[g].spines["bottom"].set_linewidth(0)
-            # ax[g].set_yticks([0, 90, 180])
-            # ax[g].set_ylim(-5, 185)
-            # ax[g].set_yticks([20, 40, 60])
-            # ax[g].set_ylim(18, 62)
-            # ax[g].set_yticks([50, 70, 90])
-            # ax[g].set_ylim(48, 92)
-            ax[g].set_yticks([0, 0.5, 1])
-            ax[g].set_ylim(-0.05, 1.05)
-            ax[g].get_xaxis().set_visible(False)
-            ax[g].tick_params(labelbottom=False)  # Hide x-axis labels
-            ax[g].set_xlabel("")
-            ax[g].set_xlim(-0.05, 1.05)
-        fig.supylabel(f"{Joint} angle", fontsize=25)
-        ax[-1].get_xaxis().set_visible(True)
-        ax[-1].tick_params(labelbottom=True)  # Hide x-axis labels
-        # ax[-1].set_xlabel("")
-        ax[-1].set_xticks([0, 0.5, 1], labels=["0\nmoc", "0.5", "1\nmol"])
-        ax[-1].spines["bottom"].set_linewidth(2)
-        ax[-1].tick_params(axis="x", labelsize=15)
-        sns.despine(trim=True)
-        plt.tight_layout()
-        plt.savefig(f"Collected_mean_{Joint}_angle_traces")
-        plt.show()
     def plot_Inidi_Leg_Contact(self, group_info:Group):
-        segs = [["R-fTT", "R-fLT"],
-                ["R-hTT", "R-hLT"],
-                ["L-fTT", "L-fLT"],
-                ["L-mTT", "L-mLT"],
-                ["L-hTT", "L-hLT"]]  # T3
 
-        L_f = [np.nan, np.nan, 303]
-        L_m = [551, np.nan, 302]
-        L_h = [550, 295, 304]
-        R_f = [547, 293, 312]
-        R_h = [538, 294, 301]
+        segs = [["L-fFT", "L-fTT", 0.45],
+                ["L-fTT", "L-fLT", 0.4],
 
-        indi_leg_min_dist = dict()
+                ["L-mFT", "L-mTT", 0.5],
+                ["L-mTT", "L-mLT", 0.4],
 
+                ["L-hFT", "L-hTT", 0.6],
+                ["L-hTT", "L-hLT", 0.5],
+
+                ["R-fFT", "R-fTT", 0.45],
+                ["R-fTT", "R-fLT", 0.4],
+
+                ["R-mFT", "R-mTT", 0.5],
+                ["R-mTT", "R-mLT", 0.4],
+
+                ["R-hFT", "R-hTT", 0.5],
+                ["R-hTT", "R-hLT", 0.4]]
+
+        pts = ["L-fFT", "L-fTT", "L-fLT",
+               "L-mFT", "L-mTT", "L-mLT",
+               "L-hFT", "L-hTT", "L-hLT",
+               "R-fFT", "R-fTT", "R-fLT",
+               "R-mFT", "R-mTT", "R-mLT",
+               "R-hFT", "R-hTT", "R-hLT"]
+
+
+        indi_leg_contact_event = dict()
+        indi_leg_contact_event_tnorm = dict()
+        for j in segs:
+            indi_leg_contact_event[j[0]] = []
+            indi_leg_contact_event_tnorm[j[0]] = []
+
+        indi_leg_contact_event["Index"] = []
+        indi_leg_contact_event["LLBin"] = []
+
+        indi_leg_contact_event_tnorm["Index"] = []
+        indi_leg_contact_event_tnorm["LLBin"] = []
 
         index_to_iterate = group_info.get_targeted_trials(["Landing"])
-        index_to_iterate = [(1, 1), (1, 2), (1, 3)]
         for i, index in enumerate(index_to_iterate):
-            indi_leg_min_dist["L-f"] = []
-            indi_leg_min_dist["L-m"] = []
-            indi_leg_min_dist["L-h"] = []
-            indi_leg_min_dist["R-f"] = []
-            indi_leg_min_dist["R-h"] = []
+            # print(index, group_info.fly_kinematic_data_path[f"F{index[0]}T{index[1]}"])
             pose_data = group_info.fly_kinematic_data[f"F{index[0]}T{index[1]}"]
+            if "_LO_" in group_info.fly_kinematic_data_path[f"F{index[0]}T{index[1]}"]:
+                # print("OFF-trial")
+                continue
+            else:
+                print(group_info.fly_kinematic_data_path[f"F{index[0]}T{index[1]}"])
+
             start = int(pose_data.moc)
             end = int(pose_data.mol)
-
+            if end == -1:
+                end = start + int(0.7 * pose_data.fps)
+                indi_leg_contact_event["LLBin"].append("Flying")
+                indi_leg_contact_event_tnorm["LLBin"].append("Flying")
+            elif (end - start) / pose_data.fps > 0.71:
+                end = start + int(0.7 * pose_data.fps)
+                indi_leg_contact_event["LLBin"].append("Supra_threshold")
+                indi_leg_contact_event_tnorm["LLBin"].append("Supra_threshold")
+            elif (end - start) / pose_data.fps <= 0.3:
+                indi_leg_contact_event["LLBin"].append("Low_latency")
+                indi_leg_contact_event_tnorm["LLBin"].append("Low_latency")
+            elif (end - start) / pose_data.fps <= 0.71:
+                indi_leg_contact_event["LLBin"].append("High_latency")
+                indi_leg_contact_event_tnorm["LLBin"].append("High_latency")
+            else:
+                print("Unable to categorize!")
+            print("data read")
 
             line_points, plane_points, verts, cylinder_top, cylinder_bottom, direction, perp_vector1, perp_vector2 = (
                 self.calculator.transform_coords_and_calculate_platform_data(trial_info=pose_data,
@@ -2366,325 +502,74 @@ class PlotCreator:
                                                                              platform_height=self.platform_height,
                                                                              radius=self.radius))
 
-            center_points = self.calculator.ReadAndTranspose("platform-tip", pose_data)
-            for current_frame in range(start, end):
-                for point in segs:
-                    A = [pose_data.trial_data[f"{point[0]}"].x_coord[current_frame],
-                         pose_data.trial_data[f"{point[0]}"].y_coord[current_frame],
-                         pose_data.trial_data[f"{point[0]}"].z_coord[current_frame]]
-                    B = [pose_data.trial_data[f"{point[1]}"].x_coord[current_frame],
-                         pose_data.trial_data[f"{point[1]}"].y_coord[current_frame],
-                         pose_data.trial_data[f"{point[1]}"].z_coord[current_frame]]
+            Original_points = dict()
+            center_points = self.calculator.ReadAndTranspose("platform-tip", pose_data)[start:end]
+            for p in pts:
+                Original_points[p] = self.calculator.ReadAndTranspose(p, pose_data)[start:end]
 
+            # event_recorder = []
+            for point in segs:
+                NoContact = True
+                distances = []
+                stable_contact = 0
+                for current_frame in range(end - start):
+                    A = Original_points[point[0]][current_frame]
+                    B = Original_points[point[1]][current_frame]
                     P1 = center_points[current_frame]
+
                     d = direction
-                    r = self.radius
+                    r = point[2]
                     h = self.platform_height
+
                     intersects_side, pt_side, min_dist = self.calculator.check_cylinder_side_intersection(A, B, P1, d, r, h)
-                    # intersects_top, pt_top = self.detector.check_leg_platform_intersection(A, B, d, center_points[current_frame], self.platform_offset)
-                    indi_leg_min_dist[point[0][0:3]].append(min_dist)
-            sns.lineplot(indi_leg_min_dist["L-f"], color="blue", linewidth=5)
-            sns.lineplot(abs(np.gradient(indi_leg_min_dist["L-f"])), color="blue", linewidth=3)
-            plt.axvline(self.detector.detect_leg_contact(indi_leg_min_dist["L-f"]), color="blue")
+                    intersects_top, pt_top = self.detector.check_leg_platform_intersection(A, B, d, center_points[current_frame], self.platform_offset)
+                    distances.append(min_dist)
+                    # indi_leg_min_dist[point[0][0:3]].append(min_dist)
+                    if intersects_top or intersects_side:
+                        stable_contact += 1
+                    else:
+                        stable_contact = 0
+                    if stable_contact >= 1:
+                        indi_leg_contact_event[point[0]].append(current_frame / pose_data.fps)
+                        indi_leg_contact_event_tnorm[point[0]].append(current_frame / (end - start))
+                        NoContact = False
+                        break
 
-            sns.lineplot(indi_leg_min_dist["L-m"], color="orange", linewidth=5)
-            sns.lineplot(abs(np.gradient(indi_leg_min_dist["L-m"])), color="orange", linewidth=3)
-            plt.axvline(self.detector.detect_leg_contact(indi_leg_min_dist["L-m"]), color="orange")
+                if NoContact:
+                    indi_leg_contact_event[point[0]].append(10000)
+                    indi_leg_contact_event_tnorm[point[0]].append(10000)
 
-            sns.lineplot(indi_leg_min_dist["L-h"], color="green", linewidth=5)
-            sns.lineplot(abs(np.gradient(indi_leg_min_dist["L-h"])), color="green", linewidth=3)
-            plt.axvline(self.detector.detect_leg_contact(indi_leg_min_dist["L-h"]), color="green")
-
-            sns.lineplot(indi_leg_min_dist["R-f"], color="grey", linewidth=5)
-            sns.lineplot(abs(np.gradient(indi_leg_min_dist["R-f"])), color="grey", linewidth=3)
-            plt.axvline(self.detector.detect_leg_contact(indi_leg_min_dist["R-f"]), color="grey")
-
-            sns.lineplot(indi_leg_min_dist["R-h"], color="cyan", linewidth=5)
-            sns.lineplot(abs(np.gradient(indi_leg_min_dist["R-h"])), color="cyan", linewidth=3)
-            plt.axvline(self.detector.detect_leg_contact(indi_leg_min_dist["R-h"]), color="cyan")
-            plt.show()
+            if index not in indi_leg_contact_event["Index"]:
+                indi_leg_contact_event["Index"].append(index)
+                indi_leg_contact_event_tnorm["Index"].append(index)
 
 
-        Colors = ["blue", "orange", "green", "red", "cyan"]
+        indi_leg_contact_event = pd.DataFrame(indi_leg_contact_event)
+        indi_leg_contact_event_tnorm = pd.DataFrame(indi_leg_contact_event_tnorm)
+        indi_leg_contact_event.to_csv(f"{group_info.group_name}_SecondaryContact_.csv")
+        indi_leg_contact_event_tnorm.to_csv(f"{group_info.group_name}_SecondaryContact_tnorm.csv")
+        """n_behaviors = len(indi_leg_contact_event)
+        fig, axes = plt.subplots(n_behaviors, 1, sharex=True, figsize=(8, 2 * n_behaviors))
 
+        if n_behaviors == 1:
+            axes = [axes]
 
+        c = 0
+        for ax, (behavior, trials) in zip(axes, indi_leg_contact_event.items()):
+            for trial_idx, frames in enumerate(trials):
+                ax.vlines(frames, trial_idx + 0.5, trial_idx + 1.5, color=colors[c])
+            c += 1
 
-        fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10, 8))
-    def plot_angle_relative_mol(self, group_info:Group):
+            ax.set_ylim(0.5, len(trials) + 0.5)
+            ax.set_ylabel("Trial")
+            ax.set_title(behavior)
 
-        fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(10, 8))
-        for index in group_info.get_targeted_trials(["Landing"]):
-            print(f"Fly {index[0]} Trial {index[1]}")
-            trial_info = group_info.fly_kinematic_data[f"F{index[0]}T{index[1]}"]
-            start = int(trial_info.moc)
-            end = int(trial_info.mol)
-            angs = self.calculator.Calculate_joint_angle(trial_info, self.angles)
-            R_mCT = angs["R-mCT"][start:end]
-            R_mFT = angs["R-mFT"][start:end]
-            seconds = [(s - (end - start - 1)) / trial_info.fps for s in range(end - start)]
-            # seconds = [s / trial_info.fps for s in range(end - start)]
-            sns.lineplot(x=seconds, y=R_mCT, linewidth=1, ax=ax[0], color="blue")
-            sns.lineplot(x=seconds, y=R_mFT, linewidth=1, ax=ax[1], color="orange")
-
-        ax[0].tick_params(axis="y", labelsize=15)
-        ax[0].tick_params(axis="x", labelsize=15)
-        ax[0].tick_params(width=3, length=10)
-        ax[0].spines["left"].set_linewidth(2)  # Top border
-        ax[0].spines["bottom"].set_linewidth(2)
-        ax[0].set_ylabel(f"R-mCT angle", fontsize=25)
-        ax[0].set_xlabel("Landing transition duration (s)", fontsize=25)
-        ax[0].set_xticks([-1, -0.5, 0], labels=["-1", "-0.5", "0\nmol"])
-        ax[0].set_yticks([0, 70, 140])
-        ax[0].set_ylim(-5, 145)
-
-        ax[1].tick_params(axis="y", labelsize=15)
-        ax[1].tick_params(axis="x", labelsize=15)
-        ax[1].tick_params(width=3, length=10)
-        ax[1].spines["left"].set_linewidth(2)  # Top border
-        ax[1].spines["bottom"].set_linewidth(2)
-        ax[1].set_ylabel(f"R-mFT angle", fontsize=25)
-        ax[1].set_xlabel("Landing transition duration (s)", fontsize=25)
-        ax[1].set_xticks([-1, -0.5, 0], labels=["-1", "-0.5", "0\nmol"])
-        ax[1].set_yticks([0, 70, 140])
-        ax[1].set_ylim(-5, 145)
-        sns.despine(trim=True)
+        axes[-1].set_xlabel("Frame")
         plt.tight_layout()
-        plt.show()
-        return
-    def plot_FT_change(self, group_info:Group):
+        plt.savefig(f"{group_info.group_name}_raster")
+        plt.show()"""
 
-        import matplotlib.cm as cm
-        # Choose a colormap (e.g., viridis, plasma, coolwarm, etc.)
-        cmap = cm.get_cmap('viridis', 10)
-
-        # Generate list of colors
-        colors = [cmap(i) for i in range(10)]
-
-        color = ["", "red", "green"]
-        C = colors[0]
-        joint = "R-mFT"
-        start = 2
-        stop = 6
-        fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8, 5))
-        LO_traces = []
-        NL_traces = []
-        UseLight = False
-        fly_start = 11
-        fly_stop = 25
-        for index in group_info.get_targeted_trials(["Landing"]):
-            # if index[0] >= fly_start and index[0] <= fly_stop:
-            trial_info = group_info.fly_kinematic_data[f"F{index[0]}T{index[1]}"]
-            angs = self.calculator.Calculate_joint_angle(trial_info, self.angles)
-            data = angs[joint][int(start * trial_info.fps):int(stop * trial_info.fps)]
-            print(f"F{index[0]}T{index[1]}")
-            # if np.mean(data[:100]) < 30:
-            if not np.isnan(data).any():
-                if UseLight:
-                    if "LO" in group_info.fly_kinematic_data[f"F{index[0]}T{index[1]}"].data_path:
-                        # seconds = [(s / trial_info.fps) + start for s in range(len(data))]
-                        # sns.lineplot(x=seconds, y=data, linewidth=1, color="grey", ax=ax[0])
-                        LO_traces.append(data)
-                    if "NL" in group_info.fly_kinematic_data[f"F{index[0]}T{index[1]}"].data_path:
-                        # seconds = [(s / trial_info.fps) + start for s in range(len(data))]
-                        # sns.lineplot(x=seconds, y=data, linewidth=1, color="grey", ax=ax[1])
-                        NL_traces.append(data)
-                else:
-                    LO_traces.append(data)
-
-
-
-        LO_traces = np.asarray(LO_traces)
-        avg = LO_traces.mean(axis=0)
-        n = LO_traces.shape[0]
-        sem = LO_traces.std(axis=0, ddof=1) / np.sqrt(n)
-
-        seconds = [(s / group_info.fps[0]) + start for s in range(len(avg))]
-        sns.lineplot(x=seconds, y=avg, linewidth=5, linestyle="dashed", color=C, alpha=0.7)
-        ax.fill_between(seconds, avg - sem, avg + sem, alpha=0.25, color=C, linewidth=0)
-
-        if UseLight:
-            NL_traces = np.asarray(NL_traces)
-            avg = NL_traces.mean(axis=0)
-            n = NL_traces.shape[0]
-            sem = NL_traces.std(axis=0, ddof=1) / np.sqrt(n)
-
-            seconds = [(s / group_info.fps[0]) + start for s in range(len(avg))]
-            sns.lineplot(x=seconds, y=avg, linewidth=5, linestyle="solid", color=C, alpha=0.7)
-            ax.fill_between(seconds, avg - sem, avg + sem, alpha=0.25, color=C, linewidth=0)
-
-        legend_handles = []  # List to store legend handles
-        legend_labels = []
-        legend_labels.append("ON")
-        legend_labels.append("OFF")
-        from matplotlib.lines import Line2D
-        legend_handles.append(Line2D([0], [0], color="black", linestyle="dashed", lw=3))
-        legend_handles.append(Line2D([0], [0], color="black", linestyle="solid", lw=3))
-        ax.legend(legend_handles, legend_labels, fontsize=20, loc="upper right", frameon=True)
-
-
-        ax.axvline(5, color="grey", linestyle="dashed", linewidth=3)
-        ax.axvline(3, color="grey", linestyle="dashed", linewidth=3)
-
-
-        ax.get_xaxis().set_visible(True)
-        ax.tick_params(labelbottom=True)
-
-        ax.spines["left"].set_linewidth(2)  # Top border
-        ax.spines["bottom"].set_linewidth(2)
-
-        ax.set_xticks([2, 3, 4, 5, 6], labels=["2", "3\nlight start", "4", "5\nlight stop", "6"])
-        ax.set_yticks([0, 90, 180])
-        ax.set_ylim(-5, 185)
-
-        ax.tick_params(axis="y", labelsize=15)
-        ax.tick_params(axis="x", labelsize=15)
-        ax.tick_params(width=3, length=5)
-
-        ax.set_ylabel(f"{joint} angle", fontsize=25)
-        ax.set_xlabel("Time (s)", fontsize=25)
-        sns.despine(trim=True)
-        plt.tight_layout()
-        plt.savefig(f"{group_info.group_name}WingAngleChange.pdf")
-        plt.show()
-    def plot_Flying_landing_FTCT(self, group_info:Group):
-
-        FT = True
-        CT = False
-
-        Flying_color = ""
-        Landing_color = ""
-        if FT:
-            Flying_color = "orange"
-            Landing_color = "blue"
-        if CT:
-            Flying_color = "orange"
-            Landing_color = "blue"
-
-        fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10, 8))
-        total = 0
-        out = 0
-        F_signals = []
-        L_signals = []
-
-        index_to_iterate = group_info.get_targeted_trials(["Landing"])
-        for index in index_to_iterate:
-            print(f"Fly {index[0]} Trial {index[1]}")
-            total += 1
-            trial_info = group_info.fly_kinematic_data[f"F{index[0]}T{index[1]}"]
-
-            start = trial_info.moc
-            end = trial_info.mol
-
-
-            angs = self.calculator.Calculate_joint_angle(trial_info, self.angles)
-            seconds = [s / (end - start) for s in range(end - start)]
-            CT_signal = angs["R-mCT"][start:end]
-            FT_signal = angs["R-mFT"][start:end]
-
-            signal_to_display = None
-            if FT:
-                signal_to_display = FT_signal
-
-            elif CT:
-                signal_to_display = CT_signal
-
-            # sns.lineplot(x=seconds, y=signal_to_display, color="grey", ax=ax[0], linewidth=1)
-            L_signals.append(signal_to_display)
-
-
-        index_to_iterate = group_info.get_targeted_trials(["Flying"])
-        print(index_to_iterate)
-        for index in index_to_iterate:
-            print(f"Fly {index[0]} Trial {index[1]}")
-            total += 1
-            trial_info = group_info.fly_kinematic_data[f"F{index[0]}T{index[1]}"]
-
-            line_points, plane_points, verts, cylinder_top, cylinder_bottom, direction, perp_vector1, perp_vector2 = (
-                self.calculator.transform_coords_and_calculate_platform_data(trial_info=trial_info,
-                                                                             platform_offset=self.platform_offset,
-                                                                             platform_height=self.platform_height,
-                                                                             radius=self.radius))
-
-            start = trial_info.moc
-
-            if start < 0:
-                start, leg, position = self.analyzer.DetermineTiTaMOC(trial_info=trial_info)
-                end = start + trial_info.fps
-            else:
-                end = start + trial_info.fps
-
-
-            angs = self.calculator.Calculate_joint_angle(trial_info, self.angles)
-            seconds = [s / (end - start) for s in range(end - start)]
-            CT_signal = angs["R-mCT"][start:end]
-            FT_signal = angs["R-mFT"][start:end]
-
-            signal_to_display = None
-            if FT:
-                signal_to_display = FT_signal
-
-            elif CT:
-                signal_to_display = CT_signal
-
-            # sns.lineplot(x=seconds, y=signal_to_display, color="grey", ax=ax[1], linewidth=1)
-            F_signals.append(signal_to_display)
-
-
-
-
-        common_len = group_info.fps[0]  # any length you want
-        resampled_L = []
-        resampled_F = []
-
-
-
-
-        from scipy.interpolate import interp1d
-        for s in L_signals:
-            x_old = np.linspace(0, 1, len(s))
-            x_new = np.linspace(0, 1, common_len)
-            f = interp1d(x_old, s, kind='linear')
-            resampled_L.append(f(x_new))
-
-        for s in F_signals:
-            x_old = np.linspace(0, 1, len(s))
-            x_new = np.linspace(0, 1, common_len)
-            f = interp1d(x_old, s, kind='linear')
-            resampled_F.append(f(x_new))
-
-        x = np.linspace(0, 1, common_len)
-
-        resampled_L = np.array(resampled_L)
-        mean = resampled_L.mean(axis=0)
-        sem = resampled_L.std(axis=0) / np.sqrt(len(resampled_L))
-        ax.plot(x, mean, linewidth=5, color=Landing_color)
-        ax.fill_between(x, mean - sem, mean + sem, alpha=0.3, label='SEM', color=Landing_color)
-
-        resampled_F = np.array(resampled_F)
-        mean = resampled_F.mean(axis=0)
-        ax.plot(x, mean, linewidth=5, color=Flying_color)
-        sem = resampled_F.std(axis=0) / np.sqrt(len(resampled_F))
-        ax.fill_between(x, mean - sem, mean + sem, alpha=0.3, label='SEM', color=Flying_color)
-
-
-        bottom_graph_tick_value = [30, 90]
-        ax.set_title("Flying", fontsize=15)
-        ax.tick_params(axis="y", labelsize=15)
-        ax.tick_params(axis="x", labelsize=15)
-        ax.tick_params(width=3, length=5)
-        ax.spines["left"].set_linewidth(2)  # Top border
-        ax.spines["bottom"].set_linewidth(2)
-        ax.set_xticks([0, 0.5, 1], labels=["0\nmoc", "0.5", "1\nmol"])
-        ax.set_xlim(-0.1, 1.1)
-        ax.set_yticks([bottom_graph_tick_value[0], (bottom_graph_tick_value[0] + bottom_graph_tick_value[1]) / 2,bottom_graph_tick_value[1]])
-        ax.set_ylim(bottom_graph_tick_value[0] - 5, bottom_graph_tick_value[1] + 5)
-        fig.supylabel('T2 Right FT angle', fontsize=20)
-        plt.xlabel("Standardized landing transition", fontsize=20)
-
-        sns.despine(trim=True)
-        plt.tight_layout()
-        plt.savefig("L-F-FT angle.pdf")
-        plt.show()
+    """
     def plot_joint_rhythmicity(self, group_info:Group):
         Joint = "R-fCT"
 
@@ -2738,23 +623,7 @@ class PlotCreator:
                 posture.append(np.mean(data))
 
 
-        # Find the maximum length among all lists
-        # max_len = max(len(v) for v in collected_data.values())
-
-        # Pad each list with NaN (or any other fill value) to the max length
-        # padded = {k: v + [np.nan] * (max_len - len(v)) for k, v in collected_data.items()}
         collected_data = pd.DataFrame(collected_data)
-
-        test_groups = collected_data.groupby("Group_Name")["RmFTAngle"].apply(list)
-        self.calculator.Bootstrapping_test(list(test_groups["WT-T2-TiTa"]), list(test_groups["G106-HP1"]))
-        self.calculator.Bootstrapping_test(list(test_groups["WT-T2-TiTa"]), list(test_groups["G107-HP2"]))
-        self.calculator.Bootstrapping_test(list(test_groups["WT-T2-TiTa"]), list(test_groups["G108-HP3"]))
-        self.calculator.Bootstrapping_test(list(test_groups["WT-T2-TiTa"]), list(test_groups["G114-ClFl"]))
-        self.calculator.Bootstrapping_test(list(test_groups["WT-T2-TiTa"]), list(test_groups["G116-ClEx"]))
-        self.calculator.Bootstrapping_test(list(test_groups["WT-T2-TiTa"]), list(test_groups["G117-HkFl"]))
-        self.calculator.Bootstrapping_test(list(test_groups["WT-T2-TiTa"]), list(test_groups["G118-HkEx"]))
-        self.calculator.Bootstrapping_test(list(test_groups["WT-T2-TiTa"]), list(test_groups["G119-Club"]))
-        self.calculator.Bootstrapping_test(list(test_groups["WT-T2-TiTa"]), list(test_groups["G115-Iav"]))
 
 
         group_stat = collected_data.groupby('Group_Name')['RmFTAngle'].agg(['mean', 'std', 'count']).reset_index()
@@ -2825,29 +694,6 @@ class PlotCreator:
 
                     f, Pxx = welch(data, fs=trial_info.fps, nperseg=nperseg, nfft=nfft)
 
-                    """cutoff = 1  # remove frequencies below 1 Hz
-                    data = highpass_filter(data, cutoff, trial_info.fps)
-                    # data = data - np.mean(data)
-                    X = np.fft.fft(data)  # Compute FFT
-                    freqs = np.fft.fftfreq(len(data), 1 / trial_info.fps)  # Frequency axis
-                    power = np.abs(X) ** 2  # Power spectrum
-                    amplitude = np.abs(X)  # Amplitude spectrum
-
-                    # Keep only positive frequencies
-                    mask = freqs >= 0
-                    freqs = freqs[mask]
-                    power = power[mask]
-                    amplitude = amplitude[mask]
-                    """
-                    # print(len(f))
-                    # print(len(Pxx))
-
-                    # sns.lineplot(sig)
-                    # plt.show()
-                    # sns.lineplot(x=f, y=Pxx)
-                    # plt.xticks([0, 25, 50])
-                    # plt.show()
-                    # print(f)
 
                     collected_joints_data.append(data)
                     groups_name.append(group_info.group_name + j)
@@ -2922,81 +768,6 @@ class PlotCreator:
         colors = plt.cm.tab10(np.linspace(0, 1, len(unique_groups)))
 
         from scipy.stats import gaussian_kde
-        """# Create 3D figure
-        fig = plt.figure(figsize=(8, 6))
-        ax = fig.add_subplot(111, projection='3d')
-
-        from scipy.stats import chi2
-        def plot_ellipsoid(points, confidence=0.95, color="blue", alpha=0.25):
-            # Mean + covariance
-            center = np.mean(points, axis=0)
-            cov = np.cov(points.T)
-
-            # Eigenvalues/vectors
-            eigvals, eigvecs = np.linalg.eigh(cov)
-
-            # Scale eigenvalues for confidence region
-            k = np.sqrt(chi2.ppf(confidence, df=3))
-            radii = k * np.sqrt(eigvals)
-
-            # Parametric ellipsoid grid
-            u = np.linspace(0, 2 * np.pi, 40)
-            v = np.linspace(0, np.pi, 20)
-
-            x = radii[0] * np.outer(np.cos(u), np.sin(v))
-            y = radii[1] * np.outer(np.sin(u), np.sin(v))
-            z = radii[2] * np.outer(np.ones_like(u), np.cos(v))
-
-            # Stack and rotate
-            ellip = np.stack([x, y, z], axis=-1)
-            ellip_rot = ellip @ eigvecs.T + center  # rotate + translate
-
-            ax.plot_surface(
-                ellip_rot[..., 0],
-                ellip_rot[..., 1],
-                ellip_rot[..., 2],
-                color=color,
-                alpha=alpha,
-                linewidth=0,
-            )
-
-        for g, c in zip(unique_groups, colors):
-            mask = groups_name == g
-            ax.scatter(
-                scores[mask, 0],  # PC1
-                scores[mask, 1],  # PC2
-                scores[mask, 2],  # PC3
-                label=g,
-                color=c,
-                s=50,
-                alpha=0.7
-            )
-            # plot_ellipsoid(scores[mask, :3], color=c, alpha=0.25)
-
-
-        ax.set_xlabel('PC1')
-        ax.set_ylabel('PC2')
-        ax.set_zlabel('PC3')
-        plt.show()"""
-
-        """ax.scatter(
-                scores[mask, 0],  # PC1
-                scores[mask, 1],  # PC2
-                scores[mask, 2],  # PC3
-                label=g,
-                color=c,
-                s=50,
-                alpha=0.7
-            )
-
-        ax.set_xlabel('PC1')
-        ax.set_ylabel('PC2')
-        ax.set_zlabel('PC3')
-        ax.set_title('3D PCA of Trials')
-        ax.legend()
-        plt.tight_layout()
-        plt.show()"""
-
 
 
         fig, axes = plt.subplots(nrows=len(joints), ncols=len(groups), figsize=(10, 10), sharex=True, sharey=True)
@@ -3036,58 +807,1945 @@ class PlotCreator:
         plt.ylabel("PC2")
         # plt.legend()
         plt.tight_layout()
+        plt.show()"""
+
+    def plot_leg_angle_reaction(self, groups):
+        self.angles = [["L-fBC", "L-fCT", "L-fFT"],
+                       ["L-mBC", "L-mCT", "L-mFT"],
+                       ["L-hBC", "L-hCT", "L-hFT"],
+
+                       ["L-fCT", "L-fFT", "L-fTT"],
+                       ["L-mCT", "L-mFT", "L-mTT"],
+                       ["L-hCT", "L-hFT", "L-hTT"],
+
+                       ["L-fFT", "L-fTT", "L-fLT"],
+                       ["L-mFT", "L-mTT", "L-mLT"],
+                       ["L-hFT", "L-hTT", "L-hLT"],
+
+
+                       ["R-fBC", "R-fCT", "R-fFT"],
+                       ["R-mBC", "R-mCT", "R-mFT"],
+                       ["R-hBC", "R-hCT", "R-hFT"],
+
+                       ["R-fCT", "R-fFT", "R-fTT"],
+                       ["R-mCT", "R-mFT", "R-mTT"],
+                       ["R-hCT", "R-hFT", "R-hTT"],
+
+                       ["R-fFT", "R-fTT", "R-fLT"],
+                       ["R-mFT", "R-mTT", "R-mLT"],
+                       ["R-hFT", "R-hTT", "R-hLT"]]
+
+        start = -0.2
+        end = 0.7
+        tnorm = False
+        threshold = 0.71
+        T1_data = self.analyzer.Calculate_angle_traces(groups[0], self.angles, threshold, start, end, tnorm, False)
+        T2_data = self.analyzer.Calculate_angle_traces(groups[1], self.angles, threshold, start, end, tnorm, False)
+        T3_data = self.analyzer.Calculate_angle_traces(groups[2], self.angles, threshold, start, end, tnorm, False)
+
+        normalization = ""
+        if tnorm:
+            seconds = [s / 250 for s in range(250)]
+            xtick = [0, 1]
+            xtick_label = ["MOC", "MOL"]
+            normalization = "_tnorm"
+        else:
+            seconds = [s / 250 for s in range(int(start * 250), int(end * 250))]
+            xtick = [start, 0, end]
+            xtick_label = [str(start), "MOC", str(end)]
+
+        threshold_bins = [0.34, 0.68, 1, -1]
+        # fig, ax = plt.subplots(5, 1, figsize=(5, 15))
+
+
+
+        collected_data = [T1_data, T2_data, T3_data]
+
+        Name = "T1"
+        joints_to_plot = ["R-fCT", "R-fFT", "R-fTT"]
+        color = self.centered_shades("orange", 3)
+        style = ["solid", "solid", "solid"]
+        fig, ax = plt.subplots(1, 1, figsize=(5, 5))
+        frames = np.arange(-125, 125) / 250
+
+        """for j, joint in enumerate(joints_to_plot):
+            all_trials = []
+            for fly_data in T1_data:
+                signals = [trace for flag, index, fps, trace in fly_data[joint] if flag == threshold]
+                all_trials.extend(signals)
+            avg = np.nanmean(np.array(all_trials), axis=0)
+            std = np.nanstd(np.array(all_trials), axis=0)
+            sns.lineplot(x=frames, y=avg, color=color[j], linestyle=style[j], linewidth=4,
+                         label=f"T1-{joints_to_plot[j]} (n = {len(all_trials)})")
+            ax.fill_between(frames, avg - std, avg + std, color=color[j], alpha=0.2)
+
+        plt.axvline(0, color="black", linestyle="dashed", label="MOC")
+        self.formatting(ax, [-0.5, 0, 0.5], [0, 90, 180], xlabel="seconds (s)", ylabel=f"{Name} joint angle")
+        sns.despine(trim=True)
+        plt.legend()
+        plt.savefig(f"{Name}_Contact_angle_change.pdf")
         plt.show()
-    def plot_ON_OFF_angle(self, group_info:Group):
 
-        color = ["", "red", "green"]
-        joint = "R-mTT"
-        start = 2
-        stop = 6
-        fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8, 5))
-        LO_angle = []
-        NL_angle = []
-        for index in group_info.get_targeted_trials(["Landing", "Flying"]):
-            trial_info = group_info.fly_kinematic_data[f"F{index[0]}T{index[1]}"]
-            MOC = trial_info.moc
-            angs = self.calculator.Calculate_joint_angle(trial_info, self.angles)
-            data = angs[joint][int(start * trial_info.fps):int(stop * trial_info.fps)]
-            print(f"F{index[0]}T{index[1]}")
-            if not np.isnan(data).any():
-                if "LO" in group_info.fly_kinematic_data[f"F{index[0]}T{index[1]}"].data_path:
-                    LO_angle.append(np.mean(data[MOC - 250:MOC]))
-                if "NL" in group_info.fly_kinematic_data[f"F{index[0]}T{index[1]}"].data_path:
-                    NL_angle.append(np.mean(data[MOC-250:MOC]))
 
-        df = pd.DataFrame(
-            {
-                "Angles": LO_angle + NL_angle,
-                "Group": [f"{group_info.group_name}-ON"] * len(LO_angle) + [f"{group_info.group_name}-OFF"] * len(NL_angle)
-            }
+        Name = "T2"
+        joints_to_plot = ["R-mCT", "R-mFT", "R-mTT"]
+        color = self.centered_shades("darkgrey", 3)
+        style = ["dashed", "dashed", "dashed"]
+        fig, ax = plt.subplots(1, 1, figsize=(5, 5))
+        frames = np.arange(-125, 125) / 250
+
+        for j, joint in enumerate(joints_to_plot):
+            all_trials = []
+            for fly_data in T2_data:
+                signals = [trace for flag, index, fps, trace in fly_data[joint] if flag == threshold]
+                all_trials.extend(signals)
+            avg = np.nanmean(np.array(all_trials), axis=0)
+            std = np.nanstd(np.array(all_trials), axis=0)
+            sns.lineplot(x=frames, y=avg, color=color[j], linestyle=style[j], linewidth=4,
+                         label=f"T2-{joints_to_plot[j]} (n = {len(all_trials)})")
+            ax.fill_between(frames, avg - std, avg + std, color=color[j], alpha=0.2)
+
+        plt.axvline(0, color="black", linestyle="dashed", label="MOC")
+        self.formatting(ax, [-0.5, 0, 0.5], [0, 90, 180], xlabel="seconds (s)", ylabel=f"{Name} joint angle")
+        sns.despine(trim=True)
+        plt.legend()
+        plt.savefig(f"{Name}_Contact_angle_change.pdf")
+        plt.show()
+
+
+        Name = "T3"
+        joints_to_plot = ["R-hCT", "R-hFT", "R-hTT"]
+        color = self.centered_shades("brown", 3)
+        style = ["dotted", "dotted", "dotted"]
+        fig, ax = plt.subplots(1, 1, figsize=(5, 5))
+        frames = np.arange(-125, 125) / 250
+
+        for j, joint in enumerate(joints_to_plot):
+            all_trials = []
+            for fly_data in T3_data:
+                signals = [trace for flag, index, fps, trace in fly_data[joint] if flag == threshold]
+                all_trials.extend(signals)
+            avg = np.nanmean(np.array(all_trials), axis=0)
+            std = np.nanstd(np.array(all_trials), axis=0)
+            sns.lineplot(x=frames, y=avg, color=color[j], linestyle=style[j], linewidth=4,
+                         label=f"T3-{joints_to_plot[j]} (n = {len(all_trials)})")
+            ax.fill_between(frames, avg - std, avg + std, color=color[j], alpha=0.2)
+
+        plt.axvline(0, color="black", linestyle="dashed", label="MOC")
+        self.formatting(ax, [-0.5, 0, 0.5], [0, 90, 180], xlabel="seconds (s)", ylabel=f"{Name} joint angle")
+        sns.despine(trim=True)
+        plt.legend()
+        plt.savefig(f"{Name}_Contact_angle_change.pdf")
+        plt.show()"""
+
+        Contact_type = "CxTr"
+
+        color = [self.centered_shades("orange", 3)[1],
+                 self.centered_shades("grey", 3)[1],
+                 self.centered_shades("brown", 3)[1]]
+        
+        """Name = "CT"
+        style = ["solid", "solid", "solid"]
+        joints_to_plot = ["R-fCT", "R-mCT", "R-hCT"]
+        fig, ax = plt.subplots(1, 1, figsize=(5, 5))
+        frames = np.arange(int(start * 250), int(end * 250)) / 250
+        for g, group_data in enumerate(collected_data):
+            all_trials = []
+            for fly_data in group_data:
+                # signals = [trace for flag, index, fps, trace in fly_data[joints_to_plot[g]] if flag == threshold]
+                signals = [trace for flag, index, fps, trace in fly_data[joints_to_plot[g]]]
+                all_trials.extend(signals)
+            avg = np.nanmean(np.array(all_trials), axis=0)
+            std = np.nanstd(np.array(all_trials), axis=0)
+            # print(len(frames), len(avg))
+            sns.lineplot(x=frames, y=avg, color=color[g], linestyle=style[g], linewidth=4,
+                         label=f"T{g + 1}-{joints_to_plot[g]} (n = {len(all_trials)})")
+            ax.fill_between(frames, avg - std, avg + std, color=color[g], alpha=0.2)
+        plt.axvline(0, color="black", linestyle="dashed", label="MOC")
+        self.formatting(ax, [start, 0, end], [0, 90, 180], xlabel="seconds (s)", ylabel=f"{Name} joint angle")
+        sns.despine(trim=True)
+        plt.legend()
+        plt.savefig(f"{Contact_type}_Contact_{Name}_change.pdf")
+        plt.show()
+
+
+
+        color = [self.centered_shades("orange", 3)[1],
+                 self.centered_shades("grey", 3)[1],
+                 self.centered_shades("brown", 3)[1]]
+        Name = "FT"
+        joints_to_plot = ["R-fFT", "R-mFT", "R-hFT"]
+        fig, ax = plt.subplots(1, 1, figsize=(5, 5))
+        frames = np.arange(int(start * 250), int(end * 250)) / 250
+        for g, group_data in enumerate(collected_data):
+            all_trials = []
+            for fly_data in group_data:
+                # signals = [trace for flag, index, fps, trace in fly_data[joints_to_plot[g]] if flag == threshold]
+                signals = [trace for flag, index, fps, trace in fly_data[joints_to_plot[g]]]
+                all_trials.extend(signals)
+            avg = np.nanmean(np.array(all_trials), axis=0)
+            std = np.nanstd(np.array(all_trials), axis=0)
+            # print(len(frames), len(avg))
+            sns.lineplot(x=frames, y=avg, color=color[g], linestyle=style[g], linewidth=4,
+                         label=f"T{g + 1}-{joints_to_plot[g]} (n = {len(all_trials)})")
+            ax.fill_between(frames, avg - std, avg + std, color=color[g], alpha=0.2)
+        plt.axvline(0, color="black", linestyle="dashed", label="MOC")
+        self.formatting(ax, [start, 0, end], [0, 90, 180], xlabel="seconds (s)", ylabel=f"{Name} joint angle")
+        sns.despine(trim=True)
+        plt.legend()
+        plt.savefig(f"{Contact_type}_Contact_{Name}_change.pdf")
+        plt.show()"""
+
+
+
+        color = self.centered_shades("grey", 5)
+        Name = "FT"
+        joints_to_plot = ["R-mFT"]
+        fig, ax = plt.subplots(1, 1, figsize=(5, 5))
+        frames = np.arange(int(start * 250), int(end * 250)) / 250
+
+        failed_trials = []
+        successful_trials = []
+        for fly_data in T2_data:
+            failed_trials.extend([trace for flag, index, fps, trace in fly_data["R-mFT"] if flag != threshold])
+            successful_trials.extend([trace for flag, index, fps, trace in fly_data["R-mFT"] if flag == threshold])
+
+        failed_avg = np.nanmean(np.array(failed_trials), axis=0)
+        failed_std = np.nanstd(np.array(failed_trials), axis=0)
+        successful_avg = np.nanmean(np.array(successful_trials), axis=0)
+        successful_std = np.nanstd(np.array(successful_trials), axis=0)
+        # print(len(frames), len(avg))
+        sns.lineplot(x=frames, y=failed_avg, color=color[4], linestyle="solid", linewidth=4, label=f"Failed landing (n = {len(failed_trials)})")
+        ax.fill_between(frames, failed_avg - failed_std, failed_avg + failed_std, color=color[4], alpha=0.2)
+
+        sns.lineplot(x=frames, y=successful_avg, color=color[2], linestyle="solid", linewidth=4, label=f"Successful landing (n = {len(successful_trials)})")
+        ax.fill_between(frames, successful_avg - successful_std, successful_avg + successful_std, color=color[2], alpha=0.2)
+
+        plt.axvline(0, color="black", linestyle="dashed", label="MOC")
+        self.formatting(ax, [start, 0, end], [0, 90, 180], xlabel="seconds (s)", ylabel=f"T2-R-FT joint angle")
+        sns.despine(trim=True)
+        plt.legend()
+        plt.savefig(f"Failed_vs_successful_FT_change.pdf")
+        plt.show()
+
+        """color = [self.centered_shades("orange", 3)[0],
+                 self.centered_shades("grey", 3)[0],
+                 self.centered_shades("brown", 3)[0]]
+        Name = "TT"
+        joints_to_plot = ["R-fTT", "R-mTT", "R-hTT"]
+        fig, ax = plt.subplots(1, 1, figsize=(5, 5))
+        frames = np.arange(int(start * 250), int(end * 250)) / 250
+        for g, group_data in enumerate(collected_data):
+            all_trials = []
+            for fly_data in group_data:
+                signals = [trace for flag, index, fps, trace in fly_data[joints_to_plot[g]] if flag == threshold]
+                all_trials.extend(signals)
+            avg = np.nanmean(np.array(all_trials), axis=0)
+            std = np.nanstd(np.array(all_trials), axis=0)
+            # print(len(frames), len(avg))
+            sns.lineplot(x=frames, y=avg, color=color[g], linestyle=style[g], linewidth=4,
+                         label=f"T{g + 1}-{joints_to_plot[g]} (n = {len(all_trials)})")
+            ax.fill_between(frames, avg - std, avg + std, color=color[g], alpha=0.2)
+        plt.axvline(0, color="black", linestyle="dashed", label="MOC")
+        self.formatting(ax, [-0.5, 0, 0.5], [0, 90, 180], xlabel="seconds (s)", ylabel=f"{Name} joint angle")
+        sns.despine(trim=True)
+        plt.legend()
+        plt.savefig(f"{Contact_type}_Contact_{Name}_change.pdf")
+        plt.show()"""
+
+
+    def formatting(self, ax, xticks=None, yticks=None, xlabel=None, ylabel=None, yticklabel=None, xticklabel=None, ylabel_size=10, xlabel_size=10, spine_width=3, tick_width=3):
+        """
+        Format matplotlib axes consistently.
+
+        Parameters
+        ----------
+        ax : matplotlib axis or iterable of axes
+            Single axis or list/array of axes.
+        xticks : list or array, optional
+        yticks : list or array, optional
+        xlabel : str, optional
+        ylabel : str, optional
+        spine_width : int or float
+        tick_width : int or float
+        """
+
+        # Make sure ax is iterable
+        if not isinstance(ax, (list, tuple, np.ndarray)):
+            axes = [ax]
+        else:
+            axes = ax.flatten() if isinstance(ax, np.ndarray) else ax
+
+        for a in axes:
+
+            # --- Remove top and right spines ---
+            # a.spines["top"].set_visible(False)
+            # a.spines["right"].set_visible(False)
+
+            # --- Set spine thickness ---
+            a.spines["left"].set_linewidth(spine_width)
+            a.spines["bottom"].set_linewidth(spine_width)
+
+
+            # --- Set tick thickness ---
+            a.tick_params(
+                axis='both',
+                width=tick_width,
+                length=6
+            )
+
+            # --- Set ticks ---
+            if xticks is not None:
+                a.set_xticks(xticks)
+            if yticks is not None:
+                a.set_yticks(yticks)
+
+            # --- Set labels ---
+            if xlabel is not None:
+                a.set_xlabel(xlabel, fontsize=xlabel_size)
+            if ylabel is not None:
+                a.set_ylabel(ylabel, fontsize=ylabel_size)
+
+            if yticklabel is not None:
+                a.set_ticklabel(yticklabel, axis="y")
+
+    def centered_shades(self, color, n_shades=5, spread=0.6):
+        import matplotlib.colors as mcolors
+        """
+        Generate shades centered on the input color.
+
+        Parameters:
+            color (str or tuple): any matplotlib-valid color
+            n_shades (int): must be odd to perfectly center
+            spread (float): how far to move toward white/black (0–1)
+
+        Returns:
+            List of RGB tuples
+        """
+        if n_shades % 2 == 0:
+            raise ValueError("n_shades should be odd to center on base color.")
+
+        base_rgb = np.array(mcolors.to_rgb(color))
+
+        # symmetric factors around 0
+        factors = np.linspace(-spread, spread, n_shades)
+
+        shades = []
+        for f in factors:
+            if f < 0:
+                # darken (toward black)
+                new_color = base_rgb * (1 + f)
+            else:
+                # lighten (toward white)
+                new_color = base_rgb + (1 - base_rgb) * f
+            shades.append(tuple(new_color))
+
+        return shades
+
+    def plot_latency_bin(self, group_info:Group):
+        self.angles = [["L-fBC", "L-fCT", "L-fFT"],
+                       ["L-mBC", "L-mCT", "L-mFT"],
+                       ["L-hBC", "L-hCT", "L-hFT"],
+
+                       ["L-fCT", "L-fFT", "L-fTT"],
+                       ["L-mCT", "L-mFT", "L-mTT"],
+                       ["L-hCT", "L-hFT", "L-hTT"],
+
+                       ["L-fFT", "L-fTT", "L-fLT"],
+                       ["L-mFT", "L-mTT", "L-mLT"],
+                       ["L-hFT", "L-hTT", "L-hLT"],
+
+                       ["R-fBC", "R-fCT", "R-fFT"],
+                       ["R-mBC", "R-mCT", "R-mFT"],
+                       ["R-hBC", "R-hCT", "R-hFT"],
+
+                       ["R-fCT", "R-fFT", "R-fTT"],
+                       ["R-mCT", "R-mFT", "R-mTT"],
+                       ["R-hCT", "R-hFT", "R-hTT"],
+
+                       ["R-fFT", "R-fTT", "R-fLT"],
+                       ["R-mFT", "R-mTT", "R-mLT"],
+                       ["R-hFT", "R-hTT", "R-hLT"]]
+
+        start = -0.1
+        end = 0.7
+        tnorm = False
+        threshold = None
+        group_data = self.analyzer.Calculate_angle_traces(group_info, self.angles, threshold, start, end, tnorm, False)
+
+        normalization = ""
+        if tnorm:
+            seconds = [s / 250 for s in range(250)]
+            xtick = [0, 1]
+            xtick_label = ["MOC", "MOL"]
+            normalization = "_tnorm"
+        else:
+            seconds = [s / 250 for s in range(int(start * 250), int(end * 250))]
+            xtick = [start, 0, end]
+            xtick_label = [str(start), "MOC", str(end)]
+
+        threshold_bins = [0.3, 0.68, 1, -1]
+        # fig, ax = plt.subplots(5, 1, figsize=(5, 15))
+        """colors = self.centered_shades("red", 5)
+        fig, ax = plt.subplots(1, 1, figsize=(5, 5))
+        indi = True
+        joints_to_plot = ["L-fCT"]
+        for j, joint in enumerate(joints_to_plot):
+            for th, ll_threshold in enumerate(threshold_bins):
+                if not indi:
+                    signal_info = [(fps, trace) for fly_data in T1_data for ll, fps, trace in fly_data[joint] if ll == ll_threshold]
+                    stacked = [trace for fly_data in T1_data for ll, fps, trace in fly_data[joint] if ll == ll_threshold]
+                    for sig in signal_info:
+                        sns.lineplot(x=seconds, y=sig[1], ax=ax[th], linewidth=1, color="lightgrey")
+                    sns.lineplot(x=seconds, y=np.array(stacked).mean(axis=0), ax=ax[th], linewidth=4, color=colors[th], label=f"latency < {ll_threshold} (n = {len(stacked)})")
+                    ax[th].set_xticklabels(xtick_label)
+                    if tnorm:
+                        self.formatting(ax[th], xticks=xtick, yticks=[0, 90, 180], ylabel=f"{joint} angle", xlabel_size=10, ylabel_size=10)
+                    else:
+                        ax[th].axvline(0, color="black", linestyle="dashed")
+                        self.formatting(ax[th], xticks=xtick, xlabel="second (s)", yticks=[0, 90, 180], ylabel=f"{joint} angle", xlabel_size=10, ylabel_size=10)
+                else:
+                    stacked = [trace for fly_data in T1_data for ll, fps, trace in fly_data[joint] if ll == ll_threshold]
+                    sns.lineplot(x=seconds, y=np.array(stacked).mean(axis=0), ax=ax, linewidth=4, color=colors[th], label=f"latency < {ll_threshold} (n = {len(stacked)})")
+                    ax.set_xticklabels(xtick_label)
+                    if tnorm:
+                        self.formatting(ax, xticks=xtick, yticks=[0, 90, 180], ylabel=f"{joint} angle",
+                                        xlabel_size=10, ylabel_size=10)
+                    else:
+                        ax.axvline(0, color="black", linestyle="dashed")
+                        self.formatting(ax, xticks=xtick, xlabel="second (s)", yticks=[0, 90, 180],
+                                        ylabel=f"{joint} angle", xlabel_size=10, ylabel_size=10)
+            sns.despine(trim=True)
+            plt.tight_layout()
+            plt.savefig(f"{joint}_tnorm_ALL_bins.pdf")
+            plt.show()
+            plt.close()"""
+
+        joints_groups = [["L-fCT", "L-mCT", "L-hCT", "R-fCT", "R-mCT", "R-hCT"],
+                         ["L-fFT", "L-mFT", "L-hFT", "R-fFT", "R-mFT", "R-hFT"]]
+        for jg in joints_groups:
+            colors = ["red", "green", "blue", "orange", "grey", "brown"]
+            fig, ax = plt.subplots(3, 2, figsize=(10, 15))
+            ax = ax.flatten(order="F")
+            for j, joint in enumerate(jg):
+                color_shades = self.centered_shades(colors[j], len(threshold_bins) + 1)
+                for l, ll_threshold in enumerate(threshold_bins):
+                    stacked = [trace for fly_data in group_data for ll, index, fps, trace in fly_data[joint] if ll == ll_threshold]
+                    if len(stacked) == 0:
+                        continue
+
+                    mean = np.array(stacked).mean(axis=0)
+                    if j == 0:
+                        sns.lineplot(x=seconds, y=mean, ax=ax[j], linewidth=4,
+                                     color=color_shades[l], label=f"n = {len(stacked)}")
+                    else:
+                        sns.lineplot(x=seconds, y=mean, ax=ax[j], linewidth=4,
+                                     color=color_shades[l])
+                    ax[j].set_xticklabels(xtick_label)
+                    if tnorm:
+                        self.formatting(ax[j], xticks=xtick, yticks=[0, 90, 180], ylabel=f"{joint} angle")
+                    else:
+                        # print(joint)
+                        ax[j].axvline(0, color="black", linestyle="dashed")
+                        self.formatting(ax[j], xticks=xtick, xlabel="second (s)", yticks=[0, 90, 180],
+                                        ylabel=f"{joint} angle")
+            ax[0].legend(
+                fontsize=20,
+                borderpad=0.1,  # padding inside box
+                labelspacing=0.2,  # vertical spacing between entries
+                handlelength=2,  # line length in legend
+                handletextpad=1.5  # space between marker and text
+            )
+            sns.despine(trim=True)
+            plt.tight_layout()
+            plt.savefig(f"T2_{jg[0][3:]}_{group_info.group_name}_LL_bins.pdf")
+            # plt.show()
+            plt.close()
+    def plot_landing_profile(self, group_info:Group, leg_contact, leg_extension, leg_searches, secondary_contact):
+        if leg_contact:
+            os.chdir(r"C:\Users\agrawal-admin\Desktop\Landing\Landing Profile\Leg contact")
+            self.plot_contact_leg(group_info)
+        if leg_extension:
+            os.chdir(r"C:\Users\agrawal-admin\Desktop\Landing\Landing Profile\Leg extension")
+            self.plot_leg_extension(group_info)
+        if leg_searches:
+            os.chdir(r"C:\Users\agrawal-admin\Desktop\Landing\Landing Profile\Leg searches")
+            self.plot_leg_searches(group_info)
+        if secondary_contact:
+            os.chdir(r"C:\Users\agrawal-admin\Desktop\Landing\Landing Profile\Secondary contact")
+            self.plot_Inidi_Leg_Contact(group_info)
+    def plot_IT_vs_OT(self, group_info=None):
+        inward_touch_ll = pd.read_excel(r"C:\Users\agrawal-admin\Desktop\LandingDataSummary\Others\WT-T2-TiTa_new_OT_filtered.xlsx")
+        outward_touch_ll = pd.read_excel(r"C:\Users\agrawal-admin\Desktop\LandingDataSummary\Others\WT-T2-TiTa_new_IT_filtered.xlsx")
+        ot_index = []
+        it_index = []
+        for row, values in outward_touch_ll.iterrows():
+            for t in range(4, 21):
+                if (isinstance(values[t], float) or isinstance(values[t], int)):
+                    if values[t] >= -1 and row + 1 in group_info.good_fly_index:
+                        ot_index.append((row + 1, t))
+
+        for row, values in inward_touch_ll.iterrows():
+            for t in range(4, 21):
+                if (isinstance(values[t], float) or isinstance(values[t], int)):
+                    if values[t] >= -1 and row + 1 in group_info.good_fly_index:
+                        it_index.append((row + 1, t))
+        print(len(it_index), len(ot_index))
+        indi_legs = ["L-f", "L-m", "L-h"]
+        contact_leg_angle = [["R-mCT", "R-mFT", "R-mTT"]]
+        color = ["red", "green", "blue", "orange", "brown"]
+        threshold = 0.71
+        stat = dict()
+        stat["Group"] = []
+        stat["mean"] = []
+        stat["std"] = []
+
+
+        IT_LS_data, OT_LS_data, Success_LS_data, Failed_LS_data, IT_Success_LS, IT_Failed_LS, OT_Success_LS, OT_Failed_LS = self.analyzer.combine_data(group_info, "LS", True, it_index, ot_index)
+        IT_SC_data, OT_SC_data, Success_SC_data, Failed_SC_data, IT_Success_SC, IT_Failed_SC, OT_Success_SC, OT_Failed_SC = self.analyzer.combine_data(group_info, "SC", True, it_index, ot_index)
+
+        fig, ax = plt.subplots(1, 1, figsize=(7, 7))
+        sns.histplot(IT_LS_data["sum"], ax=ax, color="deepskyblue", stat="probability", kde=True, binwidth=1, label=f"IT (n = {len(IT_LS_data['sum'])})")
+        sns.histplot(OT_LS_data["sum"], ax=ax, color="orangered", stat="probability", kde=True, binwidth=1, label=f"OT (n = {len(OT_LS_data['sum'])})")
+        self.formatting(ax, xticks=[0, 5, 10, 15, 20], xlabel="time (s)", yticks=[0, 0.5])
+        stat["Group"].append("IT-LS")
+        stat["Group"].append("OT-LS")
+        stat["mean"].append(np.mean(IT_LS_data["sum"]))
+        stat["mean"].append(np.mean(OT_LS_data["sum"]))
+        stat["std"].append(np.std(IT_LS_data["sum"]))
+        stat["std"].append(np.std(OT_LS_data["sum"]))
+        print("LS IT vs OT", self.calculator.Bootstrapping_test(IT_LS_data["sum"], OT_LS_data["sum"], 30000))
+        ax.legend()
+        sns.despine(trim=True, offset=5)
+        plt.savefig(f"ITvsOT-LegSearch.pdf")
+        plt.close()
+
+        fig, ax = plt.subplots(1, 1, figsize=(7, 7))
+        sns.histplot(Success_LS_data["sum"], ax=ax, color="dimgrey", stat="probability", kde=True, binwidth=1, label=f"Success (n = {len(Success_LS_data['sum'])})")
+        sns.histplot(Failed_LS_data["sum"], ax=ax, color="lightgrey", stat="probability", kde=True, binwidth=1, label=f"Failed (n = {len(Failed_LS_data['sum'])})")
+        self.formatting(ax, xticks=[0, 5, 10, 15, 20], xlabel="time (s)", yticks=[0, 0.5])
+        print("LS S vs F", self.calculator.Bootstrapping_test(Success_LS_data["sum"], Failed_LS_data["sum"], 30000))
+        stat["Group"].append("Success-LS")
+        stat["Group"].append("Failed-LS")
+        stat["mean"].append(np.mean(Success_LS_data["sum"]))
+        stat["mean"].append(np.mean(Failed_LS_data["sum"]))
+        stat["std"].append(np.std(Success_LS_data["sum"]))
+        stat["std"].append(np.std(Failed_LS_data["sum"]))
+        ax.legend()
+        sns.despine(trim=True, offset=5)
+        plt.savefig(f"SvsF-LegSearch.pdf")
+        plt.close()
+
+
+        fig, ax = plt.subplots(1, 1, figsize=(7, 7))
+        sns.histplot(IT_SC_data["SC"], ax=ax, color="deepskyblue", stat="probability", kde=True, bins=np.arange(0, 0.75, 0.05), label=f"IT (n = {len(IT_SC_data['SC'])})")
+        sns.histplot(OT_SC_data["SC"], ax=ax, color="orangered", stat="probability", kde=True, bins=np.arange(0, 0.75, 0.05), label=f"OT (n = {len(OT_SC_data['SC'])})")
+        self.formatting(ax, xticks=[0, 0.7], xlabel="time (s)", yticks=[0, 0.5])
+        print("SC IT vs OT", self.calculator.Bootstrapping_test(IT_SC_data["SC"], OT_SC_data["SC"], 30000))
+        stat["Group"].append("IT-SC")
+        stat["Group"].append("OT-SC")
+        stat["mean"].append(np.mean(IT_SC_data["SC"]))
+        stat["mean"].append(np.mean(OT_SC_data["SC"]))
+        stat["std"].append(np.std(IT_SC_data["SC"]))
+        stat["std"].append(np.std(OT_SC_data["SC"]))
+        sns.despine(trim=True, offset=5)
+        ax.legend()
+        plt.savefig(f"ITvsOT-SecondaryContact.pdf")
+        plt.close()
+
+        fig, ax = plt.subplots(1, 1, figsize=(7, 7))
+        sns.histplot(Success_SC_data["SC"], ax=ax, color="dimgrey", stat="probability", kde=True, bins=np.arange(0, 0.75, 0.05), label=f"Success (n = {len(Success_SC_data['SC'])})")
+        sns.histplot(Failed_SC_data["SC"], ax=ax, color="lightgrey", stat="probability", kde=True, bins=np.arange(0, 0.75, 0.05), label=f"Failed (n = {len(Failed_SC_data['SC'])})")
+        self.formatting(ax, xticks=[0, 0.7], xlabel="time (s)", yticks=[0, 0.5])
+        print("SC S vs F", self.calculator.Bootstrapping_test(IT_SC_data["SC"], OT_SC_data["SC"], 30000))
+        sns.despine(trim=True, offset=5)
+        stat["Group"].append("Success-SC")
+        stat["Group"].append("Failed-SC")
+        stat["mean"].append(np.mean(Success_SC_data["SC"]))
+        stat["mean"].append(np.mean(Failed_SC_data["SC"]))
+        stat["std"].append(np.std(Success_SC_data["SC"]))
+        stat["std"].append(np.std(Failed_SC_data["SC"]))
+        ax.legend()
+        plt.savefig(f"SvF-SecondaryContact.pdf")
+        plt.close()
+
+        color1 = self.centered_shades("green", 5)[4]
+        color2 = self.centered_shades("red", 5)[4]
+        color3 = self.centered_shades("purple", 5)[4]
+        color4 = self.centered_shades("blue", 5)[4]
+        fig, ax = plt.subplots(1, 1, figsize=(7, 7))
+        sns.histplot(IT_Success_LS["sum"], ax=ax, color=color1, stat="probability", kde=True, binwidth=1, label=f"IT Success (n = {len(IT_Success_LS['sum'])})")
+        sns.histplot(IT_Failed_LS["sum"], ax=ax, color=color2, stat="probability", kde=True, binwidth=1, label=f"IT Failed (n = {len(IT_Failed_LS['sum'])})")
+        sns.histplot(OT_Success_LS["sum"], ax=ax, color=color3, stat="probability", kde=True, binwidth=1, label=f"OT Success (n = {len(OT_Success_LS['sum'])})")
+        sns.histplot(OT_Failed_LS["sum"], ax=ax, color=color4, stat="probability", kde=True, binwidth=1, label=f"OT Failed (n = {len(OT_Failed_LS['sum'])})")
+        self.formatting(ax, xticks=[0, 5, 10, 15, 20], xlabel="time (s)", yticks=[0, 0.5])
+        stat["Group"].append("SU-IT-LS")
+        stat["Group"].append("FA-IT-LS")
+        stat["Group"].append("SU-OT-LS")
+        stat["Group"].append("FA-OT-LS")
+        stat["mean"].append(np.mean(IT_Success_LS["sum"]))
+        stat["mean"].append(np.mean(IT_Failed_LS["sum"]))
+        stat["mean"].append(np.mean(OT_Success_LS["sum"]))
+        stat["mean"].append(np.mean(OT_Failed_LS["sum"]))
+        stat["std"].append(np.std(IT_Success_LS["sum"]))
+        stat["std"].append(np.std(IT_Failed_LS["sum"]))
+        stat["std"].append(np.std(OT_Success_LS["sum"]))
+        stat["std"].append(np.std(OT_Failed_LS["sum"]))
+        ax.legend()
+        sns.despine(trim=True, offset=5)
+        plt.savefig(f"S-F_vs_IT-OT-LegSearch.pdf")
+        plt.close()
+
+        fig, ax = plt.subplots(1, 1, figsize=(7, 7))
+        sns.histplot(IT_Success_SC["SC"], ax=ax, color=color1, stat="probability", kde=True, bins=np.arange(0, 0.75, 0.05), label=f"IT Success (n = {len(IT_Success_SC['SC'])})")
+        sns.histplot(IT_Failed_SC["SC"], ax=ax, color=color2, stat="probability", kde=True, bins=np.arange(0, 0.75, 0.05), label=f"IT Failed (n = {len(IT_Failed_SC['SC'])})")
+        sns.histplot(OT_Success_SC["SC"], ax=ax, color=color3, stat="probability", kde=True, bins=np.arange(0, 0.75, 0.05), label=f"OT Success (n = {len(OT_Success_SC['SC'])})")
+        sns.histplot(OT_Failed_SC["SC"], ax=ax, color=color4, stat="probability", kde=True, bins=np.arange(0, 0.75, 0.05), label=f"OT Failed (n = {len(OT_Failed_SC['SC'])})")
+        self.formatting(ax, xticks=[0, 0.7], xlabel="time (s)", yticks=[0, 0.5])
+        sns.despine(trim=True, offset=5)
+        ax.legend()
+        plt.savefig(f"S-F_vs_IT-OT-SecondaryContact.pdf")
+        plt.close()
+        stat["Group"].append("SU-IT-SC")
+        stat["Group"].append("FA-IT-SC")
+        stat["Group"].append("SU-OT-SC")
+        stat["Group"].append("FA-OT-SC")
+        stat["mean"].append(np.mean(IT_Success_SC["SC"]))
+        stat["mean"].append(np.mean(IT_Failed_SC["SC"]))
+        stat["mean"].append(np.mean(OT_Success_SC["SC"]))
+        stat["mean"].append(np.mean(OT_Failed_SC["SC"]))
+        stat["std"].append(np.std(IT_Success_SC["SC"]))
+        stat["std"].append(np.std(IT_Failed_SC["SC"]))
+        stat["std"].append(np.std(OT_Success_SC["SC"]))
+        stat["std"].append(np.std(OT_Failed_SC["SC"]))
+        pd.DataFrame(stat).to_csv("IT vs OT-stat.csv")
+        """success_ot, failed_ot = self.manipulator.read_leg_search_data(self.analyzer.Analyze_leg_search(group_info, ot_index, "OT", 0.71), indi_legs)
+        success_it, failed_it = self.manipulator.read_leg_search_data(self.analyzer.Analyze_leg_search(group_info, it_index, "IT", 0.71), indi_legs)
+        self.plot_ON_OFF_LS_and_SC(success_ot, failed_ot, success_it, failed_it, group_info.group_name, "OT", "IT", [0, 5, 10, 15], "Number of searches", "LegSearch")
+        self.plot_SvF_LS_and_SC(pd.concat([success_ot, success_it]), pd.concat([failed_ot, failed_it]), group_info.group_name, [0, 5, 10, 15], "Number of searches", "LegSearch")
+        print("Leg search done")
+        success_ot, failed_ot = self.manipulator.read_secondary_contact_data(self.analyzer.AnalyzeSecondaryContact(ot_index, group_info, 0.71, "OT"), indi_legs)
+        success_it, failed_it = self.manipulator.read_secondary_contact_data(self.analyzer.AnalyzeSecondaryContact(it_index, group_info, 0.71, "IT"), indi_legs)
+        self.plot_ON_OFF_LS_and_SC(success_ot, failed_ot, success_it, failed_it, group_info.group_name, "OT", "IT", [0, 0.7], "Time (s)", "SecondaryContact")
+        self.plot_SvF_LS_and_SC(pd.concat([success_ot, success_it]), pd.concat([failed_ot, failed_it]), group_info.group_name, [0, 0.7], "Time (s)", "SecondaryContact")
+        print("Secondary done")"""
+        """success_ot_ang_v, success_ot_ft_ang, success_ot_proj_ang, failed_ot_ang_v, failed_ot_ft_ang, failed_ot_proj_ang = self.analyzer.Calculate_contact_leg_metrices(group_info, ot_index, contact_leg_angle, threshold)
+        success_it_ang_v, success_it_ft_ang, success_it_proj_ang, failed_it_ang_v, failed_it_ft_ang, failed_it_proj_ang = self.analyzer.Calculate_contact_leg_metrices(group_info, it_index, contact_leg_angle, threshold)
+        print("Angular done")
+        self.plot_posture_metrics_multi_groups([success_ot_ang_v, failed_ot_ang_v, success_it_ang_v, failed_it_ang_v],
+                                               ["OT-Success", "OT-Failed", "IT-Success", "IT-Failed"],
+                                               [-300, -200, -100, 0, 100, 200, 300, 400, 500],
+                                               "T2-R-mFT angular velocity (degree°/s)",
+                                               group_info.group_name, "ang_v-OTvIT-SvF")
+
+
+        self.plot_posture_metrics(success_ot_ang_v + failed_ot_ang_v, success_it_ang_v + failed_it_ang_v,
+                                  "OT", "IT",
+                                  [-300, -200, -100, 0, 100, 200, 300, 400, 500],
+                                  "T2-R-mFT angular velocity (degree°/s)",
+                                  group_info.group_name, "ang_v-OTvIT", ["orangered", "deepskyblue"])
+
+        su_color = self.centered_shades("grey", 5)[1]
+        fa_color = self.centered_shades("grey", 5)[3]
+        self.plot_posture_metrics(success_ot_ang_v + success_it_ang_v, failed_ot_ang_v + failed_it_ang_v,
+                                  "Success", "Failed",
+                                  [-300, -200, -100, 0, 100, 200, 300, 400, 500],
+                                  "T2-R-mFT angular velocity (degree°/s)",
+                                  group_info.group_name, "ang_v-SvF", [su_color, fa_color])
+
+        self.plot_posture_metrics(success_ot_ft_ang + success_it_ft_ang, failed_ot_ft_ang + failed_it_ft_ang,
+                                  "Success", "Failed",
+                                  [0, 90, 180],
+                                  "T2-R-mFT angle (degree°)",
+                                  group_info.group_name, "ang_ft-SvF", [su_color, fa_color])
+
+        self.plot_posture_metrics(success_ot_ft_ang + failed_ot_ft_ang, success_it_ft_ang + failed_it_ft_ang,
+                                  "OT", "IT",
+                                  [0, 90, 180],
+                                  "T2-R-mFT angle (degree°)",
+                                  group_info.group_name, "ang_ft-OTvIT", ["orangered", "deepskyblue"])"""
+
+    def plot_Opto_data(self, group_info:Group):
+        print(group_info.group_name)
+        indi_legs = ["L-f", "L-m", "L-h"]
+        contact_leg_angle = [["R-mCT", "R-mFT", "R-mTT"]]
+        threshold = 0.71
+        index_to_iterate = group_info.get_targeted_trials(["Landing", "Flying"])
+        LO_index = []
+        NL_index = []
+        for index in index_to_iterate:
+            if "_NL_" in group_info.fly_kinematic_data_path[f"F{index[0]}T{index[1]}"]:
+                NL_index.append(index)
+            else:
+                LO_index.append(index)
+        """ON_success, ON_failed = self.manipulator.read_leg_search_data(self.analyzer.Analyze_leg_search(group_info, LO_index, "ON"), indi_legs)
+        OFF_success, OFF_failed = self.manipulator.read_leg_search_data(self.analyzer.Analyze_leg_search(group_info, NL_index, "OFF"), indi_legs)
+        self.plot_SvF_LS_and_SC(pd.concat([ON_success, ON_failed]), pd.concat([OFF_success, OFF_failed]), group_info.group_name, [0, 5, 10, 15], "Number of searches", "LegSearch")
+
+        ON_success, ON_failed = self.manipulator.read_secondary_contact_data(self.analyzer.AnalyzeSecondaryContact(LO_index, group_info, 0.71, "ON"), indi_legs)
+        OFF_success, OFF_failed = self.manipulator.read_secondary_contact_data(self.analyzer.AnalyzeSecondaryContact(NL_index, group_info, 0.71, "OFF"), indi_legs)
+        self.plot_SvF_LS_and_SC(pd.concat([ON_success, ON_failed]), pd.concat([OFF_success, OFF_failed]), group_info.group_name, [0, 0.7], "Time (s)", "SecondaryContact")"""
+
+        """ON_success, ON_failed = self.manipulator.read_leg_search_data(self.analyzer.Analyze_leg_search(group_info, LO_index, "ON"), indi_legs)
+        OFF_success, OFF_failed = self.manipulator.read_leg_search_data(self.analyzer.Analyze_leg_search(group_info, NL_index, "OFF"), indi_legs)
+        self.plot_ON_OFF_LS_and_SC(ON_success, ON_failed, OFF_success, OFF_failed, group_info.group_name, "ON", "OFF", [0, 5, 10, 15], "Number of searches", "LegSearch")
+
+        ON_success, ON_failed = self.manipulator.read_secondary_contact_data(self.analyzer.AnalyzeSecondaryContact(LO_index, group_info, 0.71, "ON"), indi_legs)
+        OFF_success, OFF_failed = self.manipulator.read_secondary_contact_data(self.analyzer.AnalyzeSecondaryContact(NL_index, group_info, 0.71, "OFF"), indi_legs)
+        self.plot_ON_OFF_LS_and_SC(ON_success, ON_failed, OFF_success, OFF_failed, group_info.group_name, "ON", "OFF", [0, 0.7], "Time (s)", "SecondaryContact")
+        """
+        success_off_ang_v, success_off_ft_ang, success_off_proj_ang, failed_off_ang_v, failed_off_ft_ang, failed_off_proj_ang = self.analyzer.Calculate_contact_leg_metrices(group_info, NL_index, contact_leg_angle, threshold)
+        success_on_ang_v, success_on_ft_ang, success_on_proj_ang, failed_on_ang_v, failed_on_ft_ang, failed_on_proj_ang = self.analyzer.Calculate_contact_leg_metrices(group_info, LO_index, contact_leg_angle, threshold)
+        print(len(success_off_ang_v), len(success_on_ang_v), len(failed_off_ang_v), len(failed_on_ang_v))
+
+        self.plot_posture_metrics_multi_groups([success_on_ang_v, failed_on_ang_v, success_off_ang_v, failed_off_ang_v],
+                                               ["ON-Success", "ON-Failed", "OFF-Success", "OFF-Failed"],
+                                               [-300, -200, -100, 0, 100, 200, 300, 400, 500],
+                                               "T2-R-mFT angular velocity (degree°/s)",
+                                               group_info.group_name, "ang_v-ONvOFF-SvF")
+
+        self.plot_posture_metrics(success_on_ang_v + failed_on_ang_v, success_off_ang_v + failed_off_ang_v,
+                                  "ON", "OFF",
+                                  [-300, -200, -100, 0, 100, 200, 300, 400, 500],
+                                  "T2-R-mFT angular velocity (degree°/s)",
+                                  group_info.group_name, "ang_v-ONvOFF")
+
+
+    def plot_posture_metrics_multi_groups(self, data_groups, names, y_tick, y_label, group_name, type):
+        import itertools
+        color = ["blue", "deepskyblue", "red", "orangered"]
+
+        fig, ax = plt.subplots(1, 1, figsize=(6, 6))
+        ax.set_title(f"{group_name}-{type}")
+
+        # ----- build dataframe -----
+        Group = []
+        Val = []
+
+        cleaned_groups = []
+        cleaned_names = []
+        stat = dict()
+        stat["mean"] = []
+        stat["std"] = []
+        stat["group"] = []
+
+        for d in range(len(data_groups)):
+            vals = pd.to_numeric(pd.Series(data_groups[d]), errors="coerce").dropna().tolist()
+
+            # skip completely empty groups
+            if len(vals) == 0:
+                continue
+
+            cleaned_groups.append(vals)
+            cleaned_names.append(names[d])
+
+            Group.extend([names[d]] * len(vals))
+            Val.extend(vals)
+            stat["mean"].append(np.mean(vals))
+            stat["std"].append(np.std(vals))
+            stat["group"].append(vals)
+        pd.DataFrame(stat).to_csv(f"{group_name}-{type}-stat.csv")
+        if len(cleaned_groups) < 2:
+            print(f"Not enough valid groups to compare in {group_name}-{type}")
+            return
+
+        df = pd.DataFrame({"Group": Group, "Values": Val})
+
+        # preserve plotting order
+        order = cleaned_names
+
+        group_stat = (
+            df.groupby("Group")["Values"]
+            .agg(["mean", "std", "count"])
+            .reindex(order)
+            .reset_index()
         )
-        sns.stripplot(data=df, x="Group", y="Angles", size=15, alpha=0.5, ax=ax)
-        # sns.violinplot(data=df, x="Group", y="Angles", alpha=0.5, ax=ax)
-        ax.spines["left"].set_linewidth(2)  # Top border
-        ax.spines["bottom"].set_linewidth(2)
 
-        ax.set_yticks([0, 90, 180])
-        ax.set_ylim(-5, 185)
-        ax.set_xticks([0, 1])
-        ax.set_xlim(-1, 2)
+        # ----- plot raw data + mean/std -----
+        sns.stripplot(
+            data=df,
+            ax=ax,
+            x="Group",
+            y="Values",
+            order=order,
+            palette=color[:len(order)],
+            size=12,
+            alpha=0.3
+        )
 
-        ax.tick_params(axis="y", labelsize=15)
-        ax.tick_params(axis="x", labelsize=15)
-        ax.tick_params(width=3, length=5)
+        sns.pointplot(
+            data=group_stat,
+            ax=ax,
+            x="Group",
+            y="mean",
+            order=order,
+            color="black",
+            linestyles=" ",
+            markers="s",
+            errorbar=None,
+            markersize=10,
+            zorder=10
+        )
 
-        ax.set_ylabel(f"{joint} angle", fontsize=25)
+        ax.errorbar(
+            x=np.arange(len(order)),
+            y=group_stat["mean"],
+            yerr=group_stat["std"],
+            fmt="none",
+            color="black",
+            capsize=10,
+            zorder=10
+        )
+
+        # ----- pairwise comparisons -----
+        def p_to_stars(p):
+            if p < 0.0001:
+                return "****"
+            elif p < 0.001:
+                return "***"
+            elif p < 0.01:
+                return "**"
+            elif p < 0.05:
+                return "*"
+            else:
+                return "ns"
+
+        pairs = list(itertools.combinations(range(len(cleaned_groups)), 2))
+
+        y_data_max = max(
+            df["Values"].max(),
+            (group_stat["mean"] + group_stat["std"].fillna(0)).max()
+        )
+        y_data_min = df["Values"].min()
+        y_range = y_data_max - y_data_min
+
+        if y_range == 0:
+            y_range = 1
+
+        bar_h = 0.05 * y_range
+        text_offset = 0.01 * y_range
+        current_y = y_data_max + bar_h
+
+        for i, j in pairs:
+            data1 = cleaned_groups[i]
+            data2 = cleaned_groups[j]
+
+            # skip if either group is empty
+            if len(data1) == 0 or len(data2) == 0:
+                continue
+
+            p = self.calculator.Bootstrapping_test(data1, data2, 20000)
+            stars = p_to_stars(p)
+
+            x1, x2 = i, j
+
+            ax.plot(
+                [x1, x1, x2, x2],
+                [current_y, current_y + bar_h, current_y + bar_h, current_y],
+                lw=1.5,
+                c="black"
+            )
+            ax.text(
+                (x1 + x2) / 2,
+                current_y + bar_h + text_offset,
+                stars,
+                ha="center",
+                va="bottom",
+                fontsize=12
+            )
+
+            current_y += 2 * bar_h
+
+        self.formatting(ax, yticks=y_tick, ylabel=y_label)
+
+        ax.set_xlim(-0.5, len(order) - 0.5)
+        ax.set_ylim(top=current_y + bar_h)
+
         sns.despine(trim=True)
         plt.tight_layout()
-        plt.savefig(f"{group_info.group_name}WingAngleChange.pdf")
+        plt.savefig(f"{group_name}-{type}.pdf")
+        plt.close()
+    def plot_posture_metrics(self, data1, data2, name1, name2, y_tick, y_label, group_name, type, color=None):
+        if color is None:
+            color = ["blue", "red"]
+        fig, ax = plt.subplots(1, 1, figsize=(5, 5))
+        plt.title(f"{group_name}-{type}")
+        df = pd.DataFrame({"Group": [name1] * len(data1) + [name2] * len(data2), "Values": data1 + data2})
+
+        group_stat = df.groupby('Group')["Values"].agg(['mean', 'std', 'count']).reset_index()
+
+        sns.stripplot(data=df, ax=ax, x="Group", y="Values", palette=color, size=15, alpha=0.3)
+        sns.pointplot(x='Group', y='mean', data=group_stat, color='black', linestyles=" ", markers="s", errorbar=None,
+                      scale=2, zorder=10)
+        plt.errorbar(x=group_stat['Group'], y=group_stat['mean'], yerr=group_stat['std'], fmt="none", color='black',
+                     capsize=10, zorder=10)
+        stat = dict()
+        stat["mean"] = []
+        stat["std"] = []
+        stat["group"] = []
+        stat["mean"].append(np.mean(data1))
+        stat["std"].append(np.std(data1))
+        stat["group"].append(name1)
+        stat["mean"].append(np.mean(data2))
+        stat["std"].append(np.std(data2))
+        stat["group"].append(name2)
+        pd.DataFrame(stat).to_csv(f"{group_name}-{type}-stat.csv")
+        p = self.calculator.Bootstrapping_test(data1, data2, 20000)
+
+        if p < 0.0001:
+            stars = "****"
+        elif p < 0.001:
+            stars = "***"
+        elif p < 0.01:
+            stars = "**"
+        elif p < 0.05:
+            stars = "*"
+        else:
+            stars = "ns"
+
+        # ----- draw significance bar -----
+        x1, x2 = 0, 1
+
+        # top of plotted data
+        y_max = max(
+            df["Values"].max(),
+            (group_stat["mean"] + group_stat["std"]).max()
+        )
+
+        h = 0.05 * (df["Values"].max() - df["Values"].min())  # bar height
+        if h == 0:
+            h = 0.1
+
+        y = y_max + h
+
+        ax.plot([x1, x1, x2, x2], [y, y + h, y + h, y], lw=1.5, c='black')
+        ax.text((x1 + x2) / 2, y + h, stars, ha='center', va='bottom', fontsize=14)
+
+        self.formatting(ax, yticks=y_tick, ylabel=y_label)
+        ax.set_xlim(-1, 2)
+
+        # make sure the star is not cut off
+        ax.set_ylim(top=y + 3 * h)
+
+        sns.despine(trim=True)
+        plt.tight_layout()
+        plt.savefig(f"{group_name}-{type}.pdf")
+        # plt.show()
+        plt.close()
+
+    def plot_ON_OFF_LS_and_SC(self, ONSdata, ONFdata, OFFSdata, OFFFdata, group_name, name1, name2, xtick, xlabel, type):
+        indi_legs = ["L-f", "L-m", "L-h"]
+        colors = ["red", "green", "blue", "orangered", "lime", "deepskyblue"]
+        fig, ax = plt.subplots(6, 2, figsize=(8, 12))
+        for l, leg in enumerate(indi_legs):
+
+            ONS_vals = ONSdata[leg].dropna()
+            ONF_vals = ONFdata[leg].dropna()
+            OFFS_vals = OFFSdata[leg].dropna()
+            OFFF_vals = OFFFdata[leg].dropna()
+            if max(xtick) > 1:
+                bins = np.arange(0, 16, 1)
+            else:
+                bins = np.arange(0, 0.75, 0.05)  # 0, 0.05, 0.10, ..., 0.70
+
+            if len(ONS_vals) > 0:
+                sns.histplot(
+                    ONS_vals,
+                    ax=ax[l * 2][0],
+                    bins=bins,
+                    color=colors[l],
+                    stat="probability",
+                    kde=False,
+                    label=f"{name1}-Successful (n = {len(ONS_vals)})"
+                )
+
+            if len(ONF_vals) > 0:
+                sns.histplot(
+                    ONF_vals,
+                    ax=ax[l * 2 + 1][0],
+                    bins=bins,
+                    color=colors[l + 3],
+                    stat="probability",
+                    kde=False,
+                    label=f"{name1}-Failed (n = {len(ONF_vals)})"
+                )
+
+            if len(OFFS_vals) > 0:
+                sns.histplot(
+                    OFFS_vals,
+                    ax=ax[l * 2][1],
+                    bins=bins,
+                    color=colors[l],
+                    stat="probability",
+                    kde=False,
+                    label=f"{name2}-Successful (n = {len(OFFS_vals)})"
+                )
+
+            if len(OFFF_vals) > 0:
+                sns.histplot(
+                    OFFF_vals,
+                    ax=ax[l * 2 + 1][1],
+                    bins=bins,
+                    color=colors[l + 3],
+                    stat="probability",
+                    kde=False,
+                    label=f"{name2}-Failed (n = {len(OFFF_vals)})"
+                )
+
+        ax[0][0].set_title(f"{name1} trials")
+        ax[0][1].set_title(f"{name2} trials")
+
+        for a in ax.flatten(order="F"):
+            a.legend()
+
+        self.formatting(ax, yticks=[0, 0.5, 1], xticks=xtick, xlabel=xlabel)
+        sns.despine(trim=True)
+        plt.tight_layout()
+        plt.savefig(f"{group_name}-{type}-{name1}v{name2}.pdf")
+        # plt.show()
+        plt.close()
+    def plot_SvF_LS_and_SC(self, data1, data2, group_name, xtick, xlabel, type):
+        indi_legs = ["L-f", "L-m", "L-h"]
+        colors = ["red", "green", "blue", "orangered", "lime", "deepskyblue"]
+        fig, ax = plt.subplots(3,2, figsize=(8, 12))
+        for l, leg in enumerate(indi_legs):
+            if max(xtick) > 1:
+                bins = np.arange(0, 16, 1)
+            else:
+                bins = np.arange(0, 0.75, 0.05)
+            Successful_vals = data1[leg].dropna()
+            Failed_vals = data2[leg].dropna()
+
+            if len(Successful_vals) > 0:
+                sns.histplot(
+                    Successful_vals,
+                    ax=ax[l][0],
+                    bins=bins,
+                    color=colors[l],
+                    stat="probability",
+                    kde=False,
+                    label=f"{leg}-ON (n = {len(Successful_vals)})"
+                )
+
+            if len(Failed_vals) > 0:
+                sns.histplot(
+                    Failed_vals,
+                    ax=ax[l][1],
+                    bins=bins,
+                    color=colors[l + 3],
+                    stat="probability",
+                    kde=False,
+                    label=f"{leg}-OFF (n = {len(Failed_vals)})"
+                )
+
+        for a in ax.flatten(order="F"):
+            a.legend()
+
+        self.formatting(ax, yticks=[0, 0.5, 1], xticks=xtick, xlabel=xlabel)
+        sns.despine(trim=True)
+        plt.tight_layout()
+        plt.savefig(f"{group_name}-{type}-SvF.pdf")
+        # plt.show()
+        plt.close()
+    def plot_conv_data(self, group_info:Group):
+        """indi_legs = ["L-f", "L-m", "L-h"]
+        index_to_iterate = group_info.get_targeted_trials(["Landing"])
+        Success, Failed = self.manipulator.read_leg_search_data(self.analyzer.Analyze_leg_search(group_info, index_to_iterate, group_info.group_name), indi_legs)
+        self.plot_SvF_LS_and_SC(Success, Failed, group_info.group_name, [0, 5, 10, 15], "Number of searches", "LegSearch")
+
+        Success, Failed = self.manipulator.read_secondary_contact_data(self.analyzer.AnalyzeSecondaryContact(index_to_iterate, group_info,  0.71), indi_legs)
+        self.plot_SvF_LS_and_SC(Success, Failed, group_info.group_name, [0, 0.7], "Time (s)", "SecondaryContact")"""
+        index_to_iterate = group_info.get_targeted_trials(["Landing"])
+        threshold = 0.71
+        (success_ang_v, success_ang_ft, success_ang_proj,
+         failed_ang_v, failed_ang_ft, failed_ang_proj) = (self.analyzer.Calculate_contact_leg_metrices(group_info, index_to_iterate, [["R-mCT", "R-mFT", "R-mTT"]], threshold))
+
+        self.plot_posture_metrics(success_ang_v, failed_ang_v,
+                                  "Success", "Failed",
+                                  [-300, -200, -100, 0, 100, 200, 300, 400, 500],
+                                  "T2-R-mFT angular velocity (degree°/s)",
+                                  group_info.group_name, "angular_v")
+
+        """self.plot_posture_metrics(success_ang_ft, failed_ang_ft,
+                                  "Success", "Failed",
+                                  [0, 90, 180],
+                                  "Flight posture (T2-R-mFT angle°)",
+                                  group_info.group_name, "FT angle")
+
+        self.plot_posture_metrics(success_ang_proj, failed_ang_proj,
+                                  "Success", "Failed",
+                                  [0, 180, 360],
+                                  "Tarsus direction (°)",
+                                  group_info.group_name, "Projection")"""
+
+    def plot_chrimson_data(self, group_info:Group, color):
+        index_to_iterate = group_info.get_targeted_trials(["Landing", "Flying"])
+        indi_legs = ["L-f", "L-m", "L-h"]
+        ON_index = []
+        OFF_index = []
+
+        for index in index_to_iterate:
+            path = group_info.fly_kinematic_data_path[f"F{index[0]}T{index[1]}"]
+            if "ON" in path or "LO" in path:
+                ON_index.append(index)
+            if "OFF" in path or "NL" in path:
+                OFF_index.append(index)
+
+
+        ON_success, ON_failed = self.manipulator.read_leg_search_data(self.analyzer.Analyze_leg_search_CHR(group_info, ON_index, "ON"), indi_legs)
+        LS_data_ON = pd.concat([ON_success, ON_failed])
+        combined = LS_data_ON.sum(axis=1).to_frame(name="sum")
+
+        fig, ax = plt.subplots(1, 1, figsize=(7, 7))
+        sns.histplot(combined["sum"], ax=ax, color=color, stat="probability", kde=True, binwidth=1, label=f"ON (n = {len(LS_data_ON['sum'])})")
+        self.formatting(ax, xticks=[0, 5, 10, 15, 20], xlabel="time (s)", yticks=[0, 0.5])
+        ax.legend()
+        sns.despine(trim=True, offset=5)
+        plt.savefig(f"{group_info.group_name}-LegSearch.pdf")
+        plt.close()
+    def plot_chrimson_LP(self, groups):
+        angs = [["L-wing", "L-wing-hinge", "R-wing"]]
+        collected_data = dict()
+        collected_data["GroupName"] = []
+        collected_data["Values"] = []
+        collected_LP = dict()
+        collected_LP["GroupName"] = []
+        collected_LP["Values"] = []
+        for group_info in groups:
+            ON_index = []
+            OFF_index = []
+            index_to_iterate = group_info.get_targeted_trials(["Landing", "Flying"])
+            for index in index_to_iterate:
+                path = group_info.fly_kinematic_data_path[f"F{index[0]}T{index[1]}"]
+                if "ON" in path or "LO" in path:
+                    ON_index.append(index)
+                if "OFF" in path or "NL" in path:
+                    OFF_index.append(index)
+
+            last_fly = ON_index[0][0]
+            flying_num = 0
+            landing_num = 0
+            for index in ON_index:
+                trial_info = group_info.fly_kinematic_data[f"F{index[0]}T{index[1]}"]
+                wing_angle = self.calculator.Calculate_joint_angle(trial_info, angs)["L-wing-hinge"][750:1250]
+                MOL = self.detector.detect_landing(wing_angle)
+
+                if MOL == -1 or (MOL / 250) > 0.71:
+                    flying_num += 1
+                else:
+                    landing_num += 1
+                    collected_data["GroupName"].append(group_info.group_name)
+                    collected_data["Values"].append(MOL / 250)
+                if last_fly != index[0] or index == ON_index[-1]:
+                    collected_LP["GroupName"].append(group_info.group_name)
+                    collected_LP["Values"].append(landing_num / (landing_num + flying_num))
+                    flying_num = 0
+                    landing_num = 0
+                    last_fly = index[0]
+
+
+        color = ["magenta", "green", "red", "orange", "brown", "blue"]
+        dim_color = []
+        for c in color:
+            dim_color.append(self.centered_shades(c, 5)[3])
+        fig, ax = plt.subplots(1, 1, figsize=(8, 8))
+        collected_data = pd.DataFrame(collected_data)
+        group_order_LL = [g.group_name for g in groups if g.group_name in collected_data["GroupName"].unique()]
+        sns.stripplot(data=collected_data, x="GroupName", y="Values", ax=ax, alpha=0.5, size=15, palette=color)
+        group_stat = collected_data.groupby('GroupName')["Values"].agg(['mean', 'std', 'count']).reset_index()
+        sns.pointplot(x='GroupName', y='mean', data=group_stat, color='black', linestyles=" ", markers="s", errorbar=None, scale=2, zorder=10)
+        plt.errorbar(x=group_stat['GroupName'], y=group_stat['mean'], yerr=group_stat['std'], fmt="none", color='black', capsize=10, zorder=10)
+        self.formatting(ax, yticks=[0, 1], ylabel="Landing latency (s)")
+        sns.despine(trim=True, offset=5)
+        plt.savefig(f"Chr-LL.pdf")
+
+        # p-value table for landing latency
+        LL_p_table = self.pairwise_bootstrap_table(
+            df=collected_data,
+            group_col="GroupName",
+            value_col="Values",
+            group_order=group_order_LL)
+        print(LL_p_table)
+        # plt.show()
+
+        fig, ax = plt.subplots(1, 1, figsize=(8, 8))
+        collected_LP = pd.DataFrame(collected_LP)
+        group_order_LP = [g.group_name for g in groups if g.group_name in collected_LP["GroupName"].unique()]
+        sns.stripplot(data=collected_LP, x="GroupName", y="Values", ax=ax, alpha=0.5, palette=color, size=15)
+        group_stat = collected_LP.groupby('GroupName')["Values"].agg(['mean', 'std', 'count']).reset_index()
+        sns.pointplot(x='GroupName', y='mean', data=group_stat, color='black', linestyles=" ", markers="s", errorbar=None, scale=2, zorder=10)
+        plt.errorbar(x=group_stat['GroupName'], y=group_stat['mean'], yerr=group_stat['std'], fmt="none", color='black', capsize=10, zorder=10)
+        self.formatting(ax, yticks=[0, 1], ylabel="Landing probability")
+        sns.despine(trim=True, offset=5)
+        plt.savefig(f"Chr-LP.pdf")
+
+        LP_p_table = self.pairwise_bootstrap_table(
+            df=collected_LP,
+            group_col="GroupName",
+            value_col="Values",
+            group_order=group_order_LP
+        )
+
+        # optional save
+        LL_p_table.to_csv("Chr-LL-pvalues.csv")
+        LP_p_table.to_csv("Chr-LP-pvalues.csv")
+
+        # plt.show()
+
+    def plot_ft_ang_over_trials(self, groups):
+        import matplotlib.cm as cm
+        cmap = cm.get_cmap('viridis', len(groups))
+        colors = [cmap(i) for i in range(len(groups))]
+        fig, ax = plt.subplots(3, 3, figsize=(12, 12))
+        trials = [t + 1 for t in range(20)]
+        ax = ax.flatten(order="F")
+        for g, group_info in enumerate(groups):
+            index_to_iterate = group_info.get_targeted_trials(["Landing", "Flying"])
+            collected_data = []
+            for t in range(group_info.trial_num):
+                trials_data = []
+                for f in group_info.good_fly_index:
+                    if (f, t + 1) in index_to_iterate:
+                        trial_info = group_info.fly_kinematic_data[f"F{f}T{t + 1}"]
+                        ft_ang = np.mean(self.calculator.Calculate_joint_angle(trial_info, [["R-mCT", "R-mFT", "R-mTT"]])["R-mFT"][:200])
+                        trials_data.append(ft_ang)
+                    else:
+                        trials_data.append(np.nan)
+                collected_data.append(trials_data)
+
+            trials_mean = np.nanmean(np.array(collected_data), axis=1)
+            trials_std = np.nanstd(np.array(collected_data), axis=1)
+
+            sns.lineplot(x=trials, y=trials_mean, ax=ax[g], color=colors[g], linewidth=5)
+            ax[g].fill_between(trials, trials_mean - trials_std, trials_mean + trials_std, color=colors[g], alpha=0.3)
+            ax[g].set_title(f"{group_info.group_name}")
+
+        self.formatting(ax, xticks=[1, 10, 20], xlabel="trials", yticks=[0, 45, 90], ylabel="R-mFT angle")
+        sns.despine(trim=True, offset=5)
+        plt.tight_layout()
+        plt.savefig("FT-change through trials.pdf")
+        plt.show()
+    def plot_ON_OFF_angle_change(self, group_info:Group):
+
+        self.angles = [["R-mCT", "R-mFT", "R-mTT"]]
+
+        start = -0.2
+        end = 0.7
+        tnorm = False
+        threshold = 0.71
+
+        index_to_iterate = group_info.get_targeted_trials(["Landing", "Flying"])
+
+        ON_index = []
+        OFF_index = []
+        for index in index_to_iterate:
+            path = group_info.fly_kinematic_data_path[f"F{index[0]}T{index[1]}"]
+            if "ON" in path or "LO" in path:
+                ON_index.append(index)
+            if "OFF" in path or "NL" in path:
+                OFF_index.append(index)
+
+        ON_data = self.analyzer.Calculate_angle_traces(group_info, ON_index, self.angles, threshold, start, end, tnorm, False)
+        OFF_data = self.analyzer.Calculate_angle_traces(group_info, OFF_index, self.angles, threshold, start, end, tnorm, False)
+
+        color = self.centered_shades("grey", 5)
+
+        fig, ax = plt.subplots(1, 1, figsize=(5, 5))
+        frames = np.arange(int(start * 250), int(end * 250)) / 250
+
+        ON_trials = []
+        OFF_trials = []
+        for fly_data in ON_data:
+            ON_trials.extend([trace for flag, index, fps, trace in fly_data["R-mFT"]])
+
+        for fly_data in OFF_data:
+            OFF_trials.extend([trace for flag, index, fps, trace in fly_data["R-mFT"]])
+
+
+        ON_avg = np.nanmean(np.array(ON_trials), axis=0)
+        ON_std = np.nanstd(np.array(ON_trials), axis=0)
+        OFF_avg = np.nanmean(np.array(OFF_trials), axis=0)
+        OFF_std = np.nanstd(np.array(OFF_trials), axis=0)
+
+        sns.lineplot(x=frames, y=ON_avg, color=color[3], linestyle="solid", linewidth=4, label=f"light on(n = {len(ON_trials)})")
+        ax.fill_between(frames, ON_avg - ON_std, ON_avg + ON_std, color=color[3], alpha=0.2)
+
+        sns.lineplot(x=frames, y=OFF_avg, color=color[1], linestyle="solid", linewidth=4, label=f"light off (n = {len(OFF_trials)})")
+        ax.fill_between(frames, OFF_avg - OFF_std, OFF_avg + OFF_std, color=color[1], alpha=0.2)
+
+        plt.axvline(0, color="black", linestyle="dashed", label="MOC")
+        self.formatting(ax, [start, 0, end], [0, 90, 180], xlabel="seconds (s)", ylabel=f"T2-R-FT joint angle")
+        sns.despine(trim=True)
+        plt.legend()
+        plt.savefig(f"{group_info.group_name}_ONvOFF_FT_change.pdf")
         plt.show()
 
+    def plot_combined_LS_and_SC(self, groups, Opto, color):
+        color1 = self.centered_shades(color, 5)[1]
+        color2 = self.centered_shades(color, 5)[4]
+
+        if not Opto:
+            color = ["orange", "grey", "brown"]
+            datas_to_compare = []
+            stat = dict()
+            stat["Group"] = []
+            stat["mean"] = []
+            stat["std"] = []
+            fig, ax = plt.subplots(1, 1, figsize=(7, 7))
+            for g, group_info in enumerate(groups):
+                LS_data = self.analyzer.combine_data(group_info, "LS", False)
+                datas_to_compare.append(LS_data["sum"])
+                sns.histplot(LS_data["sum"], ax=ax, color=color[g], stat="probability", kde=True, binwidth=1, label=f"{group_info.group_name} (n = {len(LS_data['sum'])})")
+
+                stat["Group"].append(group_info.group_name)
+                stat["mean"].append(np.mean(LS_data["sum"]))
+                stat["std"].append(np.std(LS_data["sum"]))
+                print(f"Group: {group_info.group_name} Mean:{np.mean(LS_data['sum'])} STD: {np.std(LS_data['sum'])}")
+            self.formatting(ax, xticks=[0, 5, 10, 15, 20, 25], xlabel="time (s)", yticks=[0, 0.5])
+            ax.legend()
+            sns.despine(trim=True, offset=5)
+            plt.savefig(f"WT-LegSearch.pdf")
+            plt.close()
+            pd.DataFrame(stat).to_csv(f"WT-LS.csv")
+            print("WT LS")
+            print(self.calculator.Bootstrapping_test(datas_to_compare[0], datas_to_compare[1], 30000))
+            print(self.calculator.Bootstrapping_test(datas_to_compare[0], datas_to_compare[2], 30000))
+            print(self.calculator.Bootstrapping_test(datas_to_compare[1], datas_to_compare[2], 30000))
+
+
+            datas_to_compare = []
+            fig, ax = plt.subplots(1, 1, figsize=(7, 7))
+            stat = dict()
+            stat["Group"] = []
+            stat["mean"] = []
+            stat["std"] = []
+            for g, group_info in enumerate(groups):
+
+                SC_data = self.analyzer.combine_data(group_info, "SC", False)
+                datas_to_compare.append(SC_data["SC"])
+                sns.histplot(SC_data["SC"], ax=ax, color=color[g], stat="probability", kde=True, bins=np.arange(0, 0.75, 0.05), label=f"{group_info.group_name} (n = {len(SC_data['SC'])})")
+                stat["Group"].append(group_info.group_name)
+                stat["mean"].append(np.mean(SC_data['SC']))
+                stat["std"].append(np.std(SC_data['SC']))
+                print(f"Group: {group_info.group_name} Mean:{np.mean(SC_data['SC'])} STD: {np.std(SC_data['SC'])}")
+            self.formatting(ax, xticks=[0, 0.7], xlabel="time (s)", yticks=[0, 0.5])
+            sns.despine(trim=True, offset=5)
+            ax.legend()
+            plt.savefig(f"WT-SecondaryContact.pdf")
+            plt.close()
+            pd.DataFrame(stat).to_csv(f"WT-SC.csv")
+            print("WT SC")
+            print(self.calculator.Bootstrapping_test(datas_to_compare[0], datas_to_compare[1], 30000))
+            print(self.calculator.Bootstrapping_test(datas_to_compare[0], datas_to_compare[2], 30000))
+            print(self.calculator.Bootstrapping_test(datas_to_compare[1], datas_to_compare[2], 30000))
+        else:
+            stat = dict()
+            stat["Group"] = []
+            stat["mean"] = []
+            stat["std"] = []
+
+            fig, ax = plt.subplots(1, 1, figsize=(7, 7))
+            for g, group_info in enumerate(groups):
+
+                LS_data_ON, LS_data_OFF = self.analyzer.combine_data(group_info, "LS", True)
+                sns.histplot(LS_data_ON["sum"], ax=ax, color=color2, stat="probability", kde=True, binwidth=1, label=f"ON (n = {len(LS_data_ON['sum'])})")
+                sns.histplot(LS_data_OFF["sum"], ax=ax, color=color1, stat="probability", kde=True, binwidth=1, label=f"OFF (n = {len(LS_data_OFF['sum'])})")
+
+                stat["Group"].append(group_info.group_name + "ON")
+                stat["mean"].append(np.mean(LS_data_ON["sum"]))
+                stat["std"].append(np.std(LS_data_ON["sum"]))
+
+                stat["Group"].append(group_info.group_name + "OFF")
+                stat["mean"].append(np.mean(LS_data_OFF["sum"]))
+                stat["std"].append(np.std(LS_data_OFF["sum"]))
+                pd.DataFrame(stat).to_csv(f"{group_info.group_name}-LS.csv")
+                print(group_info.group_name, self.calculator.Bootstrapping_test(LS_data_ON["sum"], LS_data_OFF["sum"], 30000))
+            self.formatting(ax, xticks=[0, 5, 10, 15, 20], xlabel="time (s)", yticks=[0, 0.5])
+            ax.legend()
+            sns.despine(trim=True, offset=5)
+            plt.savefig(f"{groups[0].group_name}-LegSearch.pdf")
+            plt.close()
+
+
+            stat = dict()
+            stat["Group"] = []
+            stat["mean"] = []
+            stat["std"] = []
+            fig, ax = plt.subplots(1, 1, figsize=(7, 7))
+            for g, group_info in enumerate(groups):
+
+                SC_data_ON, SC_data_OFF = self.analyzer.combine_data(group_info, "SC", True)
+                sns.histplot(SC_data_ON["SC"], ax=ax, color=color2, stat="probability", kde=True, bins=np.arange(0, 0.75, 0.05), label=f"ON (n = {len(SC_data_ON['SC'])})")
+                sns.histplot(SC_data_OFF["SC"], ax=ax, color=color1, stat="probability", kde=True, bins=np.arange(0, 0.75, 0.05), label=f"OFF (n = {len(SC_data_OFF['SC'])})")
+
+                stat["Group"].append(group_info.group_name + "ON")
+                stat["mean"].append(np.mean(SC_data_ON['SC']))
+                stat["std"].append(np.std(SC_data_ON['SC']))
+
+                stat["Group"].append(group_info.group_name + "OFF")
+                stat["mean"].append(np.mean(SC_data_OFF['SC']))
+                stat["std"].append(np.std(SC_data_OFF['SC']))
+                pd.DataFrame(stat).to_csv(f"{group_info.group_name}-SC.csv")
+                print(group_info.group_name, self.calculator.Bootstrapping_test(SC_data_ON["SC"], SC_data_OFF["SC"], 30000))
+            self.formatting(ax, xticks=[0, 0.7], xlabel="time (s)", yticks=[0, 0.5])
+            sns.despine(trim=True, offset=5)
+            ax.legend()
+            plt.savefig(f"{groups[0].group_name}-SecondaryContact.pdf")
+            plt.close()
+
+    def plot_LS_vs_LL(self, group_info:Group, Opto=False, SC_path=None, LS_path=None):
+        index_to_iterate = group_info.get_targeted_trials(["Landing", "Flying"])
+
+        if Opto:
+            ON_index = []
+            for index in index_to_iterate:
+                path = group_info.fly_kinematic_data_path[f"F{index[0]}T{index[1]}"]
+                if "ON" in path or "LO" in path:
+                    ON_index.append(index)
+
+            data = self.analyzer.AnalyzeSecondaryContact(ON_index, group_info, 0.71, "ON")
+            cols = data.filter(regex=r'^L-[fmh]').columns
+            new_df = data[['Index']].copy()
+            new_df['min_val'] = data[cols].replace(10000, np.nan).min(axis=1)
+            new_df = new_df.dropna(subset=['min_val']).reset_index(drop=True)
+
+            LL = []
+            SC = []
+            for i in range(len(new_df["Index"])):
+                trial_info = group_info.fly_kinematic_data[f"F{new_df['Index'][i][0]}T{new_df['Index'][i][1]}"]
+                if trial_info.mol != -1:
+                    LL.append((trial_info.mol - trial_info.moc) / trial_info.fps)
+                    SC.append(new_df['min_val'][i])
+
+            sns.scatterplot(x=SC, y=LL)
+            plt.show()
+
+            Success, Failed = self.manipulator.read_leg_search_data(self.analyzer.Analyze_leg_search(group_info, ON_index, "ON"), ["L-f", "L-m", "L-h", "Index"])
+            combined = pd.concat([Success, Failed])
+            new_df = combined[['Index']].copy()
+            new_df['sum'] = combined[['L-f', 'L-m', 'L-h']].sum(axis=1)
+            LL = []
+            LS = []
+            for i in range(len(new_df["Index"])):
+                trial_info = group_info.fly_kinematic_data[f"F{new_df['Index'][i][0]}T{new_df['Index'][i][1]}"]
+                if trial_info.mol != -1:
+                    LL.append((trial_info.mol - trial_info.moc) / trial_info.fps)
+                    LS.append(new_df['sum'][i])
+
+            sns.scatterplot(x=LS, y=LL)
+            plt.show()
 
 
 
 
 
 
-    #  def plot_LT_distance_to_platform(self, trial_info:Trial):
+
+
+
+            OFF_index = []
+            for index in index_to_iterate:
+                path = group_info.fly_kinematic_data_path[f"F{index[0]}T{index[1]}"]
+                if "OFF" in path or "NL" in path:
+                    OFF_index.append(index)
+
+            data = self.analyzer.AnalyzeSecondaryContact(OFF_index, group_info, 0.71, "OFF")
+            cols = data.filter(regex=r'^L-[fmh]').columns
+            new_df = data[['Index']].copy()
+            new_df['min_val'] = data[cols].replace(10000, np.nan).min(axis=1)
+            new_df = new_df.dropna(subset=['min_val']).reset_index(drop=True)
+
+            LL = []
+            SC = []
+            for i in range(len(new_df["Index"])):
+                trial_info = group_info.fly_kinematic_data[f"F{new_df['Index'][i][0]}T{new_df['Index'][i][1]}"]
+                if trial_info.mol != -1:
+                    LL.append((trial_info.mol - trial_info.moc) / trial_info.fps)
+                    SC.append(new_df['min_val'][i])
+
+            sns.scatterplot(x=SC, y=LL)
+            plt.show()
+
+            Success, Failed = self.manipulator.read_leg_search_data(self.analyzer.Analyze_leg_search(group_info, OFF_index, "OFF"), ["L-f", "L-m", "L-h", "Index"])
+            combined = pd.concat([Success, Failed])
+            new_df = combined[['Index']].copy()
+            new_df['sum'] = combined[['L-f', 'L-m', 'L-h']].sum(axis=1)
+            LL = []
+            LS = []
+            for i in range(len(new_df["Index"])):
+                trial_info = group_info.fly_kinematic_data[f"F{new_df['Index'][i][0]}T{new_df['Index'][i][1]}"]
+                if trial_info.mol != -1:
+                    LL.append((trial_info.mol - trial_info.moc) / trial_info.fps)
+                    LS.append(new_df['sum'][i])
+
+            sns.scatterplot(x=LS, y=LL)
+            plt.show()
+        else:
+            if SC_path is not None:
+                import ast
+                data = pd.read_csv(SC_path)
+                data["Index"] = data["Index"].apply(ast.literal_eval)
+            else:
+                data = self.analyzer.AnalyzeSecondaryContact(index_to_iterate, group_info, 0.71)
+            cols = data.filter(regex=r'^L-[fmh]').columns
+            new_df = data[['Index']].copy()
+            new_df['min_val'] = data[cols].replace(10000, np.nan).min(axis=1)
+            new_df = new_df.dropna(subset=['min_val']).reset_index(drop=True)
+
+            LL = []
+            SC = []
+            for i in range(len(new_df["Index"])):
+                trial_info = group_info.fly_kinematic_data[f"F{new_df['Index'][i][0]}T{new_df['Index'][i][1]}"]
+                if trial_info.mol != -1:
+                    LL.append((trial_info.mol - trial_info.moc) / trial_info.fps)
+                    SC.append(new_df['min_val'][i])
+
+            sns.scatterplot(x=SC, y=LL)
+            plt.show()
+
+
+
+            if LS_path is not None:
+                import ast
+                combined = pd.read_csv(LS_path)
+                combined["Index"] = combined["Index"].apply(ast.literal_eval)
+            else:
+                Success, Failed = self.manipulator.read_leg_search_data(self.analyzer.Analyze_leg_search(group_info, index_to_iterate, group_info.group_name),["L-f", "L-m", "L-h", "Index"])
+                combined = pd.concat([Success, Failed])
+
+            print(combined.columns.tolist())
+            new_df = combined[['Index']].copy()
+            new_df['sum'] = combined[['L-f', 'L-m', 'L-h']].sum(axis=1)
+            LL = []
+            LS = []
+            for i in range(len(new_df["Index"])):
+                trial_info = group_info.fly_kinematic_data[f"F{new_df['Index'][i][0]}T{new_df['Index'][i][1]}"]
+                if trial_info.mol != -1:
+                    LL.append((trial_info.mol - trial_info.moc) / trial_info.fps)
+                    LS.append(new_df['sum'][i])
+
+            sns.scatterplot(x=LS, y=LL)
+            plt.show()
+    def plot_LS_SC(self, group_info, Opto=False):
+        ls_cols = ["L-f", "L-m", "L-h"]
+
+        if not Opto:
+            ls_df = pd.read_csv(r"C:\Users\agrawal-admin\Desktop\Landing\WT-T3-TiTa-WT-T3-TiTa-LS_data_.csv")
+            sc_df = pd.read_csv(r"C:\Users\agrawal-admin\Desktop\Landing\WT-T3-TiTa--0.71.csv")
+            ls_out = ls_df[["Index", "Result"]].copy()
+            ls_out["LS_sum"] = ls_df[ls_cols].sum(axis=1)
+
+            # ---------------------------------------------------
+            # 2) Build SC from all columns containing:
+            #    L-f, L-m, or L-h
+            #    Treat 10000 as NaN before taking row-wise min
+            # ---------------------------------------------------
+            sc_cols = sc_df.filter(regex=r"L-f|L-m|L-h").columns
+
+            sc_out = sc_df[["Index", "Result"]].copy()
+            sc_out["SC"] = (
+                sc_df[sc_cols]
+                .replace(10000, np.nan)
+                .min(axis=1)
+            )
+
+            # Optional:
+            # drop rows where SC is NaN (meaning all relevant values were 10000)
+            # sc_out = sc_out.dropna(subset=["SC"])
+
+            # ---------------------------------------------------
+            # 3) Merge them together using Index and Result
+            # ---------------------------------------------------
+            result_df = pd.merge(ls_out, sc_out, on=["Index", "Result"], how="inner")
+
+            # Reorder columns
+            result_df = result_df[["Index", "Result", "LS_sum", "SC"]]
+
+
+            # Save if needed
+            result_df.to_csv("filtered_LS_SC_data.csv", index=False)
+            final_df = result_df.dropna(subset=["SC"])
+            n_dropped = result_df["SC"].isna()
+            print(n_dropped)
+
+            success_color = self.centered_shades("blue", 5)[3]
+            failed_color = self.centered_shades("green", 5)[3]
+            fig, ax = plt.subplots(1, 1, figsize=(7, 7))
+            success = final_df[final_df["Result"] == "Success"]
+            failed = final_df[final_df["Result"] == "Failed"]
+            sns.scatterplot(x=success["SC"], y=success["LS_sum"], s=100, alpha=0.5, color=success_color, label=f"Success")
+            sns.scatterplot(x=failed["SC"], y=failed["LS_sum"], s=100, alpha=0.5, color=failed_color, label="Failed")
+            self.formatting(ax, xticks=[0, 0.5, 1, 1.5, 2], yticks=[0, 5, 10, 15, 20, 25], xlabel="moment of first secondary contact", ylabel="number of leg searches")
+            sns.despine(trim=True, offset=5)
+            plt.savefig(f"{group_info.group_name} LS vs SC.pdf")
+            plt.show()
+        else:
+            ls_df_on = pd.read_csv(os.path.join(r"C:\Users\agrawal-admin\Desktop\Landing",  f"{group_info.group_name}-ON-LS_data_.csv"))
+            ls_df_off = pd.read_csv(os.path.join(r"C:\Users\agrawal-admin\Desktop\Landing", f"{group_info.group_name}-OFF-LS_data_.csv"))
+
+            sc_df_on = pd.read_csv(os.path.join(r"C:\Users\agrawal-admin\Desktop\Landing", f"{group_info.group_name}-ON-0.71.csv"))
+            sc_df_off = pd.read_csv(os.path.join(r"C:\Users\agrawal-admin\Desktop\Landing", f"{group_info.group_name}-OFF-0.71.csv"))
+
+            ls_out_on = ls_df_on[["Index", "Result"]].copy()
+            ls_out_on["LS_sum"] = ls_df_on[ls_cols].sum(axis=1)
+            ls_out_off = ls_df_off[["Index", "Result"]].copy()
+            ls_out_off["LS_sum"] = ls_df_off[ls_cols].sum(axis=1)
+
+            # ---------------------------------------------------
+            # 2) Build SC from all columns containing:
+            #    L-f, L-m, or L-h
+            #    Treat 10000 as NaN before taking row-wise min
+            # ---------------------------------------------------
+            sc_cols = sc_df_on.filter(regex=r"L-f|L-m|L-h").columns
+            sc_out_on = sc_df_on[["Index", "Result"]].copy()
+            sc_out_on["SC"] = (sc_df_on[sc_cols].replace(10000, np.nan).min(axis=1))
+
+            sc_cols = sc_df_off.filter(regex=r"L-f|L-m|L-h").columns
+            sc_out_off = sc_df_off[["Index", "Result"]].copy()
+            sc_out_off["SC"] = (sc_df_off[sc_cols].replace(10000, np.nan).min(axis=1))
+
+            # Optional:
+            # drop rows where SC is NaN (meaning all relevant values were 10000)
+            # sc_out = sc_out.dropna(subset=["SC"])
+
+            # ---------------------------------------------------
+            # 3) Merge them together using Index and Result
+            # ---------------------------------------------------
+
+            # Reorder columns
+
+            # Save if needed
+            # result_df_on.to_csv("filtered_LS_SC_data.csv", index=False)
+            fig, ax = plt.subplots(2, 1, figsize=(5, 10))
+
+            result_df_on = pd.merge(ls_out_on, sc_out_on, on=["Index", "Result"], how="inner")
+            result_df_on = result_df_on[["Index", "Result", "LS_sum", "SC"]]
+            final_df_on = result_df_on.dropna(subset=["SC"])
+            success_color = self.centered_shades("blue", 5)[3]
+            failed_color = self.centered_shades("green", 5)[3]
+            success = final_df_on[final_df_on["Result"] == "Success"]
+            failed = final_df_on[final_df_on["Result"] == "Failed"]
+            sns.scatterplot(x=success["SC"], y=success["LS_sum"], s=100, alpha=0.5, color=success_color, ax=ax[0], label=f"Success")
+            sns.scatterplot(x=failed["SC"], y=failed["LS_sum"], s=100, alpha=0.5, color=failed_color, ax=ax[0], label="Failed")
+
+            result_df_off = pd.merge(ls_out_off, sc_out_off, on=["Index", "Result"], how="inner")
+            result_df_off = result_df_off[["Index", "Result", "LS_sum", "SC"]]
+            final_df_off = result_df_off.dropna(subset=["SC"])
+            success_color = self.centered_shades("blue", 5)[3]
+            failed_color = self.centered_shades("green", 5)[3]
+            success = final_df_off[final_df_off["Result"] == "Success"]
+            failed = final_df_off[final_df_off["Result"] == "Failed"]
+            sns.scatterplot(x=success["SC"], y=success["LS_sum"], s=100, alpha=0.5, color=success_color, ax=ax[1],label=f"Success")
+            sns.scatterplot(x=failed["SC"], y=failed["LS_sum"], s=100, alpha=0.5, color=failed_color, ax=ax[1], label="Failed")
+
+
+
+            ax[0].set_title("ON")
+            ax[1].set_title("OFF")
+            self.formatting(ax, xticks=[0, 0.5, 1, 1.5, 2], yticks=[0, 5, 10, 15, 20, 25, 30], xlabel="moment of first secondary contact", ylabel="number of leg searches")
+            sns.despine(trim=True, offset=5)
+            plt.tight_layout()
+            plt.savefig(f"{group_info.group_name}-LS vs SC.pdf")
+            plt.show()
+    def plot_Chrimson_ang_change(self, groups):
+        angs = [["L-wing", "L-wing-hinge", "R-wing"]]
+        color = ["magenta", "green", "red", "orange", "brown", "blue"]
+        fig, ax = plt.subplots(2, 1, figsize=(7, 14))
+        for g, group_info in enumerate(groups):
+            index_to_iter = group_info.get_targeted_trials(["Landing", "Flying"])
+            ON_index = []
+            traces = []
+            for index in index_to_iter:
+                path = group_info.fly_kinematic_data_path[f"F{index[0]}T{index[1]}"]
+                if "ON" in path or "LO" in path:
+                    trial_info = group_info.fly_kinematic_data[f"F{index[0]}T{index[1]}"]
+                    ON_index.append(index)
+                    wing_ag = self.calculator.Calculate_joint_angle(trial_info, angs)
+                    traces.append(wing_ag["L-wing-hinge"][500:1250])
+            avg = np.nanmean(traces, axis=0)
+            std = np.nanstd(traces, axis=0)
+            seconds = [s / 250 for s in range(-250, 500)]
+            sns.lineplot(x=seconds, y=avg, color=color[g], linewidth=1, ax=ax[g // 3], label=f"{group_info.group_name} (n = {len(traces)})")
+            ax[g // 3].fill_between(x=seconds, y1=avg - std, y2=avg + std, alpha=0.3, color=color[g])
+        ax[0].axvline(0, color="black", linestyle="dashed")
+        ax[1].axvline(0, color="black", linestyle="dashed")
+        ax[0].legend()
+        ax[1].legend()
+        self.formatting(ax, xticks=[-1, 0, 1, 2], yticks=[0, 90, 180], xlabel="Time (s)", ylabel="Wing angle")
+        sns.despine(trim=True, offset=5)
+        plt.savefig("Chrimson-angle_change.pdf")
+        plt.show()
+
+    def pairwise_bootstrap_table(self, df, group_col, value_col, group_order=None):
+        """
+        Perform all pairwise bootstrap comparisons and return a symmetric p-value table.
+
+        Parameters
+        ----------
+        df : pandas.DataFrame
+        group_col : str
+            Column containing group labels
+        value_col : str
+            Column containing numeric values
+        bootstrap_func : callable
+            Function like bootstrap_func(data1, data2) -> p_value
+        group_order : list or None
+            Order of groups in the output table
+
+        Returns
+        -------
+        p_table : pandas.DataFrame
+            Symmetric table of p-values
+        """
+        import itertools
+        if group_order is None:
+            group_order = list(df[group_col].dropna().unique())
+
+        p_table = pd.DataFrame(np.nan, index=group_order, columns=group_order)
+
+        for g in group_order:
+            p_table.loc[g, g] = 0
+
+        for g1, g2 in itertools.combinations(group_order, 2):
+            data1 = df.loc[df[group_col] == g1, value_col].dropna().to_numpy(dtype=float)
+            data2 = df.loc[df[group_col] == g2, value_col].dropna().to_numpy(dtype=float)
+
+            if len(data1) == 0 or len(data2) == 0:
+                p = np.nan
+            else:
+                p = self.calculator.Bootstrapping_test(data1, data2, 30000)
+
+            p_table.loc[g1, g2] = p
+            p_table.loc[g2, g1] = p
+
+        return p_table
+    def plot_secondary_contact_probability(self, groups):
+        collected_data = dict()
+        collected_data["Group"] = []
+        collected_data["Value"] = []
+        stat = dict()
+        stat["mean"] = []
+        stat["std"] = []
+        stat["group"] = []
+        fig, ax = plt.subplots(1, 1, figsize=(len(groups) * 2, 7))
+        for group_info in groups:
+            index_to_iterate = group_info.get_targeted_trials(["Flying", "Landing"])
+            data = self.analyzer.AnalyzeSecondaryContact(index_to_iterate, group_info, 0.71)
+            cols = data.filter(regex=r'^L-[fmh]').columns
+            new_df = data[['Index']].copy()
+            new_df['min_val'] = data[cols].replace(10000, np.nan).min(axis=1)
+            new_df = new_df.dropna(subset=['min_val']).reset_index(drop=True)
+
+            sc_probability = []
+            for f in range(group_info.total_fly_number):
+                if f + 1 in group_info.good_fly_index:
+                    valid_trial_num = len([ind for ind in index_to_iterate if ind[0] == f + 1])
+                    sc_count = 0
+                    for index in new_df["Index"]:
+                        if index[0] == f + 1:
+                            sc_count += 1
+
+                    sc_probability.append(sc_count / valid_trial_num)
+                    collected_data["Group"].append(group_info.group_name)
+                    collected_data["Value"].append(sc_count / valid_trial_num)
+            stat["mean"].append(np.mean(sc_probability))
+            stat["std"].append(np.std(sc_probability))
+            stat["group"].append(group_info.group_name)
+
+
+        sns.stripplot(data=collected_data, x="Group", y="Value")
+        self.formatting(ax, yticks=[0, 0.5, 1], ylabel="secondary contact probability")
+        sns.despine(trim=True, offset=5)
+        pd.DataFrame(stat).to_csv("WT-SC-probability-stat.csv")
+        plt.savefig(f"WT-SC-probability.pdf")
+        plt.show()
+    """def plot_secondary_contact_probability_OPTO(self, group_info:Group):
+        index_to_iterate = group_info.get_targeted_trials(["Flying", "Landing"])
+        ON = []
+        OFF = []
+        for index in index_to_iterate:
+            path = group_info.fly_kinematic_data_path[f"F{index[0]}T{index[1]}"]
+            if "ON" in path or "LO" in path:
+                ON.append(index)
+            if "OFF" in path or "NL" in path:
+                OFF.append(index)
+        on_data = self.analyzer.AnalyzeSecondaryContact(ON, group_info, 0.71)
+        off_data = self.analyzer.AnalyzeSecondaryContact(OFF, group_info, 0.71)
+        def read_data(data):
+            cols = data.filter(regex=r'^L-[fmh]').columns
+            new_df = data[['Index']].copy()
+            new_df['min_val'] = data[cols].replace(10000, np.nan).min(axis=1)
+            new_df = new_df.dropna(subset=['min_val']).reset_index(drop=True)
+            sc_probability = []
+            for f in range(group_info.total_fly_number):
+                if f + 1 in group_info.good_fly_index:
+                    valid_trial_num = len([ind for ind in index_to_iterate if ind[0] == f + 1])
+                    sc_count = 0
+                    for index in on_data["Index"]:
+                        if index[0] == f + 1:
+                            sc_count += 1
+                    sc_probability.append((f, sc_count / valid_trial_num))
+
+            return sc_probability
+        sc_probability_on = read_data(on_data)
+        sc_probability_off = read_data(off_data)
+
+        # sns.stripplot(data=collected_data, x="Group", y="Value")
+        plt.show()"""
+
+    def plot_secondary_contact_probability_OPTO(self, group_info: Group):
+        index_to_iterate = group_info.get_targeted_trials(["Flying", "Landing"])
+
+        ON = []
+        OFF = []
+        for index in index_to_iterate:
+            path = group_info.fly_kinematic_data_path[f"F{index[0]}T{index[1]}"]
+            if "ON" in path or "LO" in path:
+                ON.append(index)
+            if "OFF" in path or "NL" in path:
+                OFF.append(index)
+
+        on_data = self.analyzer.AnalyzeSecondaryContact(ON, group_info, 0.71)
+        off_data = self.analyzer.AnalyzeSecondaryContact(OFF, group_info, 0.71)
+
+        def read_data(data, trial_pool, group_name):
+            cols = data.filter(regex=r'^L-[fmh]').columns
+            new_df = data[['Index']].copy()
+            new_df['min_val'] = data[cols].replace(10000, np.nan).min(axis=1)
+            new_df = new_df.dropna(subset=['min_val']).reset_index(drop=True)
+
+            sc_probability = []
+            for f in range(group_info.total_fly_number):
+                fly_id = f + 1
+                if fly_id in group_info.good_fly_index:
+                    valid_trial_num = len([ind for ind in trial_pool if ind[0] == fly_id])
+
+                    if valid_trial_num == 0:
+                        continue
+
+                    sc_count = 0
+                    for index in new_df["Index"]:
+                        if index[0] == fly_id:
+                            sc_count += 1
+
+                    sc_probability.append({
+                        "Fly#": fly_id,
+                        "Group_Name": group_name,
+                        "SCProb": sc_count / valid_trial_num
+                    })
+
+            return pd.DataFrame(sc_probability)
+
+        sc_probability_on = read_data(on_data, ON, "ON")
+        sc_probability_off = read_data(off_data, OFF, "OFF")
+
+        combined_df = pd.concat([sc_probability_off, sc_probability_on], ignore_index=True)
+
+        # keep only flies that exist in both ON and OFF, so connection lines make sense
+        valid_flies = (
+            combined_df.groupby("Fly#")["Group_Name"]
+            .nunique()
+        )
+        valid_flies = valid_flies[valid_flies == 2].index
+        combined_df = combined_df[combined_df["Fly#"].isin(valid_flies)].copy()
+
+        # sort so OFF and ON are always in the same order for each fly
+        combined_df["Group_Name"] = pd.Categorical(
+            combined_df["Group_Name"],
+            categories=["OFF", "ON"],
+            ordered=True
+        )
+        combined_df = combined_df.sort_values(by=["Fly#", "Group_Name"])
+
+        plt.figure(figsize=(6, 10))
+
+        g = sns.pointplot(data=combined_df, x="Group_Name", y="SCProb", ci=None, dodge=True, color="black", join=False)
+
+        # connect same flies across OFF vs ON
+        for fly_id, group in combined_df.groupby("Fly#"):
+            plt.plot(group["Group_Name"], group["SCProb"], marker="o", markersize=20, color="lightgrey", linewidth=5)
+
+        # mean and std
+        group_stat = combined_df.groupby("Group_Name")["SCProb"].agg(['mean', 'std', 'count']).reset_index()
+        sns.pointplot(x="Group_Name", y="mean", data=group_stat, color="black", linestyles=" ", markers="s", errorbar=None, scale=2,  zorder=10)
+        plt.errorbar(x=group_stat["Group_Name"], y=group_stat["mean"], yerr=group_stat["std"], fmt="none", color="black", capsize=10, zorder=10)
+
+        mean_df = combined_df.groupby("Group_Name", as_index=False)["SCProb"].mean()
+        plt.plot(mean_df["Group_Name"], mean_df["SCProb"], color="black", marker="o", markersize=20, linewidth=5, label="Mean")
+
+        pd.DataFrame(group_stat).to_csv(f"{group_info.group_name}-SC-stat.csv")
+
+        plt.title("Secondary Contact Probability")
+        plt.xlabel("Group")
+        plt.ylabel("Secondary Contact Probability", fontsize=25)
+
+        g.spines['left'].set_linewidth(3)
+        g.spines['bottom'].set_linewidth(3)
+
+        plt.tick_params(axis="y", labelsize=25)
+        plt.tick_params(axis="x", labelsize=25, rotation=45)
+        plt.tick_params(width=3, length=10)
+        plt.yticks([0, 0.5, 1])
+        plt.ylim(-0.1, 1.1)
+        plt.xlim(-0.5, 1.5)
+
+        sns.despine(trim=True)
+        plt.tight_layout()
+        plt.savefig(f"{group_info.group_name}-SC-Prob.pdf")
+        # plt.show()
+        plt.close()
+    def plot_LP(self, groups):
+        Color_blind_palette = ["blue", "red", "green", "dodgerblue", "orange", "lawngreen", "orange"]
+        collected_LP = dict()
+        collected_LP["GroupName"] = []
+        collected_LP["Values"] = []
+        for g, group_info in enumerate(groups):
+            LP = group_info.get_LP()
+            print(LP)
+            collected_LP["GroupName"].extend([group_info.group_name] * len(LP))
+            collected_LP["Values"].extend(LP)
+
+        fig, ax = plt.subplots(1,1, figsize=(len(groups) * 2, 10))
+        sns.stripplot(x="GroupName", y="Values", data=collected_LP, alpha=0.4, jitter=0.2, dodge=False, size=20, marker="o", palette=Color_blind_palette)
+        self.formatting(ax)
+        sns.despine(trim=True, offset=5)
+        plt.show()
+    def plot_LL(self, groups):
+        from matplotlib.lines import Line2D
+        legend_handles = []  # List to store legend handles
+        legend_labels = []
+        Color_blind_palette = ["blue", "red", "green", "dodgerblue", "orange", "lawngreen", "orange"]
+        collected_LP = dict()
+        groups_data = []
+        legend_handles = []
+        legend_labels = []
+        collected_LP["GroupName"] = []
+        collected_LP["Values"] = []
+        for g, group_info in enumerate(groups):
+            MLL, TLL = group_info.get_LL()
+            collected_LP["GroupName"].extend([group_info.group_name] * len(TLL))
+            collected_LP["Values"].extend(TLL)
+            groups_data.append(TLL)
+            legend_labels.append(group_info.group_name)
+
+        fig, ax = plt.subplots(1,1, figsize=(7, 7))
+        for g in range(len(groups)):
+
+            sns.ecdfplot(groups_data[g], alpha=0.8, color=Color_blind_palette[g], ax=ax, linestyle="solid", linewidth=2)
+            legend_handles.append(Line2D([0], [0], color=Color_blind_palette[g], linestyle="solid", lw=2))
+        ax.legend(legend_handles, legend_labels, fontsize=20, loc="lower right", frameon=True)
+        # plt.savefig(f"{filename}.pdf")
+
+        plt.tick_params(axis="y", labelsize=25)
+        plt.tick_params(axis="x", labelsize=25)
+        plt.tick_params(width=3, length=10)
+        self.formatting(ax=ax,
+                        xlabel="Landing latency (s)",
+                        xlabel_size=25,
+                        ylabel="Percentage",
+                        ylabel_size=25,
+                        xticks=[0, 0.71],
+                        yticks=[0, 0.5, 1])
+        sns.despine(trim=True, offset=5)
+        plt.tight_layout()
+        plt.show()

@@ -5,16 +5,25 @@ from openpyxl.styles import PatternFill
 from openpyxl import load_workbook
 from scipy.signal import find_peaks, hilbert
 import matplotlib.pyplot as plt
+
+
 from kinematic_object import Group, Trial
 import warnings
+from sklearn.utils import resample
 import seaborn as sns
 import pywt
 warnings.filterwarnings(action="ignore", category=FutureWarning)
-
+ax_flip_count = 0
+total_count = 0
 """
 These functions are responsible for preprocessing of angle data and 3D pose data
 """
 class SimpleCalculation:
+    def calculate_mean_diff(self, data1, data2):
+        return np.mean(data1) - np.mean(data2)
+
+    def calculate_median_diff(self, data1, data2):
+        return np.median(data1) - np.median(data2)
     # Smooth the input data using ema
     def exponential_moving_average(self, data, alpha):
         if isinstance(data, pd.Series):
@@ -105,7 +114,7 @@ class SimpleCalculation:
                         z1=trial_info.trial_data[f"{seg[1]}"].z_coord[f]))
 
         # Convert the dictionary to dataframe
-        collected_seg_length_data = pd.DataFrame(collected_seg_length_data)
+        # collected_seg_length_data = pd.DataFrame(collected_seg_length_data)
 
         # return the data
         return collected_seg_length_data
@@ -246,9 +255,14 @@ class SimpleCalculation:
                                         kinematic_data.trial_data[point].y_coord,
                                         kinematic_data.trial_data[point].z_coord]))
     def calculate_platform_surfaces(self, platform_traces, platform_center, platform_offset, radius, height):
-
+        global ax_flip_count
+        global total_count
+        total_count += 1
         centroid, direction = self.best_fit_line_3d(platform_traces)
-
+        motion_vec = np.asarray(platform_traces[-1]) - np.asarray(platform_traces[0])
+        # print(np.dot(direction, motion_vec))
+        if np.dot(direction, motion_vec) < 0:
+            direction = -direction
         # Generate points along the best-fit line
         t_vals = np.linspace(-10, 10, 100)
         line_points = centroid + np.outer(t_vals, direction)
@@ -301,7 +315,6 @@ class SimpleCalculation:
             verts.append(quad)
 
         return line_points, plane_points, verts, cylinder_top, cylinder_bottom, direction, perp_vector1, perp_vector2
-
     def angle_between_vectors_360(self, a, b, degrees=True):
         """
         Calculate the angle between two vectors a and b.
@@ -334,7 +347,6 @@ class SimpleCalculation:
 
         # Convert from [-180, 180] to [0, 360]
         return angle_deg % 360
-
     def angle_between_vectors_unsigned(self, a, b, degrees=True):
         a = np.array(a)
         b = np.array(b)
@@ -349,7 +361,6 @@ class SimpleCalculation:
         angle_rad = np.arccos(dot)
 
         return np.degrees(angle_rad) if degrees else angle_rad
-
     def Coordinates_transformation(self, trial_info:Trial, new_axis):
         for p in trial_info.trial_data.keys():
             points = np.array([trial_info.trial_data[p].x_coord, trial_info.trial_data[p].y_coord, trial_info.trial_data[p].z_coord]).T
@@ -358,35 +369,6 @@ class SimpleCalculation:
             trial_info.trial_data[p].x_coord = transformed_points[0]
             trial_info.trial_data[p].y_coord = transformed_points[1]
             trial_info.trial_data[p].z_coord = transformed_points[2]
-
-    def normalize_psd_data_global_minmax(self, psd_data):
-        """
-        Normalize power values using global min and max across all trials.
-
-        Parameters:
-        - psd_data: list of (freqs, power) tuples
-
-        Returns:
-        - normalized_psd_data: list of (freqs, normalized_power) tuples
-        """
-        # Flatten all power arrays to compute global min and max
-        all_power_values = np.concatenate([np.asarray(power) for _, power in psd_data])
-        global_min = np.nanmin(all_power_values)
-        global_max = np.nanmax(all_power_values)
-        global_range = global_max - global_min
-
-        # Apply normalization
-        normalized_psd_data = []
-        for freqs, power in psd_data:
-            power = np.asarray(power)
-            if global_range != 0:
-                norm_power = (power - global_min) / global_range
-            else:
-                norm_power = power - global_min  # All values were identical
-            normalized_psd_data.append((freqs, norm_power))
-
-        return normalized_psd_data
-
     def transform_coords_and_calculate_platform_data(self, trial_info:Trial, platform_offset, radius, platform_height, frame=0):
 
         if frame == 0:
@@ -395,7 +377,7 @@ class SimpleCalculation:
             start = frame
 
         center_points = self.ReadAndTranspose("platform-tip", trial_info)
-        platform_ctr_pts_traces = np.array(center_points[300:350])
+        platform_ctr_pts_traces = np.array(center_points[200:250])
 
         line_points_before, plane_points_before, verts_before, cylinder_top, cylinder_bottom, direction_before, perp_vector1_before, perp_vector2_before = (
             self.calculate_platform_surfaces(platform_traces=platform_ctr_pts_traces,
@@ -404,7 +386,7 @@ class SimpleCalculation:
                                              radius=radius,
                                              height=platform_height))
 
-        # coordinates transformation
+        """# coordinates transformation
         v1 = perp_vector1_before  # new Y-axis
         v2_proj = direction_before - np.dot(direction_before, v1) * v1  # remove v1 component from v2
         v2 = v2_proj / np.linalg.norm(v2_proj)  # new Z-axis (orthogonalized)
@@ -422,56 +404,17 @@ class SimpleCalculation:
         self.Coordinates_transformation(trial_info, R)
 
         center_points = self.ReadAndTranspose("platform-tip", trial_info)
-        platform_ctr_pts_traces = np.array(center_points[300:350])
+        platform_ctr_pts_traces = np.array(center_points[200:250])
 
         line_points_after, plane_points_after, verts_after, cylinder_top, cylinder_bottom, direction_after, perp_vector1_after, perp_vector2_after = (
             self.calculate_platform_surfaces(platform_traces=platform_ctr_pts_traces,
                                              platform_center=center_points[start],
                                              platform_offset=platform_offset,
                                              radius=radius,
-                                             height=platform_height))
+                                             height=platform_height))"""
 
-        # return line_points_before, plane_points_before, verts_before, cylinder_top, cylinder_bottom, direction_before, perp_vector1_before, perp_vector2_before
-        return line_points_after, plane_points_after, verts_after, cylinder_top, cylinder_bottom, direction_after, perp_vector1_after, perp_vector2_after
-    def angle_with_plane_and_azimuth(self, pt1, pt2, normal, reference_dir=np.array([0, 1, 0])):
-        pt1 = np.asarray(pt1)
-        pt2 = np.asarray(pt2)
-        n = np.asarray(normal)
-        ref = np.asarray(reference_dir)
-
-        v = pt2 - pt1
-        v_norm = np.linalg.norm(v)
-        n_norm = np.linalg.norm(n)
-
-        dot = np.dot(v, n)
-        angle_to_normal = np.arccos(np.clip(dot / (v_norm * n_norm), -1.0, 1.0))
-        sin_angle = np.clip(np.abs(np.dot(v, n)) / (v_norm * n_norm), 0.0, 1.0)
-        angle_to_plane = np.degrees(np.arcsin(sin_angle))
-
-        v_proj = v - np.dot(v, n) / n_norm ** 2 * n
-
-        v_proj_norm = np.linalg.norm(v_proj)
-        if v_proj_norm == 0:
-            azimuth = None
-        else:
-            ref = ref - np.dot(ref, n) / n_norm ** 2 * n
-            ref = ref / np.linalg.norm(ref)
-
-            v_proj_unit = v_proj / v_proj_norm
-            dot_proj = np.dot(ref, v_proj_unit)
-            cross = np.cross(ref, v_proj_unit)
-            sign = np.sign(np.dot(cross, n))
-            azimuth = np.degrees(np.arccos(np.clip(dot_proj, -1.0, 1.0)))
-            if sign < 0:
-                azimuth = 360 - azimuth
-
-        return angle_to_plane, azimuth, v, v_proj, n, ref
-    def calculate_BC_platform_angle(self, BC, FT, platform_direction):
-        BC_angles = []
-        for i in range(len(BC)):
-            ag = self.angle_between_vectors_unsigned(FT[i] - BC[i], platform_direction - BC[i])
-            BC_angles.append(ag)
-        return np.asarray(BC_angles)
+        return line_points_before, plane_points_before, verts_before, cylinder_top, cylinder_bottom, direction_before, perp_vector1_before, perp_vector2_before
+        # return line_points_after, plane_points_after, verts_after, cylinder_top, cylinder_bottom, direction_after, perp_vector1_after, perp_vector2_after
     def calculate_rhythmicity(self, signal, fps):
 
 
@@ -542,7 +485,6 @@ class SimpleCalculation:
             plt.show()
 
         # return lifetime_cycles / max_lag_cycles
-
     def calculate_velocity(self, trial_info:Trial, points):
         velocity_data = dict()
         for p in points:
@@ -555,6 +497,156 @@ class SimpleCalculation:
             speed = np.linalg.norm(velocities, axis=1)  # shape (n_timepoints-1,)
             velocity_data[p] = speed
         return velocity_data
+    def detect_angle_deviation(self, angle_trace, MOC, baseline_window=50, threshold_sd=2, consecutive_frames=3):
+
+        start = max(MOC - baseline_window, 0)
+        end = MOC
+        baseline = angle_trace[start:end]
+        baseline_mean = np.mean(baseline)
+        baseline_sd = np.std(baseline)
+
+
+        deviation_zscore = (angle_trace - baseline_mean) / baseline_sd
+
+
+        above_threshold = np.abs(deviation_zscore) > threshold_sd
+
+        count = 0
+        deviation_frame = None
+        for i in range(MOC, len(angle_trace)):
+            if above_threshold[i]:
+                count += 1
+                if count >= consecutive_frames:
+                    deviation_frame = i - consecutive_frames + 1  # first frame of deviation
+                    break
+            else:
+                count = 0  # reset counter if not consecutive
+
+        return deviation_frame, deviation_zscore
+    def determine_side_contact(self, trace, dist_threshold=0.5, vel_threshold=0.02):
+        stable_count = 0
+        velocity = abs(np.gradient(trace))
+        Contact = False
+        MOC = np.nan
+        for i in range(len(trace)):
+            if trace[i] <= dist_threshold and velocity[i] <= vel_threshold:
+                stable_count += 1
+            else:
+                stable_count = 0
+            if stable_count >= 3:
+                Contact = True
+                MOC = i - 3
+        return Contact, MOC
+
+    def Bootstrapping_test(self, data1, data2, n_samps):
+
+        num_bootstrap_samples = n_samps
+        original_mean_diff = self.calculate_mean_diff(data1, data2)
+
+        # Bootstrap resampling
+        bootstrap_mean_diffs = []
+        resample_data = np.concatenate((data1, data2))
+        for _ in range(num_bootstrap_samples):
+            # Resample with replacement
+            bootstrap_sample1 = resample(resample_data, n_samples=len(data1))
+            bootstrap_sample2 = resample(resample_data, n_samples=len(data2))
+            bootstrap_mean_diff = self.calculate_mean_diff(bootstrap_sample1, bootstrap_sample2)
+
+
+            bootstrap_mean_diffs.append(bootstrap_mean_diff)
+
+        k = 0
+        for m in bootstrap_mean_diffs:
+            if abs(m) > abs(original_mean_diff):
+                k += 1
+        Mean_diff_p_value = (np.sum(np.abs(bootstrap_mean_diffs) >= np.abs(original_mean_diff))) / (
+            num_bootstrap_samples)
+
+
+        return Mean_diff_p_value
+    def smoothing(self, data, window=5, polyorder=3):
+        from scipy.signal import savgol_filter
+        return savgol_filter(data, window_length=window, polyorder=polyorder)
+    def Normalized_time(self, data, length=250):
+        from scipy.interpolate import interp1d
+        x_old = np.linspace(0, 1, len(data))
+        x_new = np.linspace(0, 1, length)
+        f = interp1d(x_old, data, kind='linear')
+        signal = f(x_new)
+        return signal
+
+    def projected_signed_angle(self, tibia_pt, tip_pt, pt1, pt2, plane_normal):
+        """
+        Compute the CLOCKWISE signed angle from pt1->pt2 (x-axis)
+        to tibia->tip vector, after projecting both onto a plane.
+
+        Parameters
+        ----------
+        tibia_pt, tip_pt : (3,)
+            Defines leg vector.
+        pt1, pt2 : (3,)
+            Defines reference x-axis.
+        plane_normal : (3,)
+            Normal of the plane to project onto (e.g. platform direction).
+        degrees : bool
+            Return degrees if True, else radians.
+
+        Returns
+        -------
+        angle : float
+            Clockwise angle from reference axis to leg vector.
+            Range: (-180, 180]
+        """
+
+        tibia_pt = np.asarray(tibia_pt, float)
+        tip_pt = np.asarray(tip_pt, float)
+        pt1 = np.asarray(pt1, float)
+        pt2 = np.asarray(pt2, float)
+        n = np.asarray(plane_normal, float)
+
+        # Normalize normal
+        n_norm = np.linalg.norm(n)
+        if n_norm < 1e-8:
+            return np.nan
+        n = n / n_norm
+
+        # Define vectors
+        x_axis = pt2 - pt1
+        v_leg = tip_pt - tibia_pt
+
+        # Project onto plane
+        x_proj = x_axis - np.dot(x_axis, n) * n
+        v_proj = v_leg - np.dot(v_leg, n) * n
+
+        x_norm = np.linalg.norm(x_proj)
+        v_norm = np.linalg.norm(v_proj)
+
+        if x_norm < 1e-8 or v_norm < 1e-8:
+            return np.nan
+
+        x_unit = x_proj / x_norm
+        v_unit = v_proj / v_norm
+
+        # CCW signed angle
+        cross_term = np.dot(n, np.cross(x_unit, v_unit))
+        dot_term = np.clip(np.dot(x_unit, v_unit), -1.0, 1.0)
+
+        angle_ccw = np.arctan2(cross_term, dot_term)
+
+        # Convert to clockwise
+        angle_cw = -angle_ccw
+
+        angle_cw = np.degrees(angle_cw)
+
+        return angle_cw
+
+
+
+    def get_stable_point(self, trial_info:Trial, point, start, average_frames=0):
+        x = np.mean(trial_info.trial_data[point].x_coord[start - average_frames:start])
+        y = np.mean(trial_info.trial_data[point].y_coord[start - average_frames:start])
+        z = np.mean(trial_info.trial_data[point].z_coord[start - average_frames:start])
+        return np.array([x, y, z])
 """
 These functions are responsible for detecting various characteristic of the angle and 3D data
 """
@@ -563,68 +655,7 @@ class DetectCharacteristics:
         self.radius = radius
         self.calculator = SimpleCalculation()
         self.fps = FPS
-    def detect_brief_landing(self, angle_data, bl_range, wing_ang_fold_th, wing_ang_drop_percent, window_size, st_base_th, consecutive_fold_th):
 
-        # Calculate the start and end baseline of wing angle
-        start_baseline = np.mean(angle_data[:bl_range])
-        end_baseline = np.mean(angle_data[-bl_range:])
-
-        chunk_size = 10
-        consecutive_chunk = 0
-
-        if start_baseline > st_base_th:
-
-            for i in range(0, len(angle_data), window_size):
-                curr_v = np.mean(angle_data[i:i + window_size])
-                if curr_v / start_baseline < (1 - wing_ang_drop_percent) and curr_v < wing_ang_fold_th:
-                    consecutive_chunk += 1
-                else:
-                    consecutive_chunk = 0
-                if consecutive_chunk >= consecutive_fold_th:
-                    stop_idx = i - (consecutive_fold_th - 1) * window_size
-                    return True, stop_idx
-        return False, 0
-    def detect_Not_Flying(self, angle_data, bl_range):
-        start_base_line = np.mean(angle_data[:bl_range])
-        end_base_line = np.mean(angle_data[-bl_range:])
-        if start_base_line < 2:
-            return True
-        else:
-            return False
-    def detect_moment_of_landing(self, trace_data, wing_distance_threshold, wind_size, duration_threshold):
-        wing_fold_duration = 0
-        cons_th = 4
-
-        for i in range(0, len(trace_data), wind_size):
-            if np.average(trace_data[i:i+wind_size]) < wing_distance_threshold:
-                wing_fold_duration += 1
-            else:
-                wing_fold_duration = 0
-            if wing_fold_duration > duration_threshold:
-                return i - ((cons_th - 1) * wind_size), True
-        return 0, False
-    def detectFlying(self, angle_data, bl_range, wing_ang_fold_th, window_size):
-        chunk_size = 20
-        start_base_line = np.mean(angle_data[:bl_range])
-        end_base_line = np.mean(angle_data[-bl_range:])
-        if start_base_line > wing_ang_fold_th and end_base_line > wing_ang_fold_th:
-            for i in range(0, len(angle_data), window_size):
-                current_v = np.mean(angle_data[i:i + window_size])
-                if current_v < wing_ang_fold_th:
-                    return False
-        return True
-    def detect_moment_of_landing_WingAngle(self, angle_data, wing_angle_threshold, wind_size, duration_threshold):
-        wing_fold_duration = 0
-        cons_th = 3
-
-        for i in range(0, len(angle_data), wind_size):
-            if np.average(angle_data[i:i+wind_size]) < wing_angle_threshold:
-                wing_fold_duration += 1
-            else:
-                wing_fold_duration = 0
-            if wing_fold_duration > duration_threshold:
-                return i - ((cons_th - 1) * wind_size), True
-        return 0, False
     def check_leg_platform_intersection(self, leg_p1, leg_p2, direction, center_point, platform_offset):
         # Compute platform radius
         # Compute the plane equation
@@ -694,11 +725,6 @@ class DetectCharacteristics:
             if cond1 and cond2 and cond4 and cond3:
                 return i - 1  # return end index of the matching window
         return 0
-    def detect_movement_start(self, data):
-        for i in range(len(data)):
-            if data[i] > 0.03:
-                return i
-        return np.inf
     def detect_stable_posture(self, Angle_data):
         sum_move = 0
         for k in Angle_data.keys():
@@ -1000,6 +1026,100 @@ class DetectCharacteristics:
             if data[i] < 0.55 and deri[i] < 0.05:
                 return i
         return np.nan
+    def find_percent_index(self, signal, target=0.8):
+        signal = np.asarray(signal)
+        threshold = target * np.nanmax(signal)
+
+        indices = np.where(signal >= threshold)[0]
+
+        if len(indices) == 0:
+            return None  # never reaches 80%
+
+        return indices[0]
+
+    def detect_leg_search(self, ft, ct,
+                          ft_vel_thresh=1.5,
+                          ct_vel_thresh=1.5,
+                          min_ft_change=10,
+                          pattern_duration=20,
+                          idle_reset_thresh=(0.5, 0.5),
+                          ct_start_thresh=100):
+        """
+        Detect events where FT rises followed by delayed CT rise,
+        only if CT starts below a certain threshold.
+
+        Parameters:
+            ft, ct : array-like
+                Angle signals for FT and CT.
+            ft_vel_thresh : float
+                Velocity threshold for FT rise to start pattern.
+            ct_vel_thresh : float
+                Velocity threshold for CT rise to complete pattern.
+            min_ft_change : float
+                Minimum change in FT angle to consider as real rise.
+            pattern_duration : int
+                Max number of frames between FT rise and CT rise.
+            idle_reset_thresh : tuple(float, float)
+                Velocity thresholds for FT and CT below which system resets to idle.
+            ct_start_thresh : float
+                Maximum CT value allowed at FT start to consider a valid rise.
+
+        Returns:
+            num_events : int
+            event_indices : list of frame indices where events occurred
+        """
+
+        ft_s = np.asarray(ft)
+        ct_s = np.asarray(ct)
+
+        dft = np.gradient(ft_s)
+        dct = np.gradient(ct_s)
+
+        state = "idle"
+        event_indices = []
+        ft_start = None
+
+        for i in range(len(dft)):
+
+            if state == "idle":
+                # FT begins rising strongly, CT not rising yet, and CT below threshold
+                if dft[i] > ft_vel_thresh and dct[i] <= ct_vel_thresh and ct_s[i] <= ct_start_thresh:
+                    state = "ft_rising"
+                    ft_start = i
+
+            elif state == "ft_rising":
+                # ensure FT actually moved enough
+                if ft[i] - ft[ft_start] < min_ft_change:
+                    continue
+
+                # Check duration threshold
+                if i - ft_start > pattern_duration:
+                    state = "idle"
+                    ft_start = None
+                    continue
+
+                # CT rises after FT
+                if dct[i] > ct_vel_thresh:
+                    event_indices.append(i)
+                    state = "event"
+
+            elif state == "event":
+                # wait until movement settles before detecting another
+                if dft[i] < idle_reset_thresh[0] and dct[i] < idle_reset_thresh[1]:
+                    state = "idle"
+                    ft_start = None
+
+        return len(event_indices), event_indices
+    def detect_landing(self, data, windsize=5):
+        data = self.calculator.normalize_list(data)
+        from scipy.ndimage import gaussian_filter1d
+
+        data = gaussian_filter1d(data, sigma=10)
+        for i in range(len(data) - windsize):
+            if np.mean(data[i:i + windsize]) < 0.2:
+                return i
+        return -1
+
 """
 These functions are responsible for manipulating files
 """
@@ -1150,6 +1270,55 @@ class FileManipulation:
         else:
             df = pd.DataFrame({group: data})
         df.to_csv(f"{filename}.csv", index=False)
+
+    def read_secondary_contact_data(self, data, legs, filepath=None):
+        if filepath is not None:
+            data_to_read = pd.read_csv(filepath)
+        else:
+            data_to_read = data
+        successful_landing_data = dict()
+        failed_landing_data = dict()
+        jointA = "FT"
+        jointB = "TT"
+        for row in data_to_read.iterrows():
+            for l in legs:
+                if l not in successful_landing_data.keys() and l not in failed_landing_data.keys():
+                    successful_landing_data[l] = []
+                    failed_landing_data[l] = []
+
+                if row[1][l + jointA] > 0 and int(row[1][l + jointA]) != 10000:
+
+                    if row[1]["Result"] != "Failed":
+                        successful_landing_data[l].append(row[1][l + jointA])
+                    else:
+                        failed_landing_data[l].append(row[1][l + jointA])
+                elif row[1][l + jointB] > 0 and int(row[1][l + jointB]) != 10000:
+
+                    if row[1]["Result"] != "Failed":
+                        successful_landing_data[l].append(row[1][l + jointB])
+                    else:
+                        failed_landing_data[l].append(row[1][l + jointB])
+                else:
+
+                    if row[1]["Result"] != "Failed":
+                        successful_landing_data[l].append(np.nan)
+                    else:
+                        failed_landing_data[l].append(np.nan)
+        successful_landing_data = pd.DataFrame(successful_landing_data)
+        failed_landing_data = pd.DataFrame(failed_landing_data)
+        return successful_landing_data, failed_landing_data
+    def read_leg_search_data(self, data, legs, filepath=None):
+        if filepath is not None:
+            data_to_read = pd.read_csv(filepath)
+        else:
+            data_to_read = data
+        failed_landing = data_to_read[data_to_read["Result"] == "Failed"]
+        failed_landing = failed_landing[legs]
+
+        successful_landing = data_to_read[data_to_read["Result"] == "Success"]
+        successful_landing = successful_landing[legs]
+
+        return successful_landing, failed_landing
 """
 These functions are responsible for analyzing the fly group data
 """
@@ -1202,91 +1371,21 @@ class GroupDataAnalyzer:
             if contact_count_R >= Contact_threshold:
                 return frame, "R", position_R
         return 0, "NoContact", None
-    def CategorizeTrial(self, trial_info:Trial):
-        angles = [["R-wing", "R-wing-hinge", "abdomen-tip"], ["L-wing", "L-wing-hinge", "abdomen-tip"]]
-        WingTipDistance = self.calculator.Calculate_segment_length(trial_info, [["L-wing", "R-wing"]])
-        NF = self.detector.detect_Not_Flying(WingTipDistance["L-wing_R-wing"], trial_info.fps)
-        if NF:
-            # Categorized as Not Flying
-            return 0, None
-        else:
-            # Determine if the wing folds
-            WingAbTipAngle = self.calculator.Calculate_joint_angle(trial_info, angles)
-            R_mol, RL = self.detector.detect_moment_of_landing_WingAngle(WingAbTipAngle["R-wing-hinge"], 50, 4, 2)
-            L_mol, LL = self.detector.detect_moment_of_landing_WingAngle(WingAbTipAngle["L-wing-hinge"], 50, 4, 2)
-            # mol, L = detect_moment_of_landing(WingTipDistance["L-wing_R-wing"], 2, 4, 3)
-            if RL or LL:
-                # Categorized as successful landing, may still require further examination for N/A data
-                return 1, min([R_mol, L_mol])
-            else:
-                # Categorized as continuous flying, required further examination for N/A data
-                return -1, None
-    def movement_start_latency(self, group_info:Group):
-        Angles = [["L-fBC", "L-fCT", "L-fFT"], ["L-fCT", "L-fFT", "L-fTT"]]
-        movement_start_list = []
-        ms_to_landing_list = []
-        for index in group_info.landing_trial_index:
-            print(f"Fly {index[0]}", f"Trial {index[1]}")
-            moc = group_info.fly_kinematic_data[f"F{index[0]}T{index[1]}"].moc
-            mol = group_info.fly_kinematic_data[f"F{index[0]}T{index[1]}"].mol
-            ags = self.calculator.Calculate_joint_angle(group_info.fly_kinematic_data[f"F{index[0]}T{index[1]}"], Angles)
-            if self.detector.detect_stable_posture(ags):
-                ms = []
-                for k in ags.keys():
-                    ms.append(self.detector.detect_movement_start(self.calculator.Calculate_derivative(list(ags[k][moc:mol]))))
-                if min(ms) < group_info.fps and min(ms) > 0:
-                    movement_start_list.append(min(ms) / group_info.fps)
-                    ms_to_landing_list.append((group_info.mol_data.iloc[index[0]][index[1]] - min(ms)) / group_info.fps)
 
-        self.manipulator.addColumns_to_file(movement_start_list, "MovementStart", group_info.group_name)
-        self.manipulator.addColumns_to_file(ms_to_landing_list, "MStoLanding", group_info.group_name)
-    def Analyze_3D_pose_data(self, group_info:Group):
-        LandingLatency_Data = []
-        for i in range(group_info.total_fly_number):
-            Fly_LandingLatency_Data = []
-            for t in range(20):
-                if f"F{i + 1}T{t + 1}" not in group_info.fly_kinematic_data_path:
-                    break
-                pose_data = Trial(fly_number=i + 1,
-                                  trial_number=t + 1,
-                                  fps=group_info.fps,
-                                  total_frames_number=group_info.fps * group_info.video_duration,
-                                  group_name=group_info.group_name,
-                                  trial_data_path=group_info.fly_kinematic_data_path[f"F{i + 1}T{t + 1}"],
-                                  joints=group_info.joints)
-
-                trial_type, MOL = self.CategorizeTrial(pose_data)
-                if trial_type == 0:
-                    Fly_LandingLatency_Data.append("NF")
-                elif trial_type == 1:
-                    MOC, contact_point, tarsus_position = self.DetermineTiTaMOC(pose_data)
-                    if contact_point == "NoContact" or contact_point == "L":
-                        Fly_LandingLatency_Data.append(np.nan)
-                    else:
-                        Fly_LandingLatency_Data.append(MOL)
-                        # Fly_LandingLatency_Data.append(MOL)
-                elif trial_type == -1:
-                    MOC, contact_point, tarsus_position = self.DetermineTiTaMOC(pose_data)
-                    if contact_point == "NoContact" or contact_point == "L":
-                        Fly_LandingLatency_Data.append(np.nan)
-                    else:
-                        Fly_LandingLatency_Data.append(-1)
-            LandingLatency_Data.append(Fly_LandingLatency_Data)
-        return LandingLatency_Data
     def Determine_all_flying_posture(self, group_info:Group, filter_high_latency=False):
         angles = [["R-mCT", "R-mFT", "R-mTT"], ["L-mCT", "L-mFT", "L-mTT"]]
         for index in group_info.get_targeted_trials(["Landing", "Flying"]):
             joints_angle = self.calculator.Calculate_joint_angle(group_info.fly_kinematic_data[f"F{index[0]}T{index[1]}"], angles)
             if filter_high_latency:
                 if self.detector.detect_stable_posture(joints_angle):
-                    group_info.fly_kinematic_data[f"F{index[0]}T{index[1]}"].L_stable_FT_angle = np.mean(joints_angle["R-mFT"][:group_info.fps])
-                    group_info.fly_kinematic_data[f"F{index[0]}T{index[1]}"].R_stable_FT_angle = np.mean(joints_angle["L-mFT"][:group_info.fps])
+                    group_info.fly_kinematic_data[f"F{index[0]}T{index[1]}"].L_stable_FT_angle = np.mean(joints_angle["L-mFT"][:group_info.fps[0]])
+                    group_info.fly_kinematic_data[f"F{index[0]}T{index[1]}"].R_stable_FT_angle = np.mean(joints_angle["R-mFT"][:group_info.fps[0]])
                 else:
                     group_info.fly_kinematic_data[f"F{index[0]}T{index[1]}"].L_stable_FT_angle = None
                     group_info.fly_kinematic_data[f"F{index[0]}T{index[1]}"].R_stable_FT_angle = None
             else:
-                group_info.fly_kinematic_data[f"F{index[0]}T{index[1]}"].L_stable_FT_angle = np.mean(joints_angle["R-mFT"][:group_info.fps])
-                group_info.fly_kinematic_data[f"F{index[0]}T{index[1]}"].R_stable_FT_angle = np.mean(joints_angle["L-mFT"][:group_info.fps])
+                group_info.fly_kinematic_data[f"F{index[0]}T{index[1]}"].L_stable_FT_angle = np.mean(joints_angle["L-mFT"][:group_info.fps[0]])
+                group_info.fly_kinematic_data[f"F{index[0]}T{index[1]}"].R_stable_FT_angle = np.mean(joints_angle["R-mFT"][:group_info.fps[0]])
 
         # self.manipulator.OutptuPrediction(collected_stable_posture, f"{groupname}_StablePosture_CT")
     def TiTa_relative_contact(self, group_info:Group):
@@ -1301,3 +1400,437 @@ class GroupDataAnalyzer:
                     Contact_relative_position.append(tarsus_contact_position)
                     Latency.append(group_info.ll_data.iloc[index[0] - 1][index[1] - 1] / group_info.fps)
         return Contact_relative_position, Latency
+
+    def Calculate_angle_traces(self, group_info: Group, index_to_iterate, angles, threshold=None,
+                               start=-0.3, end=0.5, normalize_time=False, normalize_angle=False):
+
+
+        previous_fly = index_to_iterate[0][0]
+        collected_data = []
+        indi_fly_data = {}
+
+        for index in index_to_iterate:
+            trial_key = f"F{index[0]}T{index[1]}"
+            trial_info = group_info.fly_kinematic_data[trial_key]
+
+            if index[0] != previous_fly:
+                if indi_fly_data:
+                    collected_data.append(indi_fly_data)
+                indi_fly_data = {}
+                previous_fly = index[0]
+
+            MOC = trial_info.moc
+            MOL = trial_info.mol
+
+            if MOC <= 0:
+                continue
+
+            angs = self.calculator.Calculate_joint_angle(trial_info, angles)
+
+            for joint in angles:
+                joint_name = joint[1]
+
+                if joint_name not in indi_fly_data:
+                    indi_fly_data[joint_name] = []
+
+                if normalize_time:
+                    Joint_signal = np.asarray(angs[joint_name][int(MOC):int(MOL)])
+                    Joint_signal = self.calculator.Normalized_time(Joint_signal)
+                else:
+                    Joint_signal = np.asarray(angs[joint_name][int(MOC) - int(-start * trial_info.fps): int(MOC) + int(end * trial_info.fps)])
+
+                    if trial_info.fps == 200:
+                        target_len = int(round((end - start) * 250))
+                        Joint_signal = self.calculator.Normalized_time(Joint_signal, target_len)
+
+                if normalize_angle:
+                    Joint_signal = self.calculator.normalize_list(Joint_signal)
+
+                if threshold is None:
+                    if MOL == -1:
+                        indi_fly_data[joint_name].append((-1, index, 250, Joint_signal))
+                    elif (MOL - MOC) / trial_info.fps <= 0.3:
+                        indi_fly_data[joint_name].append((0.3, index, 250, Joint_signal))
+                    elif (MOL - MOC) / trial_info.fps <= 0.683:
+                        indi_fly_data[joint_name].append((0.68, index, 250, Joint_signal))
+                    else:
+                        indi_fly_data[joint_name].append((1, index, 250, Joint_signal))
+                else:
+                    if MOL > 0 and ((MOL - MOC) / trial_info.fps) <= threshold:
+                        indi_fly_data[joint_name].append((threshold, index, 250, Joint_signal))
+                    else:
+                        indi_fly_data[joint_name].append((-1, index, 250, Joint_signal))
+
+        if indi_fly_data:
+            collected_data.append(indi_fly_data)
+
+        return collected_data
+
+    def AnalyzeSecondaryContact(self, index_to_iterate, group_info:Group, threshold, filename=""):
+        global ax_flip_count
+        global total_count
+        segs = [["L-fFT", "L-fTT", 0.45],
+                ["L-fTT", "L-fLT", 0.4],
+
+                ["L-mFT", "L-mTT", 0.5],
+                ["L-mTT", "L-mLT", 0.4],
+
+                ["L-hFT", "L-hTT", 0.6],
+                ["L-hTT", "L-hLT", 0.5],
+
+                ["R-fFT", "R-fTT", 0.45],
+                ["R-fTT", "R-fLT", 0.4],
+
+                ["R-mFT", "R-mTT", 0.5],
+                ["R-mTT", "R-mLT", 0.4],
+
+                ["R-hFT", "R-hTT", 0.5],
+                ["R-hTT", "R-hLT", 0.4]]
+
+        pts = ["L-fFT", "L-fTT", "L-fLT",
+               "L-mFT", "L-mTT", "L-mLT",
+               "L-hFT", "L-hTT", "L-hLT",
+               "R-fFT", "R-fTT", "R-fLT",
+               "R-mFT", "R-mTT", "R-mLT",
+               "R-hFT", "R-hTT", "R-hLT"]
+
+        indi_leg_contact_event = dict()
+        for j in segs:
+            indi_leg_contact_event[j[0]] = []
+
+        indi_leg_contact_event["Index"] = []
+        indi_leg_contact_event["Result"] = []
+
+        for i, index in enumerate(index_to_iterate):
+            pose_data = group_info.fly_kinematic_data[f"F{index[0]}T{index[1]}"]
+
+            start = int(pose_data.moc)
+            end = int(pose_data.mol)
+            if start > 0:
+                if end == -1:
+                    end = start + int(threshold * pose_data.fps)
+                    indi_leg_contact_event["Result"].append("Failed")
+                elif (end - start) / pose_data.fps > threshold:
+                    end = start + int(threshold * pose_data.fps)
+                    indi_leg_contact_event["Result"].append("Failed")
+                elif (end - start) / pose_data.fps <= threshold:
+                    indi_leg_contact_event["Result"].append("Success")
+                else:
+                    print("Unable to categorize!")
+            line_points, plane_points, verts, cylinder_top, cylinder_bottom, direction, perp_vector1, perp_vector2 = (
+                self.calculator.transform_coords_and_calculate_platform_data(trial_info=pose_data,
+                                                                             platform_offset=0.03,
+                                                                             platform_height=3,
+                                                                             radius=0.35))
+
+            Original_points = dict()
+            center_points = self.calculator.ReadAndTranspose("platform-tip", pose_data)[start:end]
+            for p in pts:
+                Original_points[p] = self.calculator.ReadAndTranspose(p, pose_data)[start:end]
+            # event_recorder = []
+            for point in segs:
+                NoContact = True
+                stable_contact = 2
+                for current_frame in range(end - start):
+                    A = Original_points[point[0]][current_frame]
+                    B = Original_points[point[1]][current_frame]
+                    P1 = center_points[current_frame]
+
+                    d = direction
+                    r = point[2]
+                    h = 3
+
+                    intersects_side, pt_side, min_dist = self.calculator.check_cylinder_side_intersection(A, B, P1, d, r, h)
+                    intersects_top, pt_top = self.detector.check_leg_platform_intersection(A, B, d, center_points[current_frame], 0.03)
+                    if intersects_top or intersects_side:
+                        stable_contact += 1
+                    else:
+                        stable_contact = 0
+                    if stable_contact >= 1:
+                        indi_leg_contact_event[point[0]].append(current_frame / pose_data.fps)
+                        NoContact = False
+                        break
+
+                if NoContact:
+                    indi_leg_contact_event[point[0]].append(10000)
+
+            if index not in indi_leg_contact_event["Index"]:
+                indi_leg_contact_event["Index"].append(index)
+        indi_leg_contact_event = pd.DataFrame(indi_leg_contact_event)
+        indi_leg_contact_event.to_csv(f"{group_info.group_name}-{filename}-{threshold}.csv")
+        return indi_leg_contact_event
+
+    def Calculate_contact_leg_metrices(self, group_info:Group, index_to_iterate, joint_angle, threshold=0.71):
+        joint_to_examine = joint_angle[0][1]
+
+        failed_ang_v = []
+        failed_ang_proj = []
+        failed_ang_ft = []
+
+        success_ang_v = []
+        success_ang_proj = []
+        success_ang_ft = []
+
+        for index in index_to_iterate:
+            trial_info = group_info.fly_kinematic_data[f"F{index[0]}T{index[1]}"]
+            start = trial_info.moc
+            if start > 0:
+                line_points, plane_points, verts, cylinder_top, cylinder_bottom, direction, perp_vector1, perp_vector2 = (
+                    self.calculator.transform_coords_and_calculate_platform_data(trial_info=trial_info,
+                                                                                 platform_offset=0.03,
+                                                                                 platform_height=3,
+                                                                                 radius=0.45))
+
+                angs = self.calculator.Calculate_joint_angle(trial_info, joint_angle)
+                Failed = False
+                analysis_start = trial_info.moc
+                analysis_end = None
+
+                if trial_info.mol > 0 and ((trial_info.mol - trial_info.moc) / trial_info.fps) <= threshold:  # Successful landing
+                    analysis_end = trial_info.mol
+                elif trial_info.mol < 0 or (trial_info.mol > 0 and ((trial_info.mol - trial_info.moc) / trial_info.fps) > threshold):  # Failed landing
+                    analysis_end = trial_info.moc + int(threshold * trial_info.fps)
+                    Failed = True
+                else:
+                    analysis_end = trial_info.moc + int(threshold * trial_info.fps)
+                    print("Uncategorized!")
+
+                L_mBC = self.calculator.get_stable_point(trial_info, "L-mBC", analysis_start, 10)
+                R_mBC = self.calculator.get_stable_point(trial_info, "R-mBC", analysis_start, 10)
+                R_mTT = self.calculator.get_stable_point(trial_info, "R-mTT", analysis_start, 10)
+                R_mLT = self.calculator.get_stable_point(trial_info, "R-mLT", analysis_start, 10)
+
+                ang_v = np.mean(np.gradient(angs[joint_to_examine][analysis_start:analysis_end])) * 250
+                proj_ang = 180 - self.calculator.projected_signed_angle(R_mTT, R_mLT, L_mBC, R_mBC, direction)
+                ft_ang = np.mean(angs[joint_to_examine][analysis_start - int(0.5 * trial_info.fps):analysis_start])
+
+                if Failed:
+                    failed_ang_v.append(ang_v)
+                    failed_ang_proj.append(proj_ang)
+                    failed_ang_ft.append(ft_ang)
+                else:
+                    success_ang_v.append(ang_v)
+                    success_ang_proj.append(proj_ang)
+                    success_ang_ft.append(ft_ang)
+
+        return success_ang_v, success_ang_ft, success_ang_proj, failed_ang_v, failed_ang_ft, failed_ang_proj
+
+    def Analyze_leg_search(self, group_info:Group, index_to_iterate=None, filename="", threshold=0.71):
+        Angles = [[["L-fBC", "L-fCT", "L-fFT"], ["L-fCT", "L-fFT", "L-fTT"]],
+                  [["L-mBC", "L-mCT", "L-mFT"], ["L-mCT", "L-mFT", "L-mTT"]],
+                  [["L-hBC", "L-hCT", "L-hFT"], ["L-hCT", "L-hFT", "L-hTT"]],
+                  [["R-fBC", "R-fCT", "R-fFT"], ["R-fCT", "R-fFT", "R-fTT"]],
+                  [["R-mBC", "R-mCT", "R-mFT"], ["R-mCT", "R-mFT", "R-mTT"]],
+                  [["R-hBC", "R-hCT", "R-hFT"], ["R-hCT", "R-hFT", "R-hTT"]]]
+
+        # self.angles = [["L-fBC", "L-fCT", "L-fFT"], ["L-fCT", "L-fFT", "L-fTT"]]
+        leg_search_data = dict()
+        leg_search_data["L-f"] = []
+        leg_search_data["L-m"] = []
+        leg_search_data["L-h"] = []
+        leg_search_data["R-f"] = []
+        leg_search_data["R-m"] = []
+        leg_search_data["R-h"] = []
+        leg_search_data["Index"] = []
+        leg_search_data["Result"] = []
+
+        if index_to_iterate is None:
+            index_to_iterate = group_info.get_targeted_trials(["Landing"])
+
+        for index in index_to_iterate:
+            trial_info = group_info.fly_kinematic_data[f"F{index[0]}T{index[1]}"]
+            start = trial_info.moc
+            end = trial_info.mol
+            leg_search_data["Index"].append(index)
+            if end == -1:
+                end = start + int(threshold * trial_info.fps)
+                leg_search_data["Result"].append("Failed")
+            elif (end - start) / trial_info.fps > threshold:
+                end = start + int(threshold * trial_info.fps)
+                leg_search_data["Result"].append("Failed")
+            elif (end - start) / trial_info.fps <= threshold:
+                leg_search_data["Result"].append("Success")
+            else:
+                print("Unable to categorize!")
+
+            for pair in Angles:
+                ags = self.calculator.Calculate_joint_angle(trial_info, pair)
+                ct_trace = None
+                ft_trace = None
+                for ag in pair:
+                    trace = np.array(ags[ag[1]][start:end + 1])
+                    if "CT" in ag[1]:
+                        ct_trace = trace
+                    if "FT" in ag[1]:
+                        ft_trace = trace
+                if "h" not in pair[0][0][:3]: # not hind leg
+                    counts, events = self.detector.detect_leg_search(ft_trace, ct_trace)
+                    leg_search_data[pair[0][0][:3]].append(counts)
+                else:
+                    peaks, _ = find_peaks(ct_trace, prominence=15)
+                    leg_search_data[pair[0][0][:3]].append(len(peaks))
+        leg_search_data = pd.DataFrame(leg_search_data)
+        leg_search_data.to_csv(f"{group_info.group_name}-{filename}-LS_data_.csv")
+        return leg_search_data
+    def Analyze_leg_search_CHR(self, group_info:Group, index_to_iterate=None, filename="", threshold=0.71):
+        Angles = [[["L-fBC", "L-fCT", "L-fFT"], ["L-fCT", "L-fFT", "L-fTT"]],
+                  [["L-mBC", "L-mCT", "L-mFT"], ["L-mCT", "L-mFT", "L-mTT"]],
+                  [["L-hBC", "L-hCT", "L-hFT"], ["L-hCT", "L-hFT", "L-hTT"]],
+                  [["R-fBC", "R-fCT", "R-fFT"], ["R-fCT", "R-fFT", "R-fTT"]],
+                  [["R-mBC", "R-mCT", "R-mFT"], ["R-mCT", "R-mFT", "R-mTT"]],
+                  [["R-hBC", "R-hCT", "R-hFT"], ["R-hCT", "R-hFT", "R-hTT"]]]
+
+        # self.angles = [["L-fBC", "L-fCT", "L-fFT"], ["L-fCT", "L-fFT", "L-fTT"]]
+        leg_search_data = dict()
+        leg_search_data["L-f"] = []
+        leg_search_data["L-m"] = []
+        leg_search_data["L-h"] = []
+        leg_search_data["R-f"] = []
+        leg_search_data["R-m"] = []
+        leg_search_data["R-h"] = []
+        leg_search_data["Index"] = []
+        leg_search_data["Result"] = []
+
+        if index_to_iterate is None:
+            index_to_iterate = group_info.get_targeted_trials(["Landing"])
+
+        for index in index_to_iterate:
+            trial_info = group_info.fly_kinematic_data[f"F{index[0]}T{index[1]}"]
+            angs = self.calculator.Calculate_joint_angle(trial_info, [["L-wing", "L-wing-hinge", "R-wing"]])
+
+
+            start = 750
+            end = self.detector.detect_landing(angs["L-wing-hinge"][750:1250]) + start
+            plt.plot(angs["L-wing-hinge"][750:1250])
+            if end == 749:
+                end = 1250
+
+            leg_search_data["Index"].append(index)
+            if end == 1250:
+                end = start + int(threshold * trial_info.fps)
+                leg_search_data["Result"].append("Failed")
+            elif (end - start) / trial_info.fps > threshold:
+                end = start + int(threshold * trial_info.fps)
+                leg_search_data["Result"].append("Failed")
+            elif (end - start) / trial_info.fps <= threshold:
+                leg_search_data["Result"].append("Success")
+            else:
+                print("Unable to categorize!")
+            print(index, end)
+
+            for pair in Angles:
+                ags = self.calculator.Calculate_joint_angle(trial_info, pair)
+                ct_trace = None
+                ft_trace = None
+                for ag in pair:
+                    trace = np.array(ags[ag[1]][start:end + 1])
+                    if "CT" in ag[1]:
+                        ct_trace = trace
+                    if "FT" in ag[1]:
+                        ft_trace = trace
+                if "h" not in pair[0][0][:3]: # not hind leg
+                    counts, events = self.detector.detect_leg_search(ft_trace, ct_trace)
+                    leg_search_data[pair[0][0][:3]].append(counts)
+                else:
+                    peaks, _ = find_peaks(ct_trace, prominence=15)
+                    leg_search_data[pair[0][0][:3]].append(len(peaks))
+        leg_search_data = pd.DataFrame(leg_search_data)
+        leg_search_data.to_csv(f"{group_info.group_name}-{filename}-LS_data_.csv")
+        return leg_search_data
+    def combine_data(self, group_info:Group, type, Opto, group1_index=None, group2_index=None):
+        indi_legs = ["L-f", "L-m", "L-h"]
+        if group1_index is not None:
+            combined_IT = None
+            combined_OT = None
+            combined_Success = None
+            combined_Failed = None
+            IT_Success = None
+            IT_Failed = None
+            OT_Success = None
+            OT_Failed = None
+            if type == "LS":
+                Success_IT, Failed_IT = self.manipulator.read_leg_search_data(self.Analyze_leg_search(group_info, group1_index, group_info.group_name), indi_legs)
+                Success_OT, Failed_OT = self.manipulator.read_leg_search_data(self.Analyze_leg_search(group_info, group2_index, group_info.group_name), indi_legs)
+
+                combined_IT = pd.concat([Success_IT, Failed_IT])
+                combined_IT = combined_IT.sum(axis=1).to_frame(name="sum")
+                combined_OT = pd.concat([Success_OT, Failed_OT])
+                combined_OT = combined_OT.sum(axis=1).to_frame(name="sum")
+
+                combined_Success = pd.concat([Success_IT, Success_OT])
+                combined_Success = combined_Success.sum(axis=1).to_frame(name="sum")
+                combined_Failed = pd.concat([Failed_IT, Failed_OT])
+                combined_Failed = combined_Failed.sum(axis=1).to_frame(name="sum")
+
+                IT_Success = Success_IT.sum(axis=1).to_frame(name="sum")
+                IT_Failed = Failed_IT.sum(axis=1).to_frame(name="sum")
+                OT_Success = Success_OT.sum(axis=1).to_frame(name="sum")
+                OT_Failed = Failed_OT.sum(axis=1).to_frame(name="sum")
+
+            if type == "SC":
+                Success_IT, Failed_IT = self.manipulator.read_secondary_contact_data(self.AnalyzeSecondaryContact(group1_index, group_info,  0.71), indi_legs)
+                Success_OT, Failed_OT = self.manipulator.read_secondary_contact_data(self.AnalyzeSecondaryContact(group2_index, group_info, 0.71), indi_legs)
+
+                combined_IT = pd.concat([Success_IT, Failed_IT])
+                combined_IT = combined_IT.min(axis=1).dropna().to_frame(name="SC")
+                combined_OT = pd.concat([Success_OT, Failed_OT])
+                combined_OT = combined_OT.min(axis=1).dropna().to_frame(name="SC")
+
+                combined_Success = pd.concat([Success_IT, Success_OT])
+                combined_Success = combined_Success.min(axis=1).dropna().to_frame(name="SC")
+                combined_Failed = pd.concat([Failed_IT, Failed_OT])
+                combined_Failed = combined_Failed.min(axis=1).dropna().to_frame(name="SC")
+
+                IT_Success = Success_IT.min(axis=1).dropna().to_frame(name="SC")
+                IT_Failed = Failed_IT.min(axis=1).dropna().to_frame(name="SC")
+                OT_Success = Success_OT.min(axis=1).dropna().to_frame(name="SC")
+                OT_Failed = Failed_OT.min(axis=1).dropna().to_frame(name="SC")
+
+            return combined_IT, combined_OT, combined_Success, combined_Failed, IT_Success, IT_Failed, OT_Success, OT_Failed
+
+        if not Opto:
+            index_to_iterate = group_info.get_targeted_trials(["Landing", "Flying"])
+            combined = None
+            threshold = 0.71
+            if type == "LS":
+
+                Success, Failed = self.manipulator.read_leg_search_data(self.Analyze_leg_search(group_info, index_to_iterate, group_info.group_name, threshold), indi_legs)
+                combined = pd.concat([Success, Failed])
+                combined = combined.sum(axis=1).to_frame(name="sum")
+            if type == "SC":
+                Success, Failed = self.manipulator.read_secondary_contact_data(self.AnalyzeSecondaryContact(index_to_iterate, group_info,  threshold), indi_legs)
+                combined = pd.concat([Success, Failed])
+                combined = combined.min(axis=1).dropna().to_frame(name="SC")
+            return combined
+        else:
+            LO_index = []
+            NL_index = []
+            index_to_iterate = group_info.get_targeted_trials(["Landing", "Flying"])
+            for index in index_to_iterate:
+                path = group_info.fly_kinematic_data_path[f"F{index[0]}T{index[1]}"]
+                if "_NL_" in path or "OFF" in path:
+                    NL_index.append(index)
+                if "_LO_" in path or "ON" in path:
+                    LO_index.append(index)
+            ON_combined = None
+            OFF_combined = None
+            if type == "LS":
+                Success, Failed = self.manipulator.read_leg_search_data(self.Analyze_leg_search(group_info, LO_index, "ON"), indi_legs)
+                ON_combined = pd.concat([Success, Failed])
+                ON_combined = ON_combined.sum(axis=1).to_frame(name="sum")
+
+                Success, Failed = self.manipulator.read_leg_search_data(self.Analyze_leg_search(group_info, NL_index, "OFF"), indi_legs)
+                OFF_combined = pd.concat([Success, Failed])
+                OFF_combined = OFF_combined.sum(axis=1).to_frame(name="sum")
+
+            if type == "SC":
+
+                Success, Failed = self.manipulator.read_secondary_contact_data(self.AnalyzeSecondaryContact(LO_index, group_info,  0.71, "ON"), indi_legs)
+                ON_combined = pd.concat([Success, Failed])
+                ON_combined = ON_combined.min(axis=1).dropna().to_frame(name="SC")
+
+                Success, Failed = self.manipulator.read_secondary_contact_data(self.AnalyzeSecondaryContact(NL_index, group_info, 0.71, "OFF"), indi_legs)
+                OFF_combined = pd.concat([Success, Failed])
+                OFF_combined = OFF_combined.min(axis=1).dropna().to_frame(name="SC")
+            return ON_combined, OFF_combined
+
